@@ -47,6 +47,7 @@ let package = Package(
             dependencies: ["PetRuntime"],
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(name: "OverlayHostTests", dependencies: ["OverlayHost"]),
     ],
     swiftLanguageModes: [.v6]
 )

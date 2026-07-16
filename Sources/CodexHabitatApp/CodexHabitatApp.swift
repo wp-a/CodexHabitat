@@ -25,6 +25,10 @@ enum CodexHabitatEntryPoint {
             let status = PetDoctor.run()
             exit(status)
         }
+        if CommandLine.arguments.contains("--preview-overlay") {
+            OverlayPreview.run()
+            return
+        }
         CodexHabitatGUI.main()
     }
 }
