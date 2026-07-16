@@ -31,7 +31,7 @@ public struct CodexEventSanitizer: Sendable {
         }
 
         let object = params?.objectValue ?? [:]
-        let timestamp = parseDate(object["timestamp"]?.stringValue) ?? receivedAt
+        let timestamp = parseDate(object["timestamp"]) ?? receivedAt
         let threadID = directOrNestedThreadID(in: object)
         let threadHash = threadID.map(hash)
         let status = directOrNestedStatus(in: object)
@@ -105,15 +105,21 @@ public struct CodexEventSanitizer: Sendable {
         let secondary = limits["secondary"]?.objectValue
         return CodexRateLimitUpdate(
             primaryUsedPercent: primary?["usedPercent"]?.numberValue,
-            primaryResetAt: parseDate(primary?["resetAt"]?.stringValue),
+            primaryResetAt: parseDate(primary?["resetsAt"] ?? primary?["resetAt"]),
             secondaryUsedPercent: secondary?["usedPercent"]?.numberValue,
-            secondaryResetAt: parseDate(secondary?["resetAt"]?.stringValue)
+            secondaryResetAt: parseDate(secondary?["resetsAt"] ?? secondary?["resetAt"])
         )
     }
 
-    private func parseDate(_ value: String?) -> Date? {
-        guard let value else { return nil }
-        return ISO8601DateFormatter().date(from: value)
+    private func parseDate(_ value: JSONValue?) -> Date? {
+        switch value {
+        case let .string(timestamp):
+            return ISO8601DateFormatter().date(from: timestamp)
+        case let .number(timestamp):
+            return Date(timeIntervalSince1970: timestamp)
+        default:
+            return nil
+        }
     }
 }
 

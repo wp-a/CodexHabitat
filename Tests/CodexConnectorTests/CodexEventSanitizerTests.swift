@@ -64,7 +64,7 @@ func rateLimitUpdateKeepsOnlyPercentagesAndResetTimes() throws {
         "rateLimits": .object([
             "primary": .object([
                 "usedPercent": .number(12),
-                "resetAt": .string("2026-07-16T09:00:00Z"),
+                "resetsAt": .number(1_784_192_400),
             ]),
             "secondary": .object([
                 "usedPercent": .number(34),
@@ -81,7 +81,9 @@ func rateLimitUpdateKeepsOnlyPercentagesAndResetTimes() throws {
 
     #expect(event.category == .rateLimitsUpdated)
     #expect(event.rateLimits?.primaryUsedPercent == 12)
+    #expect(event.rateLimits?.primaryResetAt == Date(timeIntervalSince1970: 1_784_192_400))
     #expect(event.rateLimits?.secondaryUsedPercent == 34)
+    #expect(event.rateLimits?.secondaryResetAt == Date(timeIntervalSince1970: 1_784_793_600))
 }
 
 @Test

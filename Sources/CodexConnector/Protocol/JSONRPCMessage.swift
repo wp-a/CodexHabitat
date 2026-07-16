@@ -47,7 +47,7 @@ public enum JSONValue: Codable, Equatable, Sendable {
     }
 }
 
-public enum JSONRPCID: Equatable, Sendable {
+public enum JSONRPCID: Equatable, Hashable, Sendable {
     case integer(Int)
     case string(String)
     case null
