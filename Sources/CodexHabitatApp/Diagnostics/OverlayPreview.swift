@@ -6,9 +6,11 @@ import SwiftUI
 
 @MainActor
 enum OverlayPreview {
-    private static let coordinator = OverlayPreviewCoordinator()
+    private static var coordinator: OverlayPreviewCoordinator?
 
-    static func run() {
+    static func run(themeID: String? = nil) {
+        let coordinator = OverlayPreviewCoordinator(themeID: themeID)
+        self.coordinator = coordinator
         coordinator.run()
     }
 }
@@ -24,13 +26,16 @@ private final class OverlayPreviewCoordinator: NSObject {
     ))
     private let petAsset: OverlayPreviewPetAsset?
     private let petModel: HabitatOverlayModel
+    private let theme: HabitatThemeDescriptor
     private var statusItem: NSStatusItem?
     private var interactionItem: NSMenuItem?
     private var widgetItem: NSMenuItem?
 
-    override init() {
-        let petAsset = Self.loadPetAsset()
+    init(themeID: String?) {
+        let petAsset = themeID == nil ? Self.loadPetAsset() : nil
         self.petAsset = petAsset
+        theme = HabitatThemeDescriptor.builtIn.first(where: { $0.id == themeID })
+            ?? HabitatThemeDescriptor.builtIn[0]
         petModel = HabitatOverlayModel(
             initialSnapshot: HabitatSnapshot(activity: .working, connectionHealth: .online),
             availableRows: petAsset?.availableRows ?? Set(0..<9),
@@ -45,7 +50,8 @@ private final class OverlayPreviewCoordinator: NSObject {
             presentation: presentation,
             widgetModel: widgetModel,
             petModel: petModel,
-            petAsset: petAsset
+            petAsset: petAsset,
+            theme: theme
         ))
         overlay.setInteractive(true)
         overlay.show()
@@ -131,11 +137,12 @@ private struct OverlayPreviewView: View {
     @ObservedObject var widgetModel: WidgetRailModel
     @ObservedObject var petModel: HabitatOverlayModel
     let petAsset: OverlayPreviewPetAsset?
+    let theme: HabitatThemeDescriptor
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             if presentation.isWidgetRailExpanded {
-                WidgetRailView(model: widgetModel)
+                WidgetRailView(model: widgetModel, theme: theme)
                     .offset(x: 4, y: 4)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }

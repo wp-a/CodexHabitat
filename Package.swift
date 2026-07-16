@@ -45,7 +45,8 @@ let package = Package(
                 "WidgetRuntime",
                 "ResourceKit",
                 "OverlayHost",
-            ]
+            ],
+            resources: [.copy("Resources")]
         ),
         .executableTarget(name: "CodexHabitatThemeBridge", dependencies: ["HabitatCore"]),
         .testTarget(name: "HabitatCoreTests", dependencies: ["HabitatCore"]),

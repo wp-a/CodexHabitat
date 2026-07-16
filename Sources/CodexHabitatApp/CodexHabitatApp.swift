@@ -106,7 +106,14 @@ enum CodexHabitatEntryPoint {
             exit(status)
         }
         if CommandLine.arguments.contains("--preview-overlay") {
-            OverlayPreview.run()
+            let themeID: String?
+            if let themeIndex = CommandLine.arguments.firstIndex(of: "--preview-theme"),
+               CommandLine.arguments.indices.contains(themeIndex + 1) {
+                themeID = CommandLine.arguments[themeIndex + 1]
+            } else {
+                themeID = nil
+            }
+            OverlayPreview.run(themeID: themeID)
             return
         }
         if let previewPetIndex = CommandLine.arguments.firstIndex(of: "--preview-pet"),

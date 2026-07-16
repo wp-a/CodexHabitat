@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "night-shift",
+  "name": "Night Shift",
+  "version": "1.0.0",
+  "author": "Codex Habitat Contributors",
+  "license": {"spdx": "MIT", "file": "LICENSE"},
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": ["light", "dark"],
+  "preview": "preview.png",
+  "colors": {
+    "surface": "#171A1D",
+    "text": "#F1F5F6",
+    "accent": "#2DD4BF",
+    "attention": "#F59E0B",
+    "error": "#FB7185"
+  },
+  "assets": [],
+  "pets": [],
+  "widgets": [
+    {
+      "id": "codex.status",
+      "anchor": "topLeading",
+      "position": {"x": 0.04, "y": 0.06},
+      "configuration": {"type": "status", "showsConnectionHealth": true}
+    },
+    {
+      "id": "codex.usage",
+      "anchor": "topTrailing",
+      "position": {"x": 0.96, "y": 0.06},
+      "configuration": {"type": "usage", "bucket": "primary"}
+    },
+    {
+      "id": "system.clock",
+      "anchor": "bottomLeading",
+      "position": {"x": 0.04, "y": 0.94},
+      "configuration": {"type": "clock", "uses24HourClock": true}
+    },
+    {
+      "id": "timer.pomodoro",
+      "anchor": "bottomTrailing",
+      "position": {"x": 0.96, "y": 0.94},
+      "configuration": {"type": "pomodoro", "focusSeconds": 1500, "restSeconds": 300}
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import Foundation
 import HabitatCore
 import PetRuntime
+import ResourceKit
 import SwiftUI
 
 enum OnboardingStep: Int, CaseIterable, Equatable, Sendable {
@@ -47,33 +48,77 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
     let name: String
     let detail: String
     let symbol: String
+    let surfaceHex: String
+    let textHex: String
+    let accentHex: String
+    let attentionHex: String
+    let errorHex: String
+    let previewURL: URL?
 
     static let builtIn = [
-        HabitatThemeDescriptor(
+        bundled(
             id: "workbench",
             name: "Workbench",
             detail: "Bright and tool-oriented",
-            symbol: "hammer.fill"
+            symbol: "hammer.fill",
+            fallbackColors: ("#F4F7F8", "#172126", "#0F8B8D", "#D97706", "#D64545")
         ),
-        HabitatThemeDescriptor(
+        bundled(
             id: "night-shift",
             name: "Night Shift",
             detail: "Dark with teal and amber signals",
-            symbol: "moon.stars.fill"
+            symbol: "moon.stars.fill",
+            fallbackColors: ("#171A1D", "#F1F5F6", "#2DD4BF", "#F59E0B", "#FB7185")
         ),
-        HabitatThemeDescriptor(
+        bundled(
             id: "arcade-signal",
             name: "Arcade Signal",
             detail: "Crisp primary accents for pixel pets",
-            symbol: "arcade.stick.console.fill"
+            symbol: "arcade.stick.console.fill",
+            fallbackColors: ("#14151A", "#F7F7F2", "#2D8CFF", "#FFD23F", "#FF4D5A")
         ),
-        HabitatThemeDescriptor(
+        bundled(
             id: "quiet-garden",
             name: "Quiet Garden",
             detail: "Soft green with cherry accents",
-            symbol: "leaf.fill"
+            symbol: "leaf.fill",
+            fallbackColors: ("#F5F8F4", "#203127", "#3D8B63", "#C86A45", "#C4455D")
         ),
     ]
+
+    private static func bundled(
+        id: String,
+        name: String,
+        detail: String,
+        symbol: String,
+        fallbackColors: (String, String, String, String, String)
+    ) -> HabitatThemeDescriptor {
+        let directory = "Resources/Themes/\(id)"
+        let manifestURL = Bundle.module.url(
+            forResource: "habitat",
+            withExtension: "json",
+            subdirectory: directory
+        )
+        let manifest = manifestURL.flatMap { url in
+            try? ManifestDecoder(runtimeVersion: "1.0.0").decode(Data(contentsOf: url))
+        }
+        return HabitatThemeDescriptor(
+            id: id,
+            name: manifest?.name ?? name,
+            detail: detail,
+            symbol: symbol,
+            surfaceHex: manifest?.colors.surface ?? fallbackColors.0,
+            textHex: manifest?.colors.text ?? fallbackColors.1,
+            accentHex: manifest?.colors.accent ?? fallbackColors.2,
+            attentionHex: manifest?.colors.attention ?? fallbackColors.3,
+            errorHex: manifest?.colors.error ?? fallbackColors.4,
+            previewURL: Bundle.module.url(
+                forResource: "preview",
+                withExtension: "png",
+                subdirectory: directory
+            )
+        )
+    }
 }
 
 @MainActor

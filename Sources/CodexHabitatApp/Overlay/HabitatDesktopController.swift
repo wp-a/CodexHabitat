@@ -23,6 +23,7 @@ final class HabitatDesktopController {
     private var cancellable: AnyCancellable?
     private var renderedPetID: String?
     private var renderedWidgets: [WidgetIdentifier] = []
+    private var renderedThemeID: String?
     private var renderedScale: Double?
 
     private(set) var isVisible = false
@@ -54,10 +55,14 @@ final class HabitatDesktopController {
 
         let scale = min(max(settings.scale, 0.75), 1.5)
         let petAsset = Self.asset(id: settings.selectedPetID, pets: pets)
+        let theme = HabitatThemeDescriptor.builtIn.first(where: {
+            $0.id == settings.selectedThemeID
+        }) ?? HabitatThemeDescriptor.builtIn[0]
         let needsNewPanel = overlay == nil || renderedScale != scale
         let needsNewContent = needsNewPanel
             || renderedPetID != petAsset?.id
             || renderedWidgets != settings.widgetOrder
+            || renderedThemeID != theme.id
         let savedPlacement = needsNewPanel ? overlay?.currentPlacement() : nil
 
         if needsNewPanel {
@@ -76,12 +81,14 @@ final class HabitatDesktopController {
                 petModel: petModel,
                 petAsset: petAsset,
                 enabledWidgets: settings.widgetOrder,
+                theme: theme,
                 scale: scale
             ))
         }
 
         renderedPetID = petAsset?.id
         renderedWidgets = settings.widgetOrder
+        renderedThemeID = theme.id
         renderedScale = scale
         overlay?.setInteractive(!settings.clickThrough)
         if !isVisible || needsNewPanel {
@@ -133,6 +140,7 @@ private struct HabitatDesktopView: View {
     @ObservedObject var petModel: HabitatOverlayModel
     let petAsset: HabitatPetAsset?
     let enabledWidgets: [WidgetIdentifier]
+    let theme: HabitatThemeDescriptor
     let scale: Double
 
     var body: some View {
@@ -153,7 +161,11 @@ private struct HabitatDesktopView: View {
     private var baseContent: some View {
         ZStack(alignment: .topLeading) {
             if presentation.isWidgetRailExpanded, !enabledWidgets.isEmpty {
-                WidgetRailView(model: widgetModel, enabledWidgets: enabledWidgets)
+                WidgetRailView(
+                    model: widgetModel,
+                    enabledWidgets: enabledWidgets,
+                    theme: theme
+                )
                     .offset(x: 4, y: 4)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }

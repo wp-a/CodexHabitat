@@ -70,13 +70,16 @@ final class WidgetRailModel: ObservableObject {
 struct WidgetRailView: View {
     @ObservedObject var model: WidgetRailModel
     let enabledWidgets: [WidgetIdentifier]
+    let theme: HabitatThemeDescriptor
 
     init(
         model: WidgetRailModel,
-        enabledWidgets: [WidgetIdentifier] = HabitatSettings.default.widgetOrder
+        enabledWidgets: [WidgetIdentifier] = HabitatSettings.default.widgetOrder,
+        theme: HabitatThemeDescriptor = HabitatThemeDescriptor.builtIn[0]
     ) {
         self.model = model
         self.enabledWidgets = enabledWidgets
+        self.theme = theme
     }
 
     var body: some View {
@@ -84,7 +87,8 @@ struct WidgetRailView: View {
             ForEach(Array(enabledWidgets.enumerated()), id: \.element) { index, id in
                 row(for: id)
                 if index < enabledWidgets.count - 1 {
-                    Divider().opacity(0.55)
+                    Divider()
+                        .overlay(textColor.opacity(0.13))
                 }
             }
         }
@@ -94,10 +98,11 @@ struct WidgetRailView: View {
             width: HabitatOverlayLayout.widgetRailSize.width,
             height: HabitatOverlayLayout.widgetRailSize.height
         )
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .foregroundStyle(textColor)
+        .background(surfaceColor.opacity(0.96), in: RoundedRectangle(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(.primary.opacity(0.1), lineWidth: 1)
+                .stroke(textColor.opacity(0.13), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Habitat widgets")
@@ -133,24 +138,24 @@ struct WidgetRailView: View {
     }
 
     private var usageRow: some View {
-        WidgetRow(systemImage: "gauge.with.dots.needle.50percent", tint: .mint) {
+        WidgetRow(systemImage: "gauge.with.dots.needle.50percent", tint: accentColor) {
             Gauge(value: usagePercent, in: 0...100) {
                 EmptyView()
             }
             .gaugeStyle(.accessoryLinear)
-            .tint(.mint)
+            .tint(accentColor)
             .accessibilityLabel("Primary usage")
             .accessibilityValue(usageValue)
 
             Text(usageValue)
                 .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(textColor.opacity(0.62))
                 .frame(width: 32, alignment: .trailing)
         }
     }
 
     private var clockRow: some View {
-        WidgetRow(systemImage: "clock.fill", tint: .orange) {
+        WidgetRow(systemImage: "clock.fill", tint: attentionColor) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(context.date, format: .dateTime.hour().minute().second())
                     .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
@@ -165,13 +170,13 @@ struct WidgetRailView: View {
         HStack(spacing: 8) {
             Image(systemName: model.pomodoroSnapshot.phase == .rest ? "cup.and.saucer.fill" : "timer")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.pink)
+                .foregroundStyle(errorColor)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.pomodoroSnapshot.phase == .rest ? "REST" : "FOCUS")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(textColor.opacity(0.62))
                 Text(formattedDuration(model.pomodoroSnapshot.remainingSeconds))
                     .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
                     .lineLimit(1)
@@ -196,7 +201,7 @@ struct WidgetRailView: View {
     }
 
     private var countdownRow: some View {
-        WidgetRow(systemImage: "hourglass", tint: .indigo) {
+        WidgetRow(systemImage: "hourglass", tint: accentColor) {
             Text("05:00")
                 .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
                 .accessibilityLabel("Countdown, five minutes")
@@ -217,7 +222,7 @@ struct WidgetRailView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
+        .background(textColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
@@ -256,20 +261,20 @@ struct WidgetRailView: View {
 
     private var statusColor: Color {
         switch model.snapshot.activity {
-        case .resting: .indigo
-        case .working: .cyan
-        case .attention: .yellow
+        case .resting: accentColor.opacity(0.72)
+        case .working: accentColor
+        case .attention: attentionColor
         case .succeeded: .green
-        case .failed: .red
-        case .offline: .secondary
+        case .failed: errorColor
+        case .offline: textColor.opacity(0.45)
         }
     }
 
     private var connectionColor: Color {
         switch model.snapshot.connectionHealth {
-        case .online: .green
-        case .reconnecting: .orange
-        case .offline: .secondary
+        case .online: accentColor
+        case .reconnecting: attentionColor
+        case .offline: textColor.opacity(0.45)
         }
     }
 
@@ -283,6 +288,33 @@ struct WidgetRailView: View {
 
     private func formattedDuration(_ seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private var surfaceColor: Color { Color(habitatHex: theme.surfaceHex) }
+    private var textColor: Color { Color(habitatHex: theme.textHex) }
+    private var accentColor: Color { Color(habitatHex: theme.accentHex) }
+    private var attentionColor: Color { Color(habitatHex: theme.attentionHex) }
+    private var errorColor: Color { Color(habitatHex: theme.errorHex) }
+}
+
+extension Color {
+    init(habitatHex: String) {
+        let value = habitatHex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        let number = UInt64(value, radix: 16) ?? 0
+        if value.count == 8 {
+            self.init(
+                red: Double((number >> 24) & 0xff) / 255,
+                green: Double((number >> 16) & 0xff) / 255,
+                blue: Double((number >> 8) & 0xff) / 255,
+                opacity: Double(number & 0xff) / 255
+            )
+        } else {
+            self.init(
+                red: Double((number >> 16) & 0xff) / 255,
+                green: Double((number >> 8) & 0xff) / 255,
+                blue: Double(number & 0xff) / 255
+            )
+        }
     }
 }
 
