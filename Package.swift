@@ -48,6 +48,10 @@ let package = Package(
             resources: [.copy("Fixtures")]
         ),
         .testTarget(name: "OverlayHostTests", dependencies: ["OverlayHost"]),
+        .testTarget(
+            name: "CodexHabitatAppTests",
+            dependencies: ["CodexHabitatApp", "HabitatCore", "PetRuntime"]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
