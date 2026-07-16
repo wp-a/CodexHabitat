@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codex-habitat.local/schemas/habitat-pack-v1.schema.json",
+  "title": "Codex Habitat Resource Pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "version",
+    "author",
+    "license",
+    "minimumRuntimeVersion",
+    "modes",
+    "preview",
+    "colors",
+    "assets",
+    "pets",
+    "widgets"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"$ref": "#/$defs/identifier"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 100},
+    "version": {"$ref": "#/$defs/semanticVersion"},
+    "author": {"type": "string", "minLength": 1, "maxLength": 100},
+    "license": {"$ref": "#/$defs/license"},
+    "minimumRuntimeVersion": {"$ref": "#/$defs/semanticVersion"},
+    "modes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"enum": ["light", "dark"]}
+    },
+    "preview": {"$ref": "#/$defs/imagePath"},
+    "colors": {"$ref": "#/$defs/colors"},
+    "assets": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/resource"}
+    },
+    "pets": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/pet"}
+    },
+    "widgets": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/widget"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "localPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!~)(?!.*\\\\)(?!.*:)(?!.*(^|/)\\.{1,2}(/|$))(?!.*//).+$"
+    },
+    "imagePath": {
+      "allOf": [
+        {"$ref": "#/$defs/localPath"},
+        {"pattern": "\\.(png|jpg|jpeg|webp)$"}
+      ]
+    },
+    "fontPath": {
+      "allOf": [
+        {"$ref": "#/$defs/localPath"},
+        {"pattern": "\\.(otf|ttf|woff2)$"}
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{64}$"
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx", "file"],
+      "properties": {
+        "spdx": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]{0,63}$"
+        },
+        "file": {"$ref": "#/$defs/localPath"}
+      }
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "text", "accent", "attention", "error"],
+      "properties": {
+        "surface": {"$ref": "#/$defs/color"},
+        "text": {"$ref": "#/$defs/color"},
+        "accent": {"$ref": "#/$defs/color"},
+        "attention": {"$ref": "#/$defs/color"},
+        "error": {"$ref": "#/$defs/color"}
+      }
+    },
+    "resource": {
+      "oneOf": [
+        {"$ref": "#/$defs/imageResource"},
+        {"$ref": "#/$defs/fontResource"}
+      ]
+    },
+    "imageResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "path", "sha256", "rendering"],
+      "properties": {
+        "type": {"const": "image"},
+        "id": {"$ref": "#/$defs/identifier"},
+        "path": {"$ref": "#/$defs/imagePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "rendering": {"enum": ["auto", "pixelated", "smooth"]}
+      }
+    },
+    "fontResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "path", "sha256"],
+      "properties": {
+        "type": {"const": "font"},
+        "id": {"$ref": "#/$defs/identifier"},
+        "path": {"$ref": "#/$defs/fontPath"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "pet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "rendering", "scale"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "path": {"$ref": "#/$defs/localPath"},
+        "rendering": {"enum": ["auto", "pixelated", "smooth"]},
+        "scale": {"type": "number", "minimum": 0.5, "maximum": 2}
+      }
+    },
+    "anchor": {
+      "enum": ["topLeading", "topTrailing", "bottomLeading", "bottomTrailing", "center"]
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "statusConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "showsConnectionHealth"],
+      "properties": {
+        "type": {"const": "status"},
+        "showsConnectionHealth": {"type": "boolean"}
+      }
+    },
+    "usageConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "bucket"],
+      "properties": {
+        "type": {"const": "usage"},
+        "bucket": {"enum": ["primary", "secondary"]}
+      }
+    },
+    "clockConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "uses24HourClock"],
+      "properties": {
+        "type": {"const": "clock"},
+        "uses24HourClock": {"type": "boolean"}
+      }
+    },
+    "pomodoroConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "focusSeconds", "restSeconds"],
+      "properties": {
+        "type": {"const": "pomodoro"},
+        "focusSeconds": {"type": "integer", "minimum": 60, "maximum": 86400},
+        "restSeconds": {"type": "integer", "minimum": 60, "maximum": 86400}
+      }
+    },
+    "countdownConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "durationSeconds"],
+      "properties": {
+        "type": {"const": "countdown"},
+        "durationSeconds": {"type": "integer", "minimum": 1, "maximum": 86400}
+      }
+    },
+    "widget": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "codex.status"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/statusConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "codex.usage"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/usageConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "system.clock"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/clockConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "timer.pomodoro"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/pomodoroConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "timer.countdown"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/countdownConfiguration"}
+          }
+        }
+      ]
+    }
+  }
+}

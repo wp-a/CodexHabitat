@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "studio.example.remote",
+  "name": "Remote Path",
+  "version": "1.0.0",
+  "author": "Example Studio",
+  "license": {"spdx": "MIT", "file": "LICENSE"},
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": ["dark"],
+  "preview": "https://example.com/preview.png",
+  "colors": {
+    "surface": "#111111",
+    "text": "#FFFFFF",
+    "accent": "#00A6A6",
+    "attention": "#F59E0B",
+    "error": "#EF4444"
+  },
+  "assets": [],
+  "pets": [],
+  "widgets": []
+}

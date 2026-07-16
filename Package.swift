@@ -56,6 +56,11 @@ let package = Package(
             name: "WidgetRuntimeTests",
             dependencies: ["WidgetRuntime", "HabitatCore"]
         ),
+        .testTarget(
+            name: "ResourceKitTests",
+            dependencies: ["ResourceKit", "HabitatCore"],
+            resources: [.copy("Fixtures")]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "studio.example.widget",
+  "name": "Wrong Widget",
+  "version": "1.0.0",
+  "author": "Example Studio",
+  "license": {"spdx": "MIT", "file": "LICENSE"},
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": ["light"],
+  "preview": "preview.png",
+  "colors": {
+    "surface": "#FFFFFF",
+    "text": "#111111",
+    "accent": "#00A6A6",
+    "attention": "#F59E0B",
+    "error": "#EF4444"
+  },
+  "assets": [],
+  "pets": [],
+  "widgets": [{
+    "id": "codex.status",
+    "anchor": "topLeading",
+    "position": {"x": 0.1, "y": 0.1},
+    "configuration": {"type": "clock", "uses24HourClock": true}
+  }]
+}
