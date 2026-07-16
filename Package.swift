@@ -42,6 +42,11 @@ let package = Package(
             dependencies: ["CodexConnector"],
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(
+            name: "PetRuntimeTests",
+            dependencies: ["PetRuntime"],
+            resources: [.copy("Fixtures")]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

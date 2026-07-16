@@ -21,6 +21,10 @@ enum CodexHabitatEntryPoint {
             let status = await CodexDoctor.run()
             exit(status)
         }
+        if CommandLine.arguments.contains("--doctor-pets") {
+            let status = PetDoctor.run()
+            exit(status)
+        }
         CodexHabitatGUI.main()
     }
 }

@@ -1,0 +1,6 @@
+{
+  "id": "test-pet",
+  "displayName": "Test Pet",
+  "description": "An original fixture used only for deterministic tests.",
+  "spritesheetPath": "spritesheet.png"
+}

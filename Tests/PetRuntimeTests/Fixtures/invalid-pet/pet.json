@@ -1,0 +1,6 @@
+{
+  "id": "broken-pet",
+  "displayName": "Broken Pet",
+  "description": "An intentionally invalid test fixture.",
+  "spritesheetPath": "missing.png"
+}
