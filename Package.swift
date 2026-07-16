@@ -37,6 +37,7 @@ let package = Package(
         ),
         .executableTarget(name: "CodexHabitatThemeBridge", dependencies: ["HabitatCore"]),
         .testTarget(name: "HabitatCoreTests", dependencies: ["HabitatCore"]),
+        .testTarget(name: "CodexConnectorTests", dependencies: ["CodexConnector"]),
     ],
     swiftLanguageModes: [.v6]
 )
