@@ -6,11 +6,12 @@ import Testing
 func defaultSettingsKeepRiskyFeaturesDisabled() {
     let settings = HabitatSettings.default
 
-    #expect(settings.schemaVersion == 1)
+    #expect(settings.schemaVersion == 2)
     #expect(settings.selectedThemeID == "workbench")
     #expect(settings.scale == 1)
     #expect(settings.themeBridgeEnabled == false)
     #expect(settings.launchAtLogin == false)
+    #expect(settings.onboardingCompleted == false)
 }
 
 @Test
@@ -73,10 +74,34 @@ func schemaZeroMigratesWithThemeBridgeDisabled() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 1)
+        #expect(settings.schemaVersion == 2)
         #expect(settings.selectedPetID == "test-pet")
         #expect(settings.selectedThemeID == "night-shift")
         #expect(settings.themeBridgeEnabled == false)
+    }
+}
+
+@Test
+func schemaOnePreservesThemeBridgeAndDefaultsOnboardingToIncomplete() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 1,
+              "selectedThemeID": "night-shift",
+              "themeBridgeEnabled": true
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        let settings = try await store.load()
+
+        #expect(settings.schemaVersion == 2)
+        #expect(settings.themeBridgeEnabled)
+        #expect(settings.onboardingCompleted == false)
     }
 }
 

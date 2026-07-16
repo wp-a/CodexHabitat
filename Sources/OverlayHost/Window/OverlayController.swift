@@ -77,6 +77,10 @@ public final class OverlayController: NSObject {
         dragRegion.isHidden = !interactive
     }
 
+    public func hide() {
+        panel.orderOut(nil)
+    }
+
     public func currentPlacement() -> SavedOverlayPlacement? {
         savedPlacement
     }

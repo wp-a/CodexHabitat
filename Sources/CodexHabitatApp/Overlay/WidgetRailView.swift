@@ -69,19 +69,27 @@ final class WidgetRailModel: ObservableObject {
 
 struct WidgetRailView: View {
     @ObservedObject var model: WidgetRailModel
+    let enabledWidgets: [WidgetIdentifier]
+
+    init(
+        model: WidgetRailModel,
+        enabledWidgets: [WidgetIdentifier] = HabitatSettings.default.widgetOrder
+    ) {
+        self.model = model
+        self.enabledWidgets = enabledWidgets
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            statusRow
-            Divider().opacity(0.55)
-            usageRow
-            Divider().opacity(0.55)
-            clockRow
-            Divider().opacity(0.55)
-            pomodoroRow
+            ForEach(Array(enabledWidgets.enumerated()), id: \.element) { index, id in
+                row(for: id)
+                if index < enabledWidgets.count - 1 {
+                    Divider().opacity(0.55)
+                }
+            }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .frame(
             width: HabitatOverlayLayout.widgetRailSize.width,
             height: HabitatOverlayLayout.widgetRailSize.height
@@ -93,6 +101,22 @@ struct WidgetRailView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Habitat widgets")
+    }
+
+    @ViewBuilder
+    private func row(for id: WidgetIdentifier) -> some View {
+        switch id {
+        case .status:
+            statusRow
+        case .usage:
+            usageRow
+        case .clock:
+            clockRow
+        case .pomodoro:
+            pomodoroRow
+        case .countdown:
+            countdownRow
+        }
     }
 
     private var statusRow: some View {
@@ -158,20 +182,32 @@ struct WidgetRailView: View {
             timerButton(
                 systemImage: model.pomodoroSnapshot.isRunning ? "pause.fill" : "play.fill",
                 label: model.pomodoroSnapshot.isRunning ? "Pause focus timer" : "Start focus timer",
+                identifier: "widgets.pomodoro.toggle",
                 action: model.togglePomodoro
             )
             timerButton(
                 systemImage: "arrow.counterclockwise",
                 label: "Reset focus timer",
+                identifier: "widgets.pomodoro.reset",
                 action: model.resetPomodoro
             )
         }
-        .frame(height: 52)
+        .frame(height: 44)
+    }
+
+    private var countdownRow: some View {
+        WidgetRow(systemImage: "hourglass", tint: .indigo) {
+            Text("05:00")
+                .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
+                .accessibilityLabel("Countdown, five minutes")
+            Spacer(minLength: 0)
+        }
     }
 
     private func timerButton(
         systemImage: String,
         label: String,
+        identifier: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -184,6 +220,7 @@ struct WidgetRailView: View {
         .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
         .help(label)
         .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 
     private var usagePercent: Double {
@@ -272,6 +309,6 @@ private struct WidgetRow<Content: View>: View {
                 .frame(width: 18)
             content
         }
-        .frame(height: 31)
+        .frame(height: 26)
     }
 }

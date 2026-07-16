@@ -25,7 +25,8 @@ public struct OverlayPosition: Codable, Equatable, Sendable {
 }
 
 public struct HabitatSettings: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
+    private static let themeBridgeSchemaVersion = 1
 
     public var schemaVersion: Int
     public var selectedPetID: String?
@@ -37,6 +38,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     public var reduceMotion: ReduceMotionPreference
     public var themeBridgeEnabled: Bool
+    public var onboardingCompleted: Bool
 
     public static let `default` = HabitatSettings(
         schemaVersion: currentSchemaVersion,
@@ -48,7 +50,8 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         clickThrough: false,
         launchAtLogin: false,
         reduceMotion: .system,
-        themeBridgeEnabled: false
+        themeBridgeEnabled: false,
+        onboardingCompleted: false
     )
 
     public init(
@@ -61,7 +64,8 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         clickThrough: Bool,
         launchAtLogin: Bool,
         reduceMotion: ReduceMotionPreference,
-        themeBridgeEnabled: Bool
+        themeBridgeEnabled: Bool,
+        onboardingCompleted: Bool = false
     ) {
         self.schemaVersion = schemaVersion
         self.selectedPetID = selectedPetID
@@ -73,6 +77,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         self.launchAtLogin = launchAtLogin
         self.reduceMotion = reduceMotion
         self.themeBridgeEnabled = themeBridgeEnabled
+        self.onboardingCompleted = onboardingCompleted
     }
 
     public init(from decoder: any Decoder) throws {
@@ -99,8 +104,12 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
             ReduceMotionPreference.self,
             forKey: .reduceMotion
         ) ?? defaults.reduceMotion
-        themeBridgeEnabled = storedSchemaVersion >= HabitatSettings.currentSchemaVersion
+        themeBridgeEnabled = storedSchemaVersion >= HabitatSettings.themeBridgeSchemaVersion
             ? try container.decodeIfPresent(Bool.self, forKey: .themeBridgeEnabled) ?? false
             : false
+        onboardingCompleted = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .onboardingCompleted
+        ) ?? false
     }
 }
