@@ -1,0 +1,11 @@
+{
+  "method": "turn/completed",
+  "params": {
+    "threadId": "thread-example-002",
+    "timestamp": "2026-07-16T08:01:00Z",
+    "turn": { "status": "completed" },
+    "cwd": "/tmp/example-workspace",
+    "message": "invented private payload",
+    "output": "invented private result"
+  }
+}

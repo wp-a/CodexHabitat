@@ -1,0 +1,9 @@
+{
+  "method": "thread/status/changed",
+  "params": {
+    "threadId": "thread-example-001",
+    "status": { "type": "active" },
+    "timestamp": "2026-07-16T08:00:00Z",
+    "summary": "synthetic active state"
+  }
+}
