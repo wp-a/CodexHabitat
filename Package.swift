@@ -52,6 +52,10 @@ let package = Package(
             name: "CodexHabitatAppTests",
             dependencies: ["CodexHabitatApp", "HabitatCore", "PetRuntime"]
         ),
+        .testTarget(
+            name: "WidgetRuntimeTests",
+            dependencies: ["WidgetRuntime", "HabitatCore"]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

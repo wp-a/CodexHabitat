@@ -1,0 +1,277 @@
+import HabitatCore
+import SwiftUI
+import WidgetRuntime
+
+@MainActor
+final class WidgetRailModel: ObservableObject {
+    @Published private(set) var snapshot: HabitatSnapshot
+    @Published private(set) var pomodoroSnapshot: PomodoroSnapshot
+
+    private var pomodoro: PomodoroTimer
+    private var ticker: Task<Void, Never>?
+
+    init(
+        snapshot: HabitatSnapshot = HabitatSnapshot(),
+        configuration: PomodoroConfiguration = PomodoroConfiguration()
+    ) {
+        self.snapshot = snapshot
+        do {
+            var timer = try PomodoroTimer(configuration: configuration)
+            pomodoroSnapshot = timer.snapshot()
+            pomodoro = timer
+        } catch {
+            preconditionFailure("The built-in Pomodoro configuration must be valid")
+        }
+    }
+
+    deinit {
+        ticker?.cancel()
+    }
+
+    func apply(_ snapshot: HabitatSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func togglePomodoro() {
+        if pomodoroSnapshot.isRunning {
+            pomodoro.pause()
+            ticker?.cancel()
+            ticker = nil
+        } else {
+            pomodoro.start()
+            beginTicking()
+        }
+        refreshPomodoro()
+    }
+
+    func resetPomodoro() {
+        ticker?.cancel()
+        ticker = nil
+        pomodoro.reset()
+        refreshPomodoro()
+    }
+
+    private func beginTicking() {
+        ticker?.cancel()
+        ticker = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                self?.refreshPomodoro()
+            }
+        }
+    }
+
+    private func refreshPomodoro() {
+        pomodoroSnapshot = pomodoro.snapshot()
+    }
+}
+
+struct WidgetRailView: View {
+    @ObservedObject var model: WidgetRailModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            statusRow
+            Divider().opacity(0.55)
+            usageRow
+            Divider().opacity(0.55)
+            clockRow
+            Divider().opacity(0.55)
+            pomodoroRow
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(
+            width: HabitatOverlayLayout.widgetRailSize.width,
+            height: HabitatOverlayLayout.widgetRailSize.height
+        )
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.primary.opacity(0.1), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Habitat widgets")
+    }
+
+    private var statusRow: some View {
+        WidgetRow(systemImage: statusSymbol, tint: statusColor) {
+            Text(statusTitle)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Circle()
+                .fill(connectionColor)
+                .frame(width: 7, height: 7)
+                .accessibilityLabel(connectionTitle)
+        }
+    }
+
+    private var usageRow: some View {
+        WidgetRow(systemImage: "gauge.with.dots.needle.50percent", tint: .mint) {
+            Gauge(value: usagePercent, in: 0...100) {
+                EmptyView()
+            }
+            .gaugeStyle(.accessoryLinear)
+            .tint(.mint)
+            .accessibilityLabel("Primary usage")
+            .accessibilityValue(usageValue)
+
+            Text(usageValue)
+                .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .trailing)
+        }
+    }
+
+    private var clockRow: some View {
+        WidgetRow(systemImage: "clock.fill", tint: .orange) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(context.date, format: .dateTime.hour().minute().second())
+                    .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
+                    .lineLimit(1)
+                    .accessibilityLabel("Local time")
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var pomodoroRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: model.pomodoroSnapshot.phase == .rest ? "cup.and.saucer.fill" : "timer")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.pink)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.pomodoroSnapshot.phase == .rest ? "REST" : "FOCUS")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                Text(formattedDuration(model.pomodoroSnapshot.remainingSeconds))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 2)
+
+            timerButton(
+                systemImage: model.pomodoroSnapshot.isRunning ? "pause.fill" : "play.fill",
+                label: model.pomodoroSnapshot.isRunning ? "Pause focus timer" : "Start focus timer",
+                action: model.togglePomodoro
+            )
+            timerButton(
+                systemImage: "arrow.counterclockwise",
+                label: "Reset focus timer",
+                action: model.resetPomodoro
+            )
+        }
+        .frame(height: 52)
+    }
+
+    private func timerButton(
+        systemImage: String,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
+        .help(label)
+        .accessibilityLabel(label)
+    }
+
+    private var usagePercent: Double {
+        min(max(model.snapshot.primaryRateLimit?.usedPercent ?? 0, 0), 100)
+    }
+
+    private var usageValue: String {
+        guard model.snapshot.primaryRateLimit?.usedPercent != nil else { return "--" }
+        return "\(Int(usagePercent.rounded()))%"
+    }
+
+    private var statusSymbol: String {
+        switch model.snapshot.activity {
+        case .resting: "moon.stars.fill"
+        case .working: "bolt.fill"
+        case .attention: "eye.fill"
+        case .succeeded: "checkmark.circle.fill"
+        case .failed: "exclamationmark.triangle.fill"
+        case .offline: "bolt.slash.fill"
+        }
+    }
+
+    private var statusTitle: String {
+        switch model.snapshot.activity {
+        case .resting: "Resting"
+        case .working: "Working"
+        case .attention: "Review"
+        case .succeeded: "Complete"
+        case .failed: "Needs attention"
+        case .offline: "Offline"
+        }
+    }
+
+    private var statusColor: Color {
+        switch model.snapshot.activity {
+        case .resting: .indigo
+        case .working: .cyan
+        case .attention: .yellow
+        case .succeeded: .green
+        case .failed: .red
+        case .offline: .secondary
+        }
+    }
+
+    private var connectionColor: Color {
+        switch model.snapshot.connectionHealth {
+        case .online: .green
+        case .reconnecting: .orange
+        case .offline: .secondary
+        }
+    }
+
+    private var connectionTitle: String {
+        switch model.snapshot.connectionHealth {
+        case .online: "Connected"
+        case .reconnecting: "Reconnecting"
+        case .offline: "Disconnected"
+        }
+    }
+
+    private func formattedDuration(_ seconds: Int) -> String {
+        String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+private struct WidgetRow<Content: View>: View {
+    let systemImage: String
+    let tint: Color
+    @ViewBuilder let content: Content
+
+    init(
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.systemImage = systemImage
+        self.tint = tint
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 18)
+            content
+        }
+        .frame(height: 31)
+    }
+}
