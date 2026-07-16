@@ -17,12 +17,24 @@ let package = Package(
         .executable(name: "CodexHabitatApp", targets: ["CodexHabitatApp"]),
         .executable(name: "CodexHabitatThemeBridge", targets: ["CodexHabitatThemeBridge"]),
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/weichsel/ZIPFoundation.git",
+            exact: "0.9.20"
+        ),
+    ],
     targets: [
         .target(name: "HabitatCore"),
         .target(name: "CodexConnector", dependencies: ["HabitatCore"]),
         .target(name: "PetRuntime", dependencies: ["HabitatCore"]),
         .target(name: "WidgetRuntime", dependencies: ["HabitatCore"]),
-        .target(name: "ResourceKit", dependencies: ["HabitatCore"]),
+        .target(
+            name: "ResourceKit",
+            dependencies: [
+                "HabitatCore",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+            ]
+        ),
         .target(name: "OverlayHost", dependencies: ["HabitatCore"]),
         .executableTarget(
             name: "CodexHabitatApp",
@@ -58,7 +70,11 @@ let package = Package(
         ),
         .testTarget(
             name: "ResourceKitTests",
-            dependencies: ["ResourceKit", "HabitatCore"],
+            dependencies: [
+                "ResourceKit",
+                "HabitatCore",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+            ],
             resources: [.copy("Fixtures")]
         ),
     ],
