@@ -2,6 +2,9 @@ import Foundation
 
 public enum WidgetIdentifier: String, Codable, CaseIterable, Equatable, Sendable {
     case status = "codex.status"
+    case tokens = "codex.tokens"
+    case context = "codex.context"
+    case speed = "codex.speed"
     case usage = "codex.usage"
     case clock = "system.clock"
     case pomodoro = "timer.pomodoro"
@@ -25,8 +28,12 @@ public struct OverlayPosition: Codable, Equatable, Sendable {
 }
 
 public struct HabitatSettings: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
     private static let themeBridgeSchemaVersion = 1
+    private static let usefulMetricsSchemaVersion = 4
+    private static let legacyDefaultWidgetOrder: [WidgetIdentifier] = [
+        .status, .usage, .clock, .pomodoro,
+    ]
 
     public var schemaVersion: Int
     public var selectedPetID: String?
@@ -45,7 +52,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         schemaVersion: currentSchemaVersion,
         selectedPetID: nil,
         selectedThemeID: "workbench",
-        widgetOrder: [.status, .usage, .clock, .pomodoro],
+        widgetOrder: [.status, .tokens, .context, .speed, .usage],
         overlayPositions: [:],
         scale: 1,
         clickThrough: false,
@@ -93,8 +100,16 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         selectedPetID = try container.decodeIfPresent(String.self, forKey: .selectedPetID)
         selectedThemeID = try container.decodeIfPresent(String.self, forKey: .selectedThemeID)
             ?? defaults.selectedThemeID
-        widgetOrder = try container.decodeIfPresent([WidgetIdentifier].self, forKey: .widgetOrder)
-            ?? defaults.widgetOrder
+        let decodedWidgetOrder = try container.decodeIfPresent(
+            [WidgetIdentifier].self,
+            forKey: .widgetOrder
+        )
+        if storedSchemaVersion < HabitatSettings.usefulMetricsSchemaVersion,
+           decodedWidgetOrder == HabitatSettings.legacyDefaultWidgetOrder {
+            widgetOrder = defaults.widgetOrder
+        } else {
+            widgetOrder = decodedWidgetOrder ?? defaults.widgetOrder
+        }
         overlayPositions = try container.decodeIfPresent(
             [String: OverlayPosition].self,
             forKey: .overlayPositions

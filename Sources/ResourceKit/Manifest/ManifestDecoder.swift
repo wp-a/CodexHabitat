@@ -100,6 +100,12 @@ private enum ManifestShapeValidator {
                             allowed: ["type", "bucket"],
                             path: configurationPath
                         )
+                    case "tokens", "context", "speed":
+                        try validateKeys(
+                            configuration,
+                            allowed: ["type"],
+                            path: configurationPath
+                        )
                     case "clock":
                         try validateKeys(
                             configuration,

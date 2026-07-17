@@ -15,8 +15,26 @@ public struct WidgetRegistry: Sendable {
             defaultConfiguration: .status(StatusWidgetConfiguration())
         ),
         WidgetDescriptor(
+            id: .tokens,
+            displayName: "Tokens",
+            systemImage: "number.square.fill",
+            defaultConfiguration: .tokens(TokenWidgetConfiguration())
+        ),
+        WidgetDescriptor(
+            id: .context,
+            displayName: "Context",
+            systemImage: "chart.bar.fill",
+            defaultConfiguration: .context(ContextWidgetConfiguration())
+        ),
+        WidgetDescriptor(
+            id: .speed,
+            displayName: "Speed",
+            systemImage: "speedometer",
+            defaultConfiguration: .speed(SpeedWidgetConfiguration())
+        ),
+        WidgetDescriptor(
             id: .usage,
-            displayName: "Usage",
+            displayName: "Quota",
             systemImage: "gauge.with.dots.needle.50percent",
             defaultConfiguration: .usage(UsageWidgetConfiguration(bucket: .primary))
         ),
@@ -49,7 +67,8 @@ public struct WidgetRegistry: Sendable {
         for id: WidgetIdentifier
     ) throws {
         switch (id, configuration) {
-        case (.status, .status), (.usage, .usage), (.clock, .clock):
+        case (.status, .status), (.usage, .usage), (.tokens, .tokens),
+             (.context, .context), (.speed, .speed), (.clock, .clock):
             return
         case let (.pomodoro, .pomodoro(configuration)):
             try configuration.validate()

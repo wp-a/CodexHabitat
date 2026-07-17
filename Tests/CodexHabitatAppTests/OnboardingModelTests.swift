@@ -17,7 +17,7 @@ func onboardingDiscoversAPetAndCompletesInExactlyThreeSteps() async throws {
         #expect(model.validPets.map(\.manifest?.id) == ["test-pet"])
         #expect(model.settings.selectedPetID == "test-pet")
         #expect(model.settings.selectedThemeID == "workbench")
-        #expect(model.settings.widgetOrder == [.status, .usage, .clock, .pomodoro])
+        #expect(model.settings.widgetOrder == [.status, .tokens, .context, .speed, .usage])
         #expect(model.requiresAccount == false)
         #expect(model.requiresOnboarding)
         #expect(model.onboardingStep == .habitat)
@@ -52,7 +52,7 @@ func completedOnboardingAndSelectionsRestoreWithoutAnAccount() async throws {
         #expect(restored.requiresAccount == false)
         #expect(restored.settings.selectedPetID == "test-pet")
         #expect(restored.settings.selectedThemeID == "night-shift")
-        #expect(restored.settings.widgetOrder == [.status, .clock, .pomodoro])
+        #expect(restored.settings.widgetOrder == [.status, .tokens, .context, .speed])
     }
 }
 

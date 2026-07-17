@@ -15,6 +15,28 @@ func validV1ManifestDecodesIntoTypedResourcesAndWidgets() throws {
 }
 
 @Test
+func metricWidgetConfigurationsDecodeAndValidateAsStaticData() throws {
+    for (id, type) in [
+        ("codex.tokens", "tokens"),
+        ("codex.context", "context"),
+        ("codex.speed", "speed"),
+    ] {
+        let data = try mutatedValidManifest {
+            var widgets = $0["widgets"] as? [[String: Any]] ?? []
+            widgets.append([
+                "id": id,
+                "anchor": "center",
+                "position": ["x": 0.5, "y": 0.5],
+                "configuration": ["type": type],
+            ])
+            $0["widgets"] = widgets
+        }
+        let manifest = try ManifestDecoder(runtimeVersion: "1.0.0").decode(data)
+        #expect(manifest.widgets.last?.id.rawValue == id)
+    }
+}
+
+@Test
 func allCommittedInvalidFixturesAreRejected() throws {
     let directory = try #require(
         Bundle.module.url(

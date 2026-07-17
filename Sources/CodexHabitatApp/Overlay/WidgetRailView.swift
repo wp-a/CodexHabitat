@@ -208,6 +208,12 @@ struct WidgetRailView: View {
             statusRow
         case .usage:
             usageRow
+        case .tokens:
+            tokenRow
+        case .context:
+            contextRow
+        case .speed:
+            speedRow
         case .clock:
             clockRow
         case .pomodoro:
@@ -239,18 +245,66 @@ struct WidgetRailView: View {
 
     private var usageRow: some View {
         WidgetRow(systemImage: "gauge.with.dots.needle.50percent", tint: accentColor) {
-            Gauge(value: usagePercent, in: 0...100) {
-                EmptyView()
+            if selectedRateLimit?.usedPercent != nil {
+                Gauge(value: usagePercent, in: 0...100) {
+                    EmptyView()
+                }
+                .gaugeStyle(.accessoryLinear)
+                .tint(accentColor)
+                .accessibilityLabel("Account quota")
+                .accessibilityValue(usageValue)
+            } else {
+                Text("Quota")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(textColor.opacity(0.62))
+                Spacer(minLength: 2)
             }
-            .gaugeStyle(.accessoryLinear)
-            .tint(accentColor)
-            .accessibilityLabel("Primary usage")
-            .accessibilityValue(usageValue)
 
             Text(usageValue)
                 .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
                 .foregroundStyle(textColor.opacity(0.62))
+                .frame(minWidth: 32, alignment: .trailing)
+        }
+    }
+
+    private var tokenRow: some View {
+        WidgetRow(systemImage: "number.square.fill", tint: accentColor) {
+            Text("Tokens")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(textColor.opacity(0.62))
+            Spacer(minLength: 2)
+            Text(tokenValue)
+                .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
+                .lineLimit(1)
+        }
+    }
+
+    private var contextRow: some View {
+        WidgetRow(systemImage: "chart.bar.fill", tint: attentionColor) {
+            Gauge(value: contextPercent, in: 0...100) {
+                EmptyView()
+            }
+            .gaugeStyle(.accessoryLinear)
+            .tint(attentionColor)
+            .accessibilityLabel("Context used")
+            .accessibilityValue(contextValue)
+
+            Text(contextValue)
+                .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
+                .foregroundStyle(textColor.opacity(0.62))
                 .frame(width: 32, alignment: .trailing)
+        }
+    }
+
+    private var speedRow: some View {
+        WidgetRow(systemImage: "speedometer", tint: .green) {
+            Text("Output speed")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(textColor.opacity(0.62))
+            Spacer(minLength: 2)
+            Text(speedValue)
+                .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                .lineLimit(1)
         }
     }
 
@@ -342,8 +396,40 @@ struct WidgetRailView: View {
     }
 
     private var usageValue: String {
-        guard selectedRateLimit?.usedPercent != nil else { return "--" }
+        guard selectedRateLimit?.usedPercent != nil else {
+            return model.snapshot.tokenMetrics == nil ? "--" : "API Key"
+        }
         return "\(Int(usagePercent.rounded()))%"
+    }
+
+    private var tokenValue: String {
+        guard let tokens = model.snapshot.tokenMetrics?.totalTokens else { return "--" }
+        return Self.compactCount(tokens)
+    }
+
+    private var contextPercent: Double {
+        min(max(model.snapshot.tokenMetrics?.contextUsedPercent ?? 0, 0), 100)
+    }
+
+    private var contextValue: String {
+        guard model.snapshot.tokenMetrics?.contextUsedPercent != nil else { return "--" }
+        return "\(Int(contextPercent.rounded()))%"
+    }
+
+    private var speedValue: String {
+        guard let speed = model.snapshot.tokenMetrics?.outputTokensPerMinute else { return "--" }
+        return "\(Self.compactCount(Int(speed.rounded())))/m"
+    }
+
+    private static func compactCount(_ value: Int) -> String {
+        let count = max(0, value)
+        if count >= 1_000_000 {
+            return String(format: "%.1fM", Double(count) / 1_000_000)
+        }
+        if count >= 1_000 {
+            return String(format: "%.1fK", Double(count) / 1_000)
+        }
+        return "\(count)"
     }
 
     private var selectedRateLimit: RateLimitSummary? {

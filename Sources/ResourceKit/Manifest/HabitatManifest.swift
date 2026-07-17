@@ -141,9 +141,16 @@ public struct HabitatCountdownConfiguration: Decodable, Equatable, Sendable {
     public let durationSeconds: Int
 }
 
+public struct HabitatStaticMetricConfiguration: Decodable, Equatable, Sendable {
+    public init() {}
+}
+
 public enum HabitatWidgetConfiguration: Decodable, Equatable, Sendable {
     case status(HabitatStatusConfiguration)
     case usage(HabitatUsageConfiguration)
+    case tokens(HabitatStaticMetricConfiguration)
+    case context(HabitatStaticMetricConfiguration)
+    case speed(HabitatStaticMetricConfiguration)
     case clock(HabitatClockConfiguration)
     case pomodoro(HabitatPomodoroConfiguration)
     case countdown(HabitatCountdownConfiguration)
@@ -151,6 +158,9 @@ public enum HabitatWidgetConfiguration: Decodable, Equatable, Sendable {
     private enum Kind: String, Decodable {
         case status
         case usage
+        case tokens
+        case context
+        case speed
         case clock
         case pomodoro
         case countdown
@@ -167,6 +177,12 @@ public enum HabitatWidgetConfiguration: Decodable, Equatable, Sendable {
             self = .status(try HabitatStatusConfiguration(from: decoder))
         case .usage:
             self = .usage(try HabitatUsageConfiguration(from: decoder))
+        case .tokens:
+            self = .tokens(try HabitatStaticMetricConfiguration(from: decoder))
+        case .context:
+            self = .context(try HabitatStaticMetricConfiguration(from: decoder))
+        case .speed:
+            self = .speed(try HabitatStaticMetricConfiguration(from: decoder))
         case .clock:
             self = .clock(try HabitatClockConfiguration(from: decoder))
         case .pomodoro:

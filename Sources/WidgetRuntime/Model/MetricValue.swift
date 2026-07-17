@@ -6,5 +6,7 @@ public enum MetricValue: Equatable, Sendable {
     case percentage(Double)
     case date(Date)
     case durationSeconds(Int)
+    case tokenCount(Int)
+    case tokensPerMinute(Double)
     case unavailable
 }

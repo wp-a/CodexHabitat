@@ -29,7 +29,7 @@ func settingsChangesUseKnownThemesWidgetsAndSafeScaleBounds() async throws {
 
     let saved = try await store.load()
     #expect(saved.selectedThemeID == "arcade-signal")
-    #expect(saved.widgetOrder == [.usage, .clock, .pomodoro, .countdown])
+    #expect(saved.widgetOrder == [.tokens, .context, .speed, .usage, .countdown])
     #expect(saved.scale == 1.5)
     #expect(saved.clickThrough)
 }

@@ -4,10 +4,10 @@ import Testing
 @testable import WidgetRuntime
 
 @Test
-func registryContainsExactlyTheFiveBuiltInWidgetIDs() {
+func registryContainsEveryBuiltInWidgetID() {
     let registry = WidgetRegistry.builtIn
 
-    #expect(registry.descriptors.count == 5)
+    #expect(registry.descriptors.count == 8)
     #expect(Set(registry.descriptors.map(\.id)) == Set(WidgetIdentifier.allCases))
 }
 
@@ -33,6 +33,9 @@ func registryRejectsConfigurationForAnotherWidgetType() {
 func missingMetricsStayExplicitlyUnavailable() {
     #expect(StatusWidget.metric(snapshot: nil) == .unavailable)
     #expect(UsageWidget.metric(snapshot: nil, bucket: .primary) == .unavailable)
+    #expect(TokenWidget.metric(snapshot: nil) == .unavailable)
+    #expect(ContextWidget.metric(snapshot: nil) == .unavailable)
+    #expect(SpeedWidget.metric(snapshot: nil) == .unavailable)
     #expect(
         UsageWidget.metric(
             snapshot: HabitatSnapshot(activity: .working, connectionHealth: .online),

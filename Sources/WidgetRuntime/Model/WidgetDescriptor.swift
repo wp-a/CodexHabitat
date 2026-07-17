@@ -9,6 +9,9 @@ public enum WidgetConfigurationError: Error, Equatable, Sendable {
 public enum WidgetConfiguration: Equatable, Sendable {
     case status(StatusWidgetConfiguration)
     case usage(UsageWidgetConfiguration)
+    case tokens(TokenWidgetConfiguration)
+    case context(ContextWidgetConfiguration)
+    case speed(SpeedWidgetConfiguration)
     case clock(ClockWidgetConfiguration)
     case pomodoro(PomodoroConfiguration)
     case countdown(CountdownConfiguration)

@@ -6,13 +6,56 @@ import Testing
 func defaultSettingsKeepRiskyFeaturesDisabled() {
     let settings = HabitatSettings.default
 
-    #expect(settings.schemaVersion == 3)
+    #expect(settings.schemaVersion == 4)
     #expect(settings.selectedThemeID == "workbench")
     #expect(settings.scale == 1)
     #expect(settings.themeBridgeEnabled == false)
     #expect(settings.launchAtLogin == false)
     #expect(settings.positionLocked == false)
     #expect(settings.onboardingCompleted == false)
+}
+
+@Test
+func schemaThreeOldDefaultsMigrateToUsefulCodexMetrics() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 3,
+              "widgetOrder": ["codex.status", "codex.usage", "system.clock", "timer.pomodoro"]
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        let settings = try await store.load()
+
+        #expect(settings.schemaVersion == 4)
+        #expect(settings.widgetOrder == [.status, .tokens, .context, .speed, .usage])
+    }
+}
+
+@Test
+func schemaThreeCustomWidgetOrderIsPreserved() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 3,
+              "widgetOrder": ["codex.status", "system.clock"]
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        let settings = try await store.load()
+
+        #expect(settings.widgetOrder == [.status, .clock])
+    }
 }
 
 @Test
@@ -76,7 +119,7 @@ func schemaZeroMigratesWithThemeBridgeDisabled() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 3)
+        #expect(settings.schemaVersion == 4)
         #expect(settings.selectedPetID == "test-pet")
         #expect(settings.selectedThemeID == "night-shift")
         #expect(settings.themeBridgeEnabled == false)
@@ -101,7 +144,7 @@ func schemaOnePreservesThemeBridgeAndDefaultsOnboardingToIncomplete() async thro
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 3)
+        #expect(settings.schemaVersion == 4)
         #expect(settings.themeBridgeEnabled)
         #expect(settings.onboardingCompleted == false)
         #expect(settings.positionLocked == false)

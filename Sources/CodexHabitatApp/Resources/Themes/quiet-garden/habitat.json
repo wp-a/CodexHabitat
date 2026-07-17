@@ -25,9 +25,27 @@
       "configuration": {"type": "status", "showsConnectionHealth": true}
     },
     {
+      "id": "codex.tokens",
+      "anchor": "topTrailing",
+      "position": {"x": 0.94, "y": 0.24},
+      "configuration": {"type": "tokens"}
+    },
+    {
+      "id": "codex.context",
+      "anchor": "topTrailing",
+      "position": {"x": 0.94, "y": 0.42},
+      "configuration": {"type": "context"}
+    },
+    {
+      "id": "codex.speed",
+      "anchor": "topTrailing",
+      "position": {"x": 0.94, "y": 0.60},
+      "configuration": {"type": "speed"}
+    },
+    {
       "id": "codex.usage",
       "anchor": "topTrailing",
-      "position": {"x": 0.94, "y": 0.08},
+      "position": {"x": 0.94, "y": 0.78},
       "configuration": {"type": "usage", "bucket": "primary"}
     },
     {

@@ -29,3 +29,11 @@ func themeRelativePositionsDetermineSafeCompactWidgetOrder() {
 
     #expect(ordered == [.status, .usage, .clock, .pomodoro, .countdown])
 }
+
+@Test
+func usefulCodexMetricsFitTheDefaultCompactRail() {
+    let enabled = HabitatSettings.default.widgetOrder
+
+    #expect(enabled == [.status, .tokens, .context, .speed, .usage])
+    #expect(enabled.count * 26 + (enabled.count - 1) + 12 <= Int(HabitatOverlayLayout.widgetRailSize.height))
+}

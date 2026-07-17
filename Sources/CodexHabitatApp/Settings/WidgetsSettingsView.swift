@@ -50,7 +50,10 @@ struct WidgetsSettingsView: View {
     private func detail(for id: WidgetIdentifier) -> String {
         switch id {
         case .status: "Current Codex activity and connection"
-        case .usage: "Available local rate-limit percentage"
+        case .tokens: "Current session Token total"
+        case .context: "Current context-window utilization"
+        case .speed: "Recent output Tokens per minute"
+        case .usage: "Five-hour or weekly account quota when available"
         case .clock: "Local system time"
         case .pomodoro: "Focus and rest timer"
         case .countdown: "Simple local countdown"
@@ -60,6 +63,9 @@ struct WidgetsSettingsView: View {
     private func tint(for id: WidgetIdentifier) -> Color {
         switch id {
         case .status: .cyan
+        case .tokens: .blue
+        case .context: .purple
+        case .speed: .green
         case .usage: .mint
         case .clock: .orange
         case .pomodoro: .pink

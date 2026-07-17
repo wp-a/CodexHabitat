@@ -139,7 +139,8 @@ public struct ManifestValidator: Sendable {
 
     private func validateWidget(_ widget: HabitatWidget) throws {
         switch (widget.id, widget.configuration) {
-        case (.status, .status), (.usage, .usage), (.clock, .clock):
+        case (.status, .status), (.usage, .usage), (.tokens, .tokens),
+             (.context, .context), (.speed, .speed), (.clock, .clock):
             return
         case let (.pomodoro, .pomodoro(configuration)):
             guard (60...86_400).contains(configuration.focusSeconds),

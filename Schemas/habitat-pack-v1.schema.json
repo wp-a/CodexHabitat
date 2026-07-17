@@ -182,6 +182,24 @@
         "bucket": {"enum": ["primary", "secondary"]}
       }
     },
+    "tokensConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {"type": {"const": "tokens"}}
+    },
+    "contextConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {"type": {"const": "context"}}
+    },
+    "speedConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {"type": {"const": "speed"}}
+    },
     "clockConfiguration": {
       "type": "object",
       "additionalProperties": false,
@@ -232,6 +250,39 @@
             "anchor": {"$ref": "#/$defs/anchor"},
             "position": {"$ref": "#/$defs/position"},
             "configuration": {"$ref": "#/$defs/usageConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "codex.tokens"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/tokensConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "codex.context"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/contextConfiguration"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "anchor", "position", "configuration"],
+          "properties": {
+            "id": {"const": "codex.speed"},
+            "anchor": {"$ref": "#/$defs/anchor"},
+            "position": {"$ref": "#/$defs/position"},
+            "configuration": {"$ref": "#/$defs/speedConfiguration"}
           }
         },
         {
