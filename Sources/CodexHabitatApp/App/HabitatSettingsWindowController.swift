@@ -8,6 +8,11 @@ final class HabitatSettingsWindowController: NSWindowController {
     }
 
     func show(model: HabitatAppModel, activate: Bool = true) {
+        let application = NSApplication.shared
+        let desiredPolicy = Self.activationPolicy(for: application.activationPolicy())
+        if desiredPolicy != application.activationPolicy() {
+            application.setActivationPolicy(desiredPolicy)
+        }
         if window == nil {
             let contentView = SettingsRootView(model: model)
             let window = NSWindow(
@@ -27,7 +32,13 @@ final class HabitatSettingsWindowController: NSWindowController {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         if activate {
-            NSApp.activate(ignoringOtherApps: true)
+            application.activate(ignoringOtherApps: true)
         }
+    }
+
+    nonisolated static func activationPolicy(
+        for current: NSApplication.ActivationPolicy
+    ) -> NSApplication.ActivationPolicy {
+        current == .prohibited ? .accessory : current
     }
 }

@@ -4,6 +4,19 @@ import HabitatCore
 import Testing
 @testable import CodexHabitatApp
 
+@Test
+func prohibitedMenuBarPolicyPromotesToAnActivatableAccessory() {
+    #expect(
+        HabitatSettingsWindowController.activationPolicy(for: .prohibited) == .accessory
+    )
+    #expect(
+        HabitatSettingsWindowController.activationPolicy(for: .regular) == .regular
+    )
+    #expect(
+        HabitatSettingsWindowController.activationPolicy(for: .accessory) == .accessory
+    )
+}
+
 @Test @MainActor
 func settingsWindowOpensAtAStableMinimumSizeAndIsReused() {
     let root = FileManager.default.temporaryDirectory

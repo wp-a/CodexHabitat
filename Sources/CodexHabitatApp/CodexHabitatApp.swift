@@ -15,7 +15,9 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             let model = HabitatAppEnvironment.model
             await model.load()
             HabitatAppEnvironment.desktopController.bind(to: model)
-            guard model.requiresOnboarding else { return }
+            let shouldShowSettings = model.requiresOnboarding
+                || CommandLine.arguments.contains("--show-settings")
+            guard shouldShowSettings else { return }
             try? await Task.sleep(for: .milliseconds(180))
             HabitatAppEnvironment.settingsWindowController.show(model: model)
         }
