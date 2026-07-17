@@ -130,6 +130,11 @@ struct WidgetRailView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
             Spacer(minLength: 4)
+            Text(connectionBadgeTitle)
+                .font(.system(size: 8, weight: .bold, design: .rounded))
+                .foregroundStyle(connectionColor)
+                .frame(width: 30, alignment: .trailing)
+                .help(connectionTitle)
             Circle()
                 .fill(connectionColor)
                 .frame(width: 7, height: 7)
@@ -156,12 +161,7 @@ struct WidgetRailView: View {
 
     private var clockRow: some View {
         WidgetRow(systemImage: "clock.fill", tint: attentionColor) {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(context.date, format: .dateTime.hour().minute().second())
-                    .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
-                    .lineLimit(1)
-                    .accessibilityLabel("Local time")
-            }
+            HabitatClockText()
             Spacer(minLength: 0)
         }
     }
@@ -273,6 +273,7 @@ struct WidgetRailView: View {
     private var connectionColor: Color {
         switch model.snapshot.connectionHealth {
         case .online: accentColor
+        case .estimated: attentionColor
         case .reconnecting: attentionColor
         case .offline: textColor.opacity(0.45)
         }
@@ -281,8 +282,18 @@ struct WidgetRailView: View {
     private var connectionTitle: String {
         switch model.snapshot.connectionHealth {
         case .online: "Connected"
+        case .estimated: "Local activity estimate"
         case .reconnecting: "Reconnecting"
         case .offline: "Disconnected"
+        }
+    }
+
+    private var connectionBadgeTitle: String {
+        switch model.snapshot.connectionHealth {
+        case .online: "LIVE"
+        case .estimated: "EST."
+        case .reconnecting: "RETRY"
+        case .offline: "OFF"
         }
     }
 
@@ -295,6 +306,28 @@ struct WidgetRailView: View {
     private var accentColor: Color { Color(habitatHex: theme.accentHex) }
     private var attentionColor: Color { Color(habitatHex: theme.attentionHex) }
     private var errorColor: Color { Color(habitatHex: theme.errorHex) }
+}
+
+private struct HabitatClockText: View {
+    @State private var date = Date()
+
+    var body: some View {
+        Text(date, format: .dateTime.hour().minute())
+            .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
+            .lineLimit(1)
+            .accessibilityLabel("Local time")
+            .task {
+                while !Task.isCancelled {
+                    let seconds = Calendar.current.component(.second, from: Date())
+                    do {
+                        try await Task.sleep(for: .seconds(max(1, 60 - seconds)))
+                    } catch {
+                        return
+                    }
+                    date = Date()
+                }
+            }
+    }
 }
 
 extension Color {

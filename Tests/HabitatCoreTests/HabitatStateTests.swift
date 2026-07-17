@@ -47,6 +47,32 @@ func snapshotsYieldInitialAndUpdatedValues() async {
 }
 
 @Test
+func connectionAndRateLimitUpdatesPreserveActivityMetadata() async {
+    let timestamp = Date(timeIntervalSince1970: 175)
+    let state = HabitatState(initialSnapshot: HabitatSnapshot(
+        activity: .working,
+        threadIDHash: "local-hash",
+        eventTimestamp: timestamp
+    ))
+    let primary = RateLimitSummary(usedPercent: 42, resetAt: nil)
+    let secondary = RateLimitSummary(
+        usedPercent: 7,
+        resetAt: Date(timeIntervalSince1970: 300)
+    )
+
+    await state.setConnectionHealth(.online)
+    await state.setRateLimits(primary: primary, secondary: secondary)
+
+    let snapshot = await state.currentSnapshot()
+    #expect(snapshot.activity == .working)
+    #expect(snapshot.threadIDHash == "local-hash")
+    #expect(snapshot.eventTimestamp == timestamp)
+    #expect(snapshot.connectionHealth == .online)
+    #expect(snapshot.primaryRateLimit == primary)
+    #expect(snapshot.secondaryRateLimit == secondary)
+}
+
+@Test
 func completedStateReturnsToRestingAfterClockAdvances() async {
     let clock = ManualHabitatClock()
     let state = HabitatState(clock: clock)

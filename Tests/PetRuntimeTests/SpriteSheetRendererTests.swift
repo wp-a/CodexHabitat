@@ -31,6 +31,20 @@ func croppedFramesKeepSourcePixelSizeAtRetinaDestinations() throws {
 }
 
 @Test
+func repeatedFrameReadsReuseThePrecroppedImage() throws {
+    let image = try testImage(width: 32, height: 36)
+    let renderer = SpriteSheetRenderer(
+        image: image,
+        atlas: PetAtlasMetadata(pixelWidth: 32, pixelHeight: 36, columns: 8, rows: 9)
+    )
+
+    let first = try #require(renderer.frame(row: 4, column: 5))
+    let second = try #require(renderer.frame(row: 4, column: 5))
+
+    #expect(first === second)
+}
+
+@Test
 func transparentPaddingSurvivesCropping() throws {
     let image = try testImage(width: 32, height: 36) { context in
         context.setFillColor(CGColor(red: 0.1, green: 0.8, blue: 0.7, alpha: 1))

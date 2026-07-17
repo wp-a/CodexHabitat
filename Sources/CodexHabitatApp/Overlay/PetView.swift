@@ -8,8 +8,17 @@ struct PetView: View {
     let pixelArtHint: Bool
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: model.reduceMotion)) { _ in
-            frameView(model.currentFrame())
+        Group {
+            if let interval = PetRefreshPolicy.interval(
+                activity: model.snapshot.activity,
+                reduceMotion: model.reduceMotion
+            ) {
+                TimelineView(.periodic(from: .now, by: interval)) { _ in
+                    frameView(model.currentFrame())
+                }
+            } else {
+                frameView(model.currentFrame())
+            }
         }
         .frame(width: model.overlaySize.width, height: model.overlaySize.height)
         .accessibilityElement(children: .ignore)

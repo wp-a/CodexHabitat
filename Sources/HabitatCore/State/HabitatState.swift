@@ -63,6 +63,37 @@ public actor HabitatState {
         )
     }
 
+    public func setConnectionHealth(_ connectionHealth: ConnectionHealth) {
+        publish(
+            HabitatSnapshot(
+                activity: snapshot.activity,
+                threadIDHash: snapshot.threadIDHash,
+                eventTimestamp: snapshot.eventTimestamp,
+                connectionHealth: connectionHealth,
+                primaryRateLimit: snapshot.primaryRateLimit,
+                secondaryRateLimit: snapshot.secondaryRateLimit,
+                timer: snapshot.timer
+            )
+        )
+    }
+
+    public func setRateLimits(
+        primary: RateLimitSummary?,
+        secondary: RateLimitSummary?
+    ) {
+        publish(
+            HabitatSnapshot(
+                activity: snapshot.activity,
+                threadIDHash: snapshot.threadIDHash,
+                eventTimestamp: snapshot.eventTimestamp,
+                connectionHealth: snapshot.connectionHealth,
+                primaryRateLimit: primary,
+                secondaryRateLimit: secondary,
+                timer: snapshot.timer
+            )
+        )
+    }
+
     public func markCompleted(
         threadIDHash: String?,
         eventTimestamp: Date?,
@@ -101,6 +132,7 @@ public actor HabitatState {
     }
 
     private func publish(_ nextSnapshot: HabitatSnapshot) {
+        guard nextSnapshot != snapshot else { return }
         snapshot = nextSnapshot
         for continuation in subscribers.values {
             continuation.yield(nextSnapshot)

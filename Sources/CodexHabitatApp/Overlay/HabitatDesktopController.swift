@@ -20,6 +20,7 @@ final class HabitatDesktopController {
     private var overlay: OverlayController?
     private let presentation = HabitatOverlayPresentation()
     private let widgetModel = WidgetRailModel()
+    private var petModel: HabitatOverlayModel?
     private var cancellable: AnyCancellable?
     private var renderedPetID: String?
     private var renderedWidgets: [WidgetIdentifier] = []
@@ -27,8 +28,11 @@ final class HabitatDesktopController {
     private var renderedScale: Double?
 
     private(set) var isVisible = false
+    private(set) var currentSnapshot = HabitatSnapshot()
 
     var isInteractive: Bool { overlay?.isInteractive ?? false }
+    var currentPetSnapshot: HabitatSnapshot? { petModel?.snapshot }
+    var currentWidgetSnapshot: HabitatSnapshot { widgetModel.snapshot }
     var panelSize: CGSize {
         overlay?.panel.frame.size ?? HabitatOverlayLayout.containerSize
     }
@@ -71,10 +75,11 @@ final class HabitatDesktopController {
         }
         if needsNewContent, let overlay {
             let petModel = HabitatOverlayModel(
-                initialSnapshot: HabitatSnapshot(activity: .offline, connectionHealth: .offline),
+                initialSnapshot: currentSnapshot,
                 availableRows: petAsset?.availableRows ?? Set(0..<9),
                 reduceMotion: resolvedReduceMotion(settings.reduceMotion)
             )
+            self.petModel = petModel
             overlay.setContent(HabitatDesktopView(
                 presentation: presentation,
                 widgetModel: widgetModel,
@@ -95,6 +100,12 @@ final class HabitatDesktopController {
             overlay?.show(savedPlacement: savedPlacement ?? overlay?.currentPlacement())
         }
         isVisible = true
+    }
+
+    func apply(snapshot: HabitatSnapshot) {
+        currentSnapshot = snapshot
+        petModel?.apply(snapshot)
+        widgetModel.apply(snapshot)
     }
 
     private static func asset(

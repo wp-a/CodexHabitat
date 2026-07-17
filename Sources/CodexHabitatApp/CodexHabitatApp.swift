@@ -7,6 +7,7 @@ private enum HabitatAppEnvironment {
     static let model = HabitatAppModel.live()
     static let settingsWindowController = HabitatSettingsWindowController()
     static let desktopController = HabitatDesktopController()
+    static let runtimeController = HabitatRuntimeController.live()
     static let updaterController = HabitatUpdaterController()
 }
 
@@ -17,6 +18,9 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             let model = HabitatAppEnvironment.model
             await model.load()
             HabitatAppEnvironment.desktopController.bind(to: model)
+            HabitatAppEnvironment.runtimeController.start(
+                desktopController: HabitatAppEnvironment.desktopController
+            )
             let shouldShowSettings = model.requiresOnboarding
                 || CommandLine.arguments.contains("--show-settings")
             guard shouldShowSettings else { return }
@@ -31,6 +35,14 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             try? await Task.sleep(for: .milliseconds(180))
             HabitatAppEnvironment.settingsWindowController.show(model: model)
         }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        Task { @MainActor in
+            await HabitatAppEnvironment.runtimeController.stop()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 

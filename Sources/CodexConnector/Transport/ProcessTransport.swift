@@ -25,10 +25,17 @@ public actor ProcessTransport: ByteTransport {
     private var terminalError: ProcessTransportError?
     private var reachedEnd = false
 
-    public init(
-        executableURL: URL = URL(fileURLWithPath: "/usr/bin/env"),
-        arguments: [String] = ["codex", "app-server", "proxy"]
-    ) {
+    public init() {
+        if let executableURL = CodexExecutableLocator.locate() {
+            self.executableURL = executableURL
+            arguments = ["app-server", "proxy"]
+        } else {
+            executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            arguments = ["codex", "app-server", "proxy"]
+        }
+    }
+
+    public init(executableURL: URL, arguments: [String]) {
         self.executableURL = executableURL
         self.arguments = arguments
     }

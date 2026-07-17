@@ -158,6 +158,32 @@ func clientUsesOnlyMetadataReadsAndReturnsSafeSummaries() async throws {
 }
 
 @Test
+func loadedThreadStatusesExposeNoThreadIdentifiers() async throws {
+    let transport = FakeByteTransport(reads: [
+        .success(handshakeResponse()),
+        .success(try serverText(.response(id: .integer(1), result: .object([:])))),
+        .success(try serverText(.response(id: .integer(2), result: .object([
+            "data": .array([.string("private-one"), .string("private-two")]),
+        ])))),
+        .success(try serverText(.response(id: .integer(3), result: .object([
+            "thread": .object(["status": .object(["type": .string("active")])]),
+        ])))),
+        .success(try serverText(.response(id: .integer(4), result: .object([
+            "thread": .object(["status": .object(["type": .string("idle")])]),
+        ])))),
+    ])
+    let client = makeClient(transport)
+    try await client.connect()
+
+    let statuses = try await client.readLoadedThreadStatuses()
+
+    #expect(statuses == [.active, .idle])
+    let encoded = String(decoding: try JSONEncoder().encode(statuses), as: UTF8.self)
+    #expect(!encoded.contains("private-one"))
+    #expect(!encoded.contains("private-two"))
+}
+
+@Test
 func subscriptionIsLimitedToAlreadyLoadedThreadsAndDiscardsResponse() async throws {
     let transport = FakeByteTransport(reads: [
         .success(handshakeResponse()),

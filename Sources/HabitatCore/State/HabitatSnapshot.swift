@@ -2,6 +2,7 @@ import Foundation
 
 public enum ConnectionHealth: String, Codable, Equatable, Sendable {
     case online
+    case estimated
     case reconnecting
     case offline
 }

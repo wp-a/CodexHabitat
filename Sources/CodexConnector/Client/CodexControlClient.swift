@@ -133,6 +133,22 @@ public actor CodexControlClient {
         return threadIDs.count
     }
 
+    public func readLoadedThreadStatuses() async throws -> [SanitizedThreadStatus] {
+        let threadIDs = try await listLoadedThreadIDs()
+        var statuses: [SanitizedThreadStatus] = []
+        statuses.reserveCapacity(threadIDs.count)
+        for threadID in threadIDs {
+            do {
+                if let status = try await readLoadedThreadStatus(threadID) {
+                    statuses.append(status)
+                }
+            } catch CodexControlClientError.threadIsNotLoaded {
+                continue
+            }
+        }
+        return statuses
+    }
+
     public func readRateLimits() async throws -> CodexRateLimitUpdate? {
         let result = try await requestReadOnly(
             method: "account/rateLimits/read",

@@ -82,7 +82,7 @@ let package = Package(
         .testTarget(name: "OverlayHostTests", dependencies: ["OverlayHost"]),
         .testTarget(
             name: "CodexHabitatAppTests",
-            dependencies: ["CodexHabitatApp", "HabitatCore", "PetRuntime"]
+            dependencies: ["CodexHabitatApp", "CodexConnector", "HabitatCore", "PetRuntime"]
         ),
         .testTarget(
             name: "WidgetRuntimeTests",
@@ -100,6 +100,10 @@ let package = Package(
         .testTarget(
             name: "CodexHabitatThemeBridgeTests",
             dependencies: ["CodexHabitatThemeBridge"]
+        ),
+        .testTarget(
+            name: "PerformanceTests",
+            dependencies: ["HabitatCore", "PetRuntime", "ResourceKit"]
         ),
     ],
     swiftLanguageModes: [.v6]

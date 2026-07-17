@@ -151,6 +151,7 @@ project names, usage values, and task content are excluded by default.
 
 ```text
 Codex control socket ----> CodexConnector ----+
+Session file metadata ---> Estimated state ---+
 System clock/timers --------------------------+--> HabitatState actor
 Validated local/online packages --> ResourceKit   |-> PetRuntime
                                                    |-> WidgetRuntime
@@ -183,9 +184,11 @@ dropped during event decoding. Only a local hash of the thread ID, state,
 timestamp, and event category may enter application state.
 
 When the control socket is unavailable, the connector retries with exponential
-backoff and jitter. A separate `codex app-server --stdio` process may be used
-only for a rate-limit snapshot. It must not claim to provide live desktop
-thread state.
+backoff and jitter. In parallel, the app may inspect only regular-file size and
+modification time for recent `$CODEX_HOME/sessions` files. It must not open
+session content, and the UI labels this fallback `Local activity estimate`.
+A separate `codex app-server --stdio` process may be used only for a rate-limit
+snapshot. It must not claim to provide live desktop thread state.
 
 ## 7. Resource Protocol
 
