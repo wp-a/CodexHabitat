@@ -18,6 +18,22 @@ func prohibitedMenuBarPolicyPromotesToAnActivatableAccessory() {
 }
 
 @Test @MainActor
+func reopeningTheRunningApplicationRequestsTheSettingsWindow() {
+    var reopenCount = 0
+    let delegate = HabitatApplicationDelegate {
+        reopenCount += 1
+    }
+
+    let handled = delegate.applicationShouldHandleReopen(
+        NSApplication.shared,
+        hasVisibleWindows: false
+    )
+
+    #expect(handled)
+    #expect(reopenCount == 1)
+}
+
+@Test @MainActor
 func settingsWindowOpensAtAStableMinimumSizeAndIsReused() {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatWindowTests-\(UUID().uuidString)", directoryHint: .isDirectory)

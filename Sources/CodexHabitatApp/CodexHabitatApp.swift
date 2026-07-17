@@ -15,7 +15,23 @@ private enum HabitatAppEnvironment {
 }
 
 @MainActor
-private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
+final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
+    private let reopenAction: () -> Void
+
+    override init() {
+        reopenAction = {
+            HabitatAppEnvironment.settingsWindowController.show(
+                model: HabitatAppEnvironment.model
+            )
+        }
+        super.init()
+    }
+
+    init(reopenAction: @escaping () -> Void) {
+        self.reopenAction = reopenAction
+        super.init()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task {
             let model = HabitatAppEnvironment.model
@@ -61,6 +77,14 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        reopenAction()
+        return true
     }
 }
 
