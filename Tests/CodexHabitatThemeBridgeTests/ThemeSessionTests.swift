@@ -190,7 +190,7 @@ private struct StubBundleVerifier: CodexBundleVerifying {
     func verify(_ bundleURL: URL) throws -> VerifiedCodexBundle { bundle }
 }
 
-private final class StubLauncher: ThemeProcessLaunching {
+private final class StubLauncher: ThemeProcessLaunching, @unchecked Sendable {
     struct Invocation: Equatable {
         let executableURL: URL
         let arguments: [String]
@@ -207,7 +207,7 @@ private final class StubLauncher: ThemeProcessLaunching {
     }
 }
 
-private final class StubProcessInspector: CodexProcessInspecting {
+private final class StubProcessInspector: CodexProcessInspecting, @unchecked Sendable {
     var identities: [Int32: ProcessIdentity]
     let descendantResult: Bool
 
@@ -220,7 +220,7 @@ private final class StubProcessInspector: CodexProcessInspecting {
     func isDescendant(_ pid: Int32, of ancestorPID: Int32) -> Bool { descendantResult }
 }
 
-private final class StubSignaler: ThemeProcessSignaling {
+private final class StubSignaler: ThemeProcessSignaling, @unchecked Sendable {
     var terminatedPIDs: [Int32] = []
 
     func terminate(process: ProcessIdentity) -> Bool {

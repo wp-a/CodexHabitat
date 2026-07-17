@@ -51,7 +51,11 @@ let package = Package(
         .executableTarget(
             name: "CodexHabitatThemeBridge",
             dependencies: ["HabitatCore"],
-            linkerSettings: [.linkedFramework("Security")]
+            resources: [.copy("Resources")],
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("Security"),
+            ]
         ),
         .testTarget(name: "HabitatCoreTests", dependencies: ["HabitatCore"]),
         .testTarget(

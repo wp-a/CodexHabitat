@@ -46,11 +46,11 @@ enum CodexBundleVerificationError: Error, Equatable, Sendable {
     case missingVersion
 }
 
-protocol CodexBundleInspecting {
+protocol CodexBundleInspecting: Sendable {
     func inspect(_ bundleURL: URL) throws -> CodexBundleMetadata
 }
 
-protocol CodexBundleVerifying {
+protocol CodexBundleVerifying: Sendable {
     func verify(_ bundleURL: URL) throws -> VerifiedCodexBundle
 }
 

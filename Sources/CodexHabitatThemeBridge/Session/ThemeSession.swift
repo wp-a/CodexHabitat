@@ -1,15 +1,15 @@
 import Darwin
 import Foundation
 
-protocol ThemeProcessLaunching: AnyObject {
+protocol ThemeProcessLaunching: AnyObject, Sendable {
     func launch(executableURL: URL, arguments: [String]) throws -> Int32
 }
 
-protocol ThemeProcessSignaling: AnyObject {
+protocol ThemeProcessSignaling: AnyObject, Sendable {
     func terminate(process: ProcessIdentity) -> Bool
 }
 
-protocol LoopbackPortAllocating {
+protocol LoopbackPortAllocating: Sendable {
     func allocate() throws -> UInt16
 }
 
@@ -31,7 +31,13 @@ enum ThemeSessionError: Error, Equatable {
     case terminationFailed
 }
 
-final class ThemeSession {
+protocol ThemeSessionManaging: AnyObject, Sendable {
+    func start(bundleURL: URL, authorized: Bool) throws -> SessionRecord
+    func status() -> ThemeSessionStatus
+    func stop() throws
+}
+
+final class ThemeSession: ThemeSessionManaging, @unchecked Sendable {
     private let verifier: any CodexBundleVerifying
     private let launcher: any ThemeProcessLaunching
     private let processInspector: any CodexProcessInspecting
@@ -142,7 +148,7 @@ final class ThemeSession {
     }
 }
 
-final class LiveThemeProcessLauncher: ThemeProcessLaunching {
+final class LiveThemeProcessLauncher: ThemeProcessLaunching, @unchecked Sendable {
     func launch(executableURL: URL, arguments: [String]) throws -> Int32 {
         let process = Process()
         process.executableURL = executableURL
@@ -154,7 +160,7 @@ final class LiveThemeProcessLauncher: ThemeProcessLaunching {
     }
 }
 
-final class LiveThemeProcessSignaler: ThemeProcessSignaling {
+final class LiveThemeProcessSignaler: ThemeProcessSignaling, @unchecked Sendable {
     private let inspector = CodexProcessInspector()
 
     func terminate(process: ProcessIdentity) -> Bool {

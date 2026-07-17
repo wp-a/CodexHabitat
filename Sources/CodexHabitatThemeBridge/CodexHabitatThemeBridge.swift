@@ -2,7 +2,7 @@ import Foundation
 
 @main
 enum CodexHabitatThemeBridge {
-    static func main() {
+    static func main() async {
         if CommandLine.arguments.dropFirst() == ["--version"] {
             print("Codex Habitat Theme Bridge 0.1.0-dev")
             return
@@ -41,6 +41,33 @@ enum CodexHabitatThemeBridge {
             case "stop":
                 try liveSession().stop()
                 print("stopped")
+            case "apply":
+                guard let themeID = value(after: "--theme", in: arguments),
+                      let theme = BridgeTheme.builtIn(id: themeID)
+                else {
+                    throw ThemeBridgeCLIError.invalidTheme
+                }
+                let bundleURL = try resolveBundle(
+                    path: value(after: "--app", in: arguments)
+                )
+                let screenshotURL = value(after: "--screenshot", in: arguments).map {
+                    URL(fileURLWithPath: $0)
+                }
+                let session = liveSession()
+                let result = try await liveCoordinator(session: session).apply(
+                    bundleURL: bundleURL,
+                    theme: theme,
+                    authorized: arguments.contains("--authorized"),
+                    screenshotURL: screenshotURL
+                )
+                print("applied: theme=\(themeID) targets=\(result.targetCount) health=pass")
+            case "restore":
+                let bundleURL = try resolveBundle(
+                    path: value(after: "--app", in: arguments)
+                )
+                let session = liveSession()
+                try await liveCoordinator(session: session).restore(bundleURL: bundleURL)
+                print("restored")
             default:
                 printUsage()
                 Foundation.exit(64)
@@ -60,6 +87,22 @@ enum CodexHabitatThemeBridge {
             portAllocator: LiveLoopbackPortAllocator(),
             recordStore: SessionRecordStore(root: sessionRoot()),
             ownerPID: ProcessInfo.processInfo.processIdentifier
+        )
+    }
+
+    private static func liveCoordinator(session: ThemeSession) throws -> ThemeBridgeCoordinator {
+        let processInspector = CodexProcessInspector()
+        return ThemeBridgeCoordinator(
+            verifier: CodexBundleVerifier(),
+            session: session,
+            listenerVerifier: LoopbackListenerVerifier(
+                commandRunner: LiveBridgeCommandRunner(),
+                processInspector: processInspector
+            ),
+            clientProvider: LiveCDPClientProvider(),
+            profileStore: try CompatibilityProfileStore.bundled(),
+            compiler: try ThemeCompiler.bundled(),
+            restarter: LiveCodexApplicationRestarter()
         )
     }
 
@@ -100,6 +143,19 @@ enum CodexHabitatThemeBridge {
     }
 
     private static func printUsage() {
-        print("usage: CodexHabitatThemeBridge verify [app] | start --authorized [app] | status | stop")
+        print("usage: CodexHabitatThemeBridge verify [app] | start --authorized [app] | status | stop | apply --authorized --theme <id> [--screenshot <png>] [--app <app>] | restore [--app <app>]")
     }
+
+    private static func value(after flag: String, in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: flag),
+              arguments.indices.contains(index + 1)
+        else {
+            return nil
+        }
+        return arguments[index + 1]
+    }
+}
+
+private enum ThemeBridgeCLIError: Error {
+    case invalidTheme
 }

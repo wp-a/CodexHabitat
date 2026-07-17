@@ -18,6 +18,14 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             let shouldShowSettings = model.requiresOnboarding
                 || CommandLine.arguments.contains("--show-settings")
             guard shouldShowSettings else { return }
+            if let sectionFlag = CommandLine.arguments.firstIndex(
+                of: "--show-settings-section"
+            ), CommandLine.arguments.indices.contains(sectionFlag + 1),
+               let section = SettingsSection(
+                rawValue: CommandLine.arguments[sectionFlag + 1]
+               ) {
+                model.selectedSettingsSection = section
+            }
             try? await Task.sleep(for: .milliseconds(180))
             HabitatAppEnvironment.settingsWindowController.show(model: model)
         }

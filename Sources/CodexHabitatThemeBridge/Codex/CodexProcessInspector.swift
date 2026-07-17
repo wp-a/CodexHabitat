@@ -15,12 +15,12 @@ struct ProcessIdentity: Codable, Equatable, Sendable {
     }
 }
 
-protocol CodexProcessInspecting: AnyObject {
+protocol CodexProcessInspecting: AnyObject, Sendable {
     func identity(for pid: Int32) -> ProcessIdentity?
     func isDescendant(_ pid: Int32, of ancestorPID: Int32) -> Bool
 }
 
-final class CodexProcessInspector: CodexProcessInspecting {
+final class CodexProcessInspector: CodexProcessInspecting, @unchecked Sendable {
     private let lookup: (Int32) -> ProcessIdentity?
 
     init(lookup: @escaping (Int32) -> ProcessIdentity? = CodexProcessInspector.liveIdentity) {

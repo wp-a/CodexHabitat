@@ -1,0 +1,51 @@
+html[data-codex-habitat-theme="1"] {
+  --habitat-surface: {{surface}};
+  --habitat-text: {{text}};
+  --habitat-accent: {{accent}};
+  --habitat-attention: {{attention}};
+  --habitat-error: {{error}};
+  color-scheme: light dark;
+}
+
+html[data-codex-habitat-theme="1"] body {
+  color: var(--habitat-text);
+  background-color: var(--habitat-surface);
+  background-image: {{art-background}};
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+html[data-codex-habitat-theme="1"] {{sidebar}},
+html[data-codex-habitat-theme="1"] {{main}} {
+  color: var(--habitat-text);
+  background-color: color-mix(in srgb, var(--habitat-surface) 94%, black 6%);
+}
+
+html[data-codex-habitat-theme="1"] {{sidebar}} {
+  border-right-color: color-mix(in srgb, var(--habitat-accent) 28%, transparent);
+}
+
+html[data-codex-habitat-theme="1"] {{composer}},
+html[data-codex-habitat-theme="1"] {{popover}} {
+  color: var(--habitat-text);
+  background-color: color-mix(in srgb, var(--habitat-surface) 88%, white 12%);
+  border-color: color-mix(in srgb, var(--habitat-accent) 34%, transparent);
+}
+
+html[data-codex-habitat-theme="1"] {{thread}} {
+  scrollbar-color: var(--habitat-accent) transparent;
+}
+
+html[data-codex-habitat-theme="1"] button[class~="bg-token-foreground"] {
+  color: var(--habitat-surface);
+  background-color: var(--habitat-accent);
+}
+
+html[data-codex-habitat-theme="1"] [data-state="open"] {
+  outline-color: var(--habitat-attention);
+}
+
+html[data-codex-habitat-theme="1"] [aria-invalid="true"] {
+  border-color: var(--habitat-error);
+}

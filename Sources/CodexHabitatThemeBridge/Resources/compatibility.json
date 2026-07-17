@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "codex-26.707",
+      "minimumVersion": "26.707.0",
+      "maximumVersionExclusive": "26.708.0",
+      "selectors": {
+        "sidebar": "aside.app-shell-left-panel",
+        "mainSurface": "main.main-surface",
+        "composer": ".composer-surface-chrome",
+        "threadScroll": ".thread-scroll-container",
+        "popover": "[data-radix-popper-content-wrapper]"
+      }
+    }
+  ]
+}
