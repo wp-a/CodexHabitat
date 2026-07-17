@@ -53,8 +53,8 @@ Add a catalog test expecting exactly these stable IDs:
 ```swift
 #expect(BuiltInThemeCatalog.all.map(\.id) == [
     "workbench", "night-shift", "arcade-signal", "quiet-garden",
-    "neon-drift", "solar-raid", "toxic-lab", "candy-combo",
-    "crimson-mecha", "aurora-boss", "gold-rush", "aqua-pulse",
+    "retro-messenger", "green-chat-desk", "cyber-cafe", "candy-combo",
+    "crimson-mecha", "win95-workbench", "gold-rush", "aqua-pulse",
 ])
 ```
 
@@ -95,10 +95,11 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
     public let artFocusX: Double
     public let artFocusY: Double
     public let safeSide: HabitatThemeSafeSide
+    public let styleFamily: HabitatThemeStyleFamily
 }
 ```
 
-Populate twelve palettes with distinct hue families, not twelve variations of cyan/purple. Add optional `panel`, `panelAlt`, `mutedText`, `secondary`, and `highlight` to `HabitatColorTokens`. Validate every present field with the existing `#RRGGBB` rule and add those keys to the strict shape validator and JSON schema.
+Populate twelve palettes with distinct hue families, not twelve variations of cyan/purple. Define an allowlisted `HabitatThemeStyleFamily` enum containing `arcade`, `retroMessenger`, `greenChat`, `classicDesktop`, and `gameCinematic`. Add optional `panel`, `panelAlt`, `mutedText`, `secondary`, and `highlight` to `HabitatColorTokens`. Validate every present field with the existing `#RRGGBB` rule and add those keys to the strict shape validator and JSON schema.
 
 **Step 4: Run focused and schema tests**
 
@@ -152,7 +153,7 @@ Expected: failures report four themes and missing background assets.
 
 **Step 3: Use the `imagegen` skill to create original bitmap art**
 
-Generate twelve landscape, text-free, character-free game-interface environments. Each image must have a calm safe side for native controls and a high-saturation focal region on the opposite side. Avoid recognizable franchises, logos, UI screenshots, gradient-only compositions, bokeh, and identifiable people.
+Generate twelve landscape, text-free, character-free game-interface environments. Four must carry distinct nostalgic desktop moods: glossy blue 2007 instant messenger, green desktop chat, neon cyber-cafe messenger, and Win95-era workbench. Each image must have a calm safe side for native controls and a high-saturation focal region on the opposite side. Use `/Users/wangpeng/Library/Containers/com.tencent.qq/Data/Downloads/IMG_9996..JPG` only as a composition reference. Avoid recognizable franchises, messenger logos, copied icons, UI screenshots, gradient-only compositions, bokeh, and identifiable people.
 
 Save the normalized deliverables as `background.jpg` (`1600 x 1000`, bounded quality) and `preview.png` (`800 x 500`). Record prompt, generation date, output path, dimensions, byte size, and SHA-256 in `docs/qa/theme-asset-provenance.md`.
 
@@ -193,7 +194,7 @@ git commit -m "feat: add twelve original game themes"
 
 **Step 1: Write failing compiler tests**
 
-Require all twelve IDs, all rich tokens, safe-side/focal-position CSS, route scrims, and bounded JPEG data art. Keep remote URLs, SVG, selectors, CSS, script, and unknown commands rejected.
+Require all twelve IDs, all rich tokens, safe-side/focal-position CSS, five host-owned style-family treatments, route scrims, and bounded JPEG data art. Keep remote URLs, SVG, selectors, CSS, script, and unknown commands rejected.
 
 ```swift
 for definition in BuiltInThemeCatalog.all {
@@ -217,7 +218,7 @@ Expected: compilation fails on missing rich fields and the bridge rejects the ei
 
 Build `BridgeThemeTokens` from `HabitatThemePalette`. Replace the hard-coded four-ID switches in both the bridge and integration model with `BuiltInThemeCatalog`. Extend local art validation to exact PNG, JPEG, and WebP signatures, decoded size at most 1 MiB, and only package-relative built-in resources.
 
-Update the template to use explicit panel layers, secondary/highlight tokens, safe-side scrims, home/conversation route treatments, visible art without `soft-light`, and native-control selectors from the compatibility profile only.
+Update the template to use explicit panel layers, secondary/highlight tokens, safe-side scrims, home/conversation route treatments, visible art without `soft-light`, and native-control selectors from the compatibility profile only. Append only compiler-owned CSS for the selected style family: glossy blue title/toolbar bands for `retroMessenger`, dark green contact/message rails for `greenChat`, raised/sunken pixel borders for `classicDesktop`, and stronger neon or cinematic chrome for the game families.
 
 **Step 4: Run security and compiler tests**
 

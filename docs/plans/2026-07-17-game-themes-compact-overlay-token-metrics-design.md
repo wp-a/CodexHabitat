@@ -5,7 +5,7 @@
 
 ## Goal
 
-Make Codex Habitat visually distinctive enough to feel like a game companion rather than a monochrome utility, remove unused overlay space around the pet, and present Token metrics with labels that match what Codex actually reports.
+Make Codex Habitat visually distinctive enough to feel like a game companion or a nostalgic desktop skin rather than a monochrome utility, remove unused overlay space around the pet, and present Token metrics with labels that match what Codex actually reports.
 
 The approved direction is a high-saturation game aesthetic. The product remains a quiet utility while the pet and theme surfaces carry the expressive visual identity.
 
@@ -31,12 +31,12 @@ Habitat will ship twelve built-in themes. The existing four IDs remain valid so 
 2. Neon Night Shift
 3. Arcade Overdrive
 4. Pixel Meadow
-5. Neon Drift
-6. Solar Raid
-7. Toxic Lab
+5. Retro Messenger 2007
+6. Green Chat Desktop
+7. Cyber Cafe Neon
 8. Candy Combo
 9. Crimson Mecha
-10. Aurora Boss
+10. Win95 Workbench
 11. Gold Rush
 12. Aqua Pulse
 
@@ -48,12 +48,19 @@ Each theme gets original bitmap art, a real preview, and a palette containing:
 - accent, secondary, and highlight colors;
 - attention and error colors;
 - optional art focal point and safe side.
+- a host-owned style family such as `arcade`, `retroMessenger`, `greenChat`, `classicDesktop`, or `gameCinematic`.
 
 New palette fields are optional in the resource protocol. Older resource packs continue to decode with derived fallback colors.
 
+### Nostalgic Desktop References
+
+The user-provided `IMG_9996..JPG` is a layout and mood reference only. `Retro Messenger 2007` borrows the era's glossy blue title bands, compact toolbar rhythm, beveled navigation groups, pale message surface, and bottom status strip. `Green Chat Desktop` uses a dark green contact rail and mint message surfaces. `Cyber Cafe Neon` uses saturated magenta/cyan chrome, while `Win95 Workbench` uses pixel-sharp gray controls and classic raised/sunken borders.
+
+These are original homages, not replicas. Habitat will not bundle the reference image, QQ/WeChat names or logos, penguin artwork, contact portraits, watermarks, proprietary iconography, or copied interface text. Existing Codex controls remain functional and keep their semantic order; the theme changes host-owned CSS and bitmap art rather than rebuilding the product as a fake screenshot.
+
 ### Visual Behavior
 
-Codex home surfaces use the full background composition with a safe-side scrim so native headings and project controls remain readable. Conversation routes apply a stronger surface veil and reduce art contrast. Sidebar, composer, popovers, selected navigation, primary buttons, scrollbars, focus rings, and selections use the theme's distinct panel and accent tokens.
+Codex home surfaces use the full background composition with a safe-side scrim so native headings and project controls remain readable. Conversation routes apply a stronger surface veil and reduce art contrast. Sidebar, composer, popovers, selected navigation, primary buttons, scrollbars, focus rings, and selections use the theme's distinct panel and accent tokens. The host compiler selects one of the allowlisted style families, enabling visibly different chrome treatments without accepting theme-supplied CSS.
 
 The current `soft-light` treatment is removed. Art remains visible through explicit bounded opacity and scrims. Decorations never accept pointer input and do not replace native Codex controls.
 
@@ -61,7 +68,7 @@ Habitat settings and the widget rail use the selected theme's tint, panel hierar
 
 ### Assets and Security
 
-Built-in backgrounds are original generated or programmatic bitmap assets with recorded provenance. No recognizable third-party IP or real person is bundled. PNG, JPEG, and WebP data URLs are accepted only for host-owned built-ins, with MIME validation, decoded-size limits, and local-only loading. Resource packs still cannot provide CSS, JavaScript, selectors, or commands.
+Built-in backgrounds are original generated or programmatic bitmap assets with recorded provenance. No recognizable third-party IP, trademarked messenger identity, copied screenshot, or real person is bundled. PNG, JPEG, and WebP data URLs are accepted only for host-owned built-ins, with MIME validation, decoded-size limits, and local-only loading. Resource packs still cannot provide CSS, JavaScript, selectors, or commands.
 
 ## Compact Pet Overlay
 
