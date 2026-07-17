@@ -14,9 +14,18 @@ final class HabitatSettingsWindowController: NSWindowController {
             application.setActivationPolicy(desiredPolicy)
         }
         if window == nil {
-            let contentView = SettingsRootView(model: model)
+            let visualQAOptions = HabitatVisualQALaunchOptions.current
+            let contentView = SettingsRootView(
+                model: model,
+                visualQAOptions: visualQAOptions
+            )
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 760, height: 520),
+                contentRect: NSRect(
+                    x: 0,
+                    y: 0,
+                    width: visualQAOptions.settingsWidth,
+                    height: 520
+                ),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false

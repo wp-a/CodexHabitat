@@ -7,9 +7,19 @@ struct ThemesSettingsView: View {
     @State private var packageIDToRemove: String?
     @State private var themeStudioModel: ThemeStudioModel?
     @State private var isThemeStudioPresented = false
-    @State private var selectedFilter = ThemeGalleryFilter.all
+    @State private var selectedFilter: ThemeGalleryFilter
     @State private var searchText = ""
+    private let opensThemeStudioForVisualQA: Bool
     private let columns = [GridItem(.adaptive(minimum: 190, maximum: 240), spacing: 12)]
+
+    init(
+        model: HabitatAppModel,
+        visualQAOptions: HabitatVisualQALaunchOptions = .disabled
+    ) {
+        self.model = model
+        _selectedFilter = State(initialValue: visualQAOptions.themeFilter)
+        opensThemeStudioForVisualQA = visualQAOptions.opensThemeStudio
+    }
 
     var body: some View {
         SettingsPage(
@@ -103,6 +113,11 @@ struct ThemesSettingsView: View {
             }
         }
         .onAppear(perform: model.refreshResources)
+        .task {
+            guard opensThemeStudioForVisualQA, !isThemeStudioPresented else { return }
+            await Task.yield()
+            openThemeStudio()
+        }
         .resourceReplacementConfirmation(model: model)
         .sheet(
             isPresented: $isThemeStudioPresented,

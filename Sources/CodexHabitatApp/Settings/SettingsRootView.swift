@@ -2,6 +2,15 @@ import SwiftUI
 
 struct SettingsRootView: View {
     @ObservedObject var model: HabitatAppModel
+    let visualQAOptions: HabitatVisualQALaunchOptions
+
+    init(
+        model: HabitatAppModel,
+        visualQAOptions: HabitatVisualQALaunchOptions = .current
+    ) {
+        self.model = model
+        self.visualQAOptions = visualQAOptions
+    }
 
     var body: some View {
         Group {
@@ -56,7 +65,7 @@ struct SettingsRootView: View {
         case .widgets:
             WidgetsSettingsView(model: model)
         case .themes:
-            ThemesSettingsView(model: model)
+            ThemesSettingsView(model: model, visualQAOptions: visualQAOptions)
         case .integrations:
             IntegrationsSettingsView(model: model)
         case .privacy:
