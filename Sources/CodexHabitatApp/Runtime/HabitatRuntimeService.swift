@@ -13,6 +13,12 @@ protocol CodexRuntimeClient: Sendable {
 
 extension CodexControlClient: CodexRuntimeClient {}
 
+protocol CodexTokenMetricsMonitoring: Sendable {
+    func sample(at date: Date) async -> TokenMetricsSummary?
+}
+
+extension SessionTokenMetricsMonitor: CodexTokenMetricsMonitoring {}
+
 protocol HabitatRuntimeClock: Sendable {
     func sleep(for duration: Duration) async throws
 }
@@ -127,8 +133,10 @@ actor HabitatRuntimeService {
     private let reconnectClock: any HabitatRuntimeClock
     private let reconnectPolicy: ReconnectPolicy
     private let fallbackMonitor: SessionMetadataMonitor?
+    private let metricsMonitor: (any CodexTokenMetricsMonitoring)?
     private var loopTask: Task<Void, Never>?
     private var fallbackTask: Task<Void, Never>?
+    private var metricsTask: Task<Void, Never>?
     private var currentClient: (any CodexRuntimeClient)?
     private var primaryOnline = false
 
@@ -137,13 +145,15 @@ actor HabitatRuntimeService {
         clientFactory: @escaping ClientFactory,
         reconnectClock: any HabitatRuntimeClock = SystemHabitatRuntimeClock(),
         reconnectPolicy: ReconnectPolicy = ReconnectPolicy(),
-        fallbackMonitor: SessionMetadataMonitor? = nil
+        fallbackMonitor: SessionMetadataMonitor? = nil,
+        metricsMonitor: (any CodexTokenMetricsMonitoring)? = nil
     ) {
         self.state = state
         self.clientFactory = clientFactory
         self.reconnectClock = reconnectClock
         self.reconnectPolicy = reconnectPolicy
         self.fallbackMonitor = fallbackMonitor
+        self.metricsMonitor = metricsMonitor
     }
 
     static func live(
@@ -160,12 +170,14 @@ actor HabitatRuntimeService {
                 transport: ProcessTransport(),
                 sanitizer: CodexEventSanitizer(salt: salt)
             )
-        }, fallbackMonitor: .live(environment: environment))
+        }, fallbackMonitor: .live(environment: environment),
+           metricsMonitor: SessionTokenMetricsMonitor.live(environment: environment))
     }
 
     func start() {
         guard loopTask == nil else { return }
         startFallbackMonitor()
+        startMetricsMonitor()
         loopTask = Task { [weak self] in
             await self?.runLoop()
         }
@@ -181,11 +193,15 @@ actor HabitatRuntimeService {
         fallbackTask?.cancel()
         let fallbackTask = fallbackTask
         self.fallbackTask = nil
+        metricsTask?.cancel()
+        let metricsTask = metricsTask
+        self.metricsTask = nil
         if let currentClient {
             await currentClient.disconnect()
         }
         await task.value
         await fallbackTask?.value
+        await metricsTask?.value
         currentClient = nil
         primaryOnline = false
         await publishOffline()
@@ -288,6 +304,21 @@ actor HabitatRuntimeService {
                 await self?.applyFallback(activity)
                 do {
                     try await Task.sleep(for: .milliseconds(500))
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func startMetricsMonitor() {
+        guard metricsTask == nil, let metricsMonitor else { return }
+        metricsTask = Task { [weak self] in
+            while !Task.isCancelled {
+                let metrics = await metricsMonitor.sample(at: Date())
+                await self?.state.setTokenMetrics(metrics)
+                do {
+                    try await Task.sleep(for: .seconds(1))
                 } catch {
                     return
                 }

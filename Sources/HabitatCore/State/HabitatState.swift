@@ -58,6 +58,7 @@ public actor HabitatState {
                 connectionHealth: snapshot.connectionHealth,
                 primaryRateLimit: snapshot.primaryRateLimit,
                 secondaryRateLimit: snapshot.secondaryRateLimit,
+                tokenMetrics: snapshot.tokenMetrics,
                 timer: snapshot.timer
             )
         )
@@ -72,6 +73,7 @@ public actor HabitatState {
                 connectionHealth: connectionHealth,
                 primaryRateLimit: snapshot.primaryRateLimit,
                 secondaryRateLimit: snapshot.secondaryRateLimit,
+                tokenMetrics: snapshot.tokenMetrics,
                 timer: snapshot.timer
             )
         )
@@ -89,6 +91,22 @@ public actor HabitatState {
                 connectionHealth: snapshot.connectionHealth,
                 primaryRateLimit: primary,
                 secondaryRateLimit: secondary,
+                tokenMetrics: snapshot.tokenMetrics,
+                timer: snapshot.timer
+            )
+        )
+    }
+
+    public func setTokenMetrics(_ tokenMetrics: TokenMetricsSummary?) {
+        publish(
+            HabitatSnapshot(
+                activity: snapshot.activity,
+                threadIDHash: snapshot.threadIDHash,
+                eventTimestamp: snapshot.eventTimestamp,
+                connectionHealth: snapshot.connectionHealth,
+                primaryRateLimit: snapshot.primaryRateLimit,
+                secondaryRateLimit: snapshot.secondaryRateLimit,
+                tokenMetrics: tokenMetrics,
                 timer: snapshot.timer
             )
         )
@@ -109,6 +127,7 @@ public actor HabitatState {
                 connectionHealth: snapshot.connectionHealth,
                 primaryRateLimit: snapshot.primaryRateLimit,
                 secondaryRateLimit: snapshot.secondaryRateLimit,
+                tokenMetrics: snapshot.tokenMetrics,
                 timer: snapshot.timer
             )
         )
@@ -126,6 +145,7 @@ public actor HabitatState {
                 connectionHealth: snapshot.connectionHealth,
                 primaryRateLimit: snapshot.primaryRateLimit,
                 secondaryRateLimit: snapshot.secondaryRateLimit,
+                tokenMetrics: snapshot.tokenMetrics,
                 timer: snapshot.timer
             )
         )

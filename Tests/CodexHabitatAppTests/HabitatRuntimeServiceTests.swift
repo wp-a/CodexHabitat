@@ -75,6 +75,35 @@ func runtimeConnectsPublishesEventsAndStopsOffline() async {
     #expect(await client.disconnectCount == 1)
 }
 
+@Test
+func runtimePublishesLocalTokenMetricsWhenTheControlPlaneIsUnavailable() async {
+    let metrics = TokenMetricsSummary(
+        inputTokens: 1_000,
+        cachedInputTokens: 600,
+        outputTokens: 100,
+        reasoningOutputTokens: 20,
+        totalTokens: 1_100,
+        lastInputTokens: 500,
+        lastOutputTokens: 40,
+        modelContextWindow: 1_000,
+        outputTokensPerMinute: 120,
+        updatedAt: Date(timeIntervalSince1970: 400)
+    )
+    let monitor = FakeTokenMetricsMonitor(metrics: metrics)
+    let service = HabitatRuntimeService(
+        clientFactory: { throw RuntimeFixtureError.unavailable },
+        reconnectClock: BlockingRuntimeClock(),
+        metricsMonitor: monitor
+    )
+
+    await service.start()
+    let published = await eventually {
+        await service.currentSnapshot().tokenMetrics == metrics
+    }
+    #expect(published)
+    await service.stop()
+}
+
 private actor FakeCodexRuntimeClient: CodexRuntimeClient {
     let rateLimits: CodexRateLimitUpdate?
     var events: [CodexReadEvent]
@@ -108,6 +137,22 @@ private actor FakeCodexRuntimeClient: CodexRuntimeClient {
 private actor BlockingRuntimeClock: HabitatRuntimeClock {
     func sleep(for duration: Duration) async throws {
         try await Task.sleep(for: .seconds(60))
+    }
+}
+
+private enum RuntimeFixtureError: Error {
+    case unavailable
+}
+
+private actor FakeTokenMetricsMonitor: CodexTokenMetricsMonitoring {
+    let metrics: TokenMetricsSummary
+
+    init(metrics: TokenMetricsSummary) {
+        self.metrics = metrics
+    }
+
+    func sample(at _: Date) -> TokenMetricsSummary? {
+        metrics
     }
 }
 

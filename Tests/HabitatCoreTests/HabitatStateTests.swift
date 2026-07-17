@@ -73,6 +73,36 @@ func connectionAndRateLimitUpdatesPreserveActivityMetadata() async {
 }
 
 @Test
+func tokenMetricUpdatesPreserveTheRestOfTheSnapshot() async {
+    let metrics = TokenMetricsSummary(
+        inputTokens: 1_000,
+        cachedInputTokens: 600,
+        outputTokens: 100,
+        reasoningOutputTokens: 20,
+        totalTokens: 1_100,
+        lastInputTokens: 500,
+        lastOutputTokens: 40,
+        modelContextWindow: 1_000,
+        outputTokensPerMinute: 120,
+        updatedAt: Date(timeIntervalSince1970: 200)
+    )
+    let state = HabitatState(initialSnapshot: HabitatSnapshot(
+        activity: .working,
+        connectionHealth: .estimated,
+        primaryRateLimit: RateLimitSummary(usedPercent: 42, resetAt: nil)
+    ))
+
+    await state.setTokenMetrics(metrics)
+    await state.setConnectionHealth(.online)
+
+    let snapshot = await state.currentSnapshot()
+    #expect(snapshot.tokenMetrics == metrics)
+    #expect(snapshot.activity == .working)
+    #expect(snapshot.connectionHealth == .online)
+    #expect(snapshot.primaryRateLimit?.usedPercent == 42)
+}
+
+@Test
 func completedStateReturnsToRestingAfterClockAdvances() async {
     let clock = ManualHabitatClock()
     let state = HabitatState(clock: clock)

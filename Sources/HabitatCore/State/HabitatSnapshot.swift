@@ -41,6 +41,7 @@ public struct HabitatSnapshot: Codable, Equatable, Sendable {
     public let connectionHealth: ConnectionHealth
     public let primaryRateLimit: RateLimitSummary?
     public let secondaryRateLimit: RateLimitSummary?
+    public let tokenMetrics: TokenMetricsSummary?
     public let timer: TimerSummary?
 
     public init(
@@ -50,6 +51,7 @@ public struct HabitatSnapshot: Codable, Equatable, Sendable {
         connectionHealth: ConnectionHealth = .offline,
         primaryRateLimit: RateLimitSummary? = nil,
         secondaryRateLimit: RateLimitSummary? = nil,
+        tokenMetrics: TokenMetricsSummary? = nil,
         timer: TimerSummary? = nil
     ) {
         self.activity = activity
@@ -58,6 +60,7 @@ public struct HabitatSnapshot: Codable, Equatable, Sendable {
         self.connectionHealth = connectionHealth
         self.primaryRateLimit = primaryRateLimit
         self.secondaryRateLimit = secondaryRateLimit
+        self.tokenMetrics = tokenMetrics
         self.timer = timer
     }
 }

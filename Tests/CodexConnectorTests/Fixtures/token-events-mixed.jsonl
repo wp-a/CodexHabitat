@@ -1,0 +1,3 @@
+{"timestamp":"2026-07-17T04:00:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"private prompt must be ignored"}}
+{"timestamp":"2026-07-17T04:00:01.000Z","type":"response_item","payload":{"type":"message","content":"private response must be ignored"}}
+{"timestamp":"2026-07-17T04:00:02.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":600,"output_tokens":100,"reasoning_output_tokens":20,"total_tokens":1100},"last_token_usage":{"input_tokens":500,"cached_input_tokens":300,"output_tokens":40,"reasoning_output_tokens":10,"total_tokens":540},"model_context_window":1000}}}
