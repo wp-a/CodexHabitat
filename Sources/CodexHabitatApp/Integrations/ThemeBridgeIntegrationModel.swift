@@ -41,6 +41,10 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         [.checking, .applying, .restoring].contains(state)
     }
 
+    var canRestore: Bool {
+        runner != nil && [.active, .failed].contains(state)
+    }
+
     init(runner: (any ThemeBridgeCommandExecuting)?) {
         self.runner = runner
         if runner == nil { state = .unavailable }

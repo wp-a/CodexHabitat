@@ -13,6 +13,7 @@ struct ThemeBridgeIntegrationModelTests {
         let inactive = ThemeBridgeIntegrationModel(runner: inactiveRunner)
         await inactive.refresh()
         #expect(inactive.state == .ready)
+        #expect(!inactive.canRestore)
         #expect(inactiveRunner.invocations == [["verify"], ["status"]])
 
         let activeRunner = StubThemeBridgeRunner(results: [
@@ -22,6 +23,7 @@ struct ThemeBridgeIntegrationModelTests {
         let active = ThemeBridgeIntegrationModel(runner: activeRunner)
         await active.refresh()
         #expect(active.state == .active)
+        #expect(active.canRestore)
     }
 
     @Test
@@ -51,6 +53,7 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(model.state == .ready)
         await model.enable(themeID: "workbench")
         #expect(model.state == .failed)
+        #expect(model.canRestore)
         #expect(model.statusText == "Theme bridge action failed")
         #expect(!model.statusText.contains("sensitive"))
     }

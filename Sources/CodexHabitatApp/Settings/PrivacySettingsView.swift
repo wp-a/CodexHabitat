@@ -24,6 +24,10 @@ struct PrivacySettingsView: View {
                 }
                 .accessibilityIdentifier("privacy.restart-onboarding")
             }
+
+            Divider()
+
+            DiagnosticsView()
         }
     }
 
