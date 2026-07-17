@@ -74,3 +74,25 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     #expect(appModel.selectedThemeSupportsCodexBridge)
     #expect(appModel.codexBridgeThemeIDs.contains(id))
 }
+
+@Test @MainActor
+func themeStudioShowsAdjacentIdentityValidationErrors() async {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioValidation-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work")
+    )
+    model.name = String(repeating: "n", count: 101)
+    model.author = "Unsafe\u{0000}Author"
+
+    await model.saveLocally()
+
+    #expect(model.nameValidationMessage == L10n.text(
+        "Theme names must be 100 characters or fewer and contain no control characters."
+    ))
+    #expect(model.authorValidationMessage == L10n.text(
+        "Authors must be 100 characters or fewer and contain no control characters."
+    ))
+}

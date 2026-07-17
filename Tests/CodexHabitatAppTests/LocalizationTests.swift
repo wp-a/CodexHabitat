@@ -34,6 +34,8 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Search themes", "Create Theme", "Theme Studio", "Save Locally",
         "Choose a local background image.",
         "Export does not grant image rights. You confirm you may use and share this image.",
+        "Theme names must be 100 characters or fewer and contain no control characters.",
+        "Authors must be 100 characters or fewer and contain no control characters.",
     ] {
         #expect(localization.text(key) != key)
     }

@@ -94,6 +94,9 @@ struct ThemeStudioView: View {
             TextField("Author (optional)", text: $model.author)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("theme-studio.author")
+            if let message = model.authorValidationMessage {
+                validation(message)
+            }
         }
     }
 

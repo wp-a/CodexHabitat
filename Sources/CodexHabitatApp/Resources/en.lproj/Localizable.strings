@@ -291,6 +291,8 @@
 "Identity" = "Identity";
 "Theme name" = "Theme name";
 "Author (optional)" = "Author (optional)";
+"Theme names must be 100 characters or fewer and contain no control characters." = "Theme names must be 100 characters or fewer and contain no control characters.";
+"Authors must be 100 characters or fewer and contain no control characters." = "Authors must be 100 characters or fewer and contain no control characters.";
 "Background" = "Background";
 "Choose Image" = "Choose Image";
 "Palette" = "Palette";

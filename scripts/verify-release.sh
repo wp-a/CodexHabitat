@@ -32,6 +32,41 @@ SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
     || fail "theme bridge resources missing"
 [[ -f "$APP/Contents/Resources/AppIcon.icns" ]] || fail "app icon missing"
 
+THEME_ROOT="$APP/Contents/Resources/Resources/Themes"
+EXPECTED_THEMES=(
+    workbench night-shift arcade-signal quiet-garden
+    retro-messenger green-chat-desk cyber-cafe win95-workbench
+    crimson-mecha aqua-pulse candy-combo gold-rush
+    harvest-homestead solar-ki-arena moonlit-shinobi grand-ocean-crew
+    elemental-companions walled-vanguard arcane-academy hero-training-campus
+    nebula-vanguard spirit-lantern-town block-frontier turbo-striker
+)
+[[ -d "$THEME_ROOT" ]] || fail "theme library missing"
+for theme_id in "${EXPECTED_THEMES[@]}"; do
+    theme_directory="$THEME_ROOT/$theme_id"
+    [[ -d "$theme_directory" ]] || fail "theme directory missing: $theme_id"
+    for filename in habitat.json background.jpg preview.png LICENSE; do
+        [[ -f "$theme_directory/$filename" ]] \
+            || fail "theme resource missing: $theme_id/$filename"
+    done
+done
+theme_count="$(find "$THEME_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+[[ "$theme_count" == "${#EXPECTED_THEMES[@]}" ]] \
+    || fail "unexpected theme directory count: $theme_count"
+for theme_directory in "$THEME_ROOT"/*; do
+    [[ -d "$theme_directory" ]] || continue
+    theme_id="$(basename "$theme_directory")"
+    [[ " ${EXPECTED_THEMES[*]} " == *" $theme_id "* ]] \
+        || fail "unexpected theme directory: $theme_id"
+done
+if find "$THEME_ROOT" -type f \( \
+    -iname '*source*' -o -iname '*raw*' -o -iname '*reference*' \
+    -o -iname '*prompt*' -o -iname '*provenance*' -o -iname '*.psd' -o -iname '*.xcf' \
+\) -print -quit | grep -q .; then
+    fail "development theme artifact packaged"
+fi
+pass "twenty-four bounded theme resource sets"
+
 app_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
 build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"

@@ -47,6 +47,7 @@ final class ThemeStudioModel: ObservableObject {
     @Published private(set) var isDirty = false
     @Published var showsDiscardConfirmation = false
     @Published private(set) var nameValidationMessage: String?
+    @Published private(set) var authorValidationMessage: String?
     @Published private(set) var imageValidationMessage: String?
 
     let libraryRoot: URL
@@ -198,6 +199,7 @@ final class ThemeStudioModel: ObservableObject {
         pairedPetID = nil
         state = .editing
         nameValidationMessage = nil
+        authorValidationMessage = nil
         imageValidationMessage = nil
         isDirty = false
         showsDiscardConfirmation = false
@@ -241,14 +243,31 @@ final class ThemeStudioModel: ObservableObject {
 
     private func validatedRequest() -> ThemePackageRequest? {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        nameValidationMessage = trimmedName.isEmpty
-            ? L10n.text("Enter a theme name.")
-            : nil
+        let trimmedAuthor = author.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nameIsValid = !trimmedName.isEmpty
+            && trimmedName.count <= 100
+            && !Self.containsControlCharacters(trimmedName)
+        let authorIsValid = trimmedAuthor.count <= 100
+            && !Self.containsControlCharacters(trimmedAuthor)
+        if trimmedName.isEmpty {
+            nameValidationMessage = L10n.text("Enter a theme name.")
+        } else if !nameIsValid {
+            nameValidationMessage = L10n.text(
+                "Theme names must be 100 characters or fewer and contain no control characters."
+            )
+        } else {
+            nameValidationMessage = nil
+        }
+        authorValidationMessage = authorIsValid
+            ? nil
+            : L10n.text(
+                "Authors must be 100 characters or fewer and contain no control characters."
+            )
         imageValidationMessage = sourceImageURL == nil
             ? L10n.text("Choose a local background image.")
             : nil
-        guard !trimmedName.isEmpty,
-              trimmedName.count <= 100,
+        guard nameIsValid,
+              authorIsValid,
               let sourceImageURL,
               let palette
         else {
@@ -257,7 +276,7 @@ final class ThemeStudioModel: ObservableObject {
         }
         return ThemePackageRequest(
             name: trimmedName,
-            author: author,
+            author: trimmedAuthor,
             sourceImageURL: sourceImageURL,
             palette: palette,
             category: category,
@@ -269,6 +288,10 @@ final class ThemeStudioModel: ObservableObject {
             blurRadius: blurRadius,
             density: density
         )
+    }
+
+    private static func containsControlCharacters(_ value: String) -> Bool {
+        value.rangeOfCharacter(from: .controlCharacters) != nil
     }
 
     private func markDirty() {

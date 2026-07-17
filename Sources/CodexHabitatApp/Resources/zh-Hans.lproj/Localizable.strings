@@ -291,6 +291,8 @@
 "Identity" = "基本信息";
 "Theme name" = "主题名称";
 "Author (optional)" = "作者（可选）";
+"Theme names must be 100 characters or fewer and contain no control characters." = "主题名称不能超过 100 个字符，且不能包含控制字符。";
+"Authors must be 100 characters or fewer and contain no control characters." = "作者名称不能超过 100 个字符，且不能包含控制字符。";
 "Background" = "背景";
 "Choose Image" = "选择图片";
 "Palette" = "配色";
