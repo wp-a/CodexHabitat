@@ -355,6 +355,22 @@ final class HabitatAppModel: ObservableObject {
         reconcileResourceSelections()
     }
 
+    func makeThemeStudioModel() -> ThemeStudioModel? {
+        guard let resourceLibraryRoot else { return nil }
+        let pets = validPets.compactMap { entry -> ThemeStudioPetOption? in
+            guard let manifest = entry.manifest else { return nil }
+            return ThemeStudioPetOption(id: manifest.id, name: manifest.displayName)
+        }
+        return ThemeStudioModel(
+            libraryRoot: resourceLibraryRoot,
+            workingRoot: resourceLibraryRoot.appending(
+                path: ".theme-studio",
+                directoryHint: .isDirectory
+            ),
+            availablePets: pets
+        )
+    }
+
     func selectPet(_ id: String?) {
         let validIDs = Set(validPets.compactMap(\.manifest?.id))
         guard id == nil || id.map(validIDs.contains) == true else { return }

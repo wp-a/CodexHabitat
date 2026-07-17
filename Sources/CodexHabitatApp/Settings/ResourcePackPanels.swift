@@ -25,6 +25,26 @@ enum ResourcePackPanels {
         return panel.runModal() == .OK ? panel.url : nil
     }
 
+    static func chooseThemeImage() -> URL? {
+        let panel = NSOpenPanel()
+        panel.title = L10n.text("Choose Theme Background")
+        panel.prompt = L10n.text("Choose")
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.png, .jpeg, .webP]
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    static func chooseThemeExport(name: String) -> URL? {
+        let panel = NSSavePanel()
+        panel.title = L10n.text("Export Habitat Theme")
+        panel.prompt = L10n.text("Export")
+        panel.allowedContentTypes = [habitatPackType]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "\(ThemePackageBuilder.safeID(for: name)).habitat-pack"
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
     private static var habitatPackType: UTType {
         UTType(filenameExtension: "habitat-pack", conformingTo: .zip) ?? .zip
     }

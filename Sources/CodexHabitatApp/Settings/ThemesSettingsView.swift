@@ -5,6 +5,8 @@ import SwiftUI
 struct ThemesSettingsView: View {
     @ObservedObject var model: HabitatAppModel
     @State private var packageIDToRemove: String?
+    @State private var themeStudioModel: ThemeStudioModel?
+    @State private var isThemeStudioPresented = false
     private let columns = [GridItem(.adaptive(minimum: 190, maximum: 240), spacing: 12)]
 
     var body: some View {
@@ -16,6 +18,10 @@ struct ThemesSettingsView: View {
                 Text(L10n.format("%d available", model.availableThemes.count))
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button(action: openThemeStudio) {
+                    Label("Create Theme", systemImage: "plus")
+                }
+                .accessibilityIdentifier("themes.create")
                 Button(action: importPack) {
                     Label("Import Pack", systemImage: "square.and.arrow.down")
                 }
@@ -56,6 +62,14 @@ struct ThemesSettingsView: View {
         }
         .onAppear(perform: model.refreshResources)
         .resourceReplacementConfirmation(model: model)
+        .sheet(
+            isPresented: $isThemeStudioPresented,
+            onDismiss: { themeStudioModel = nil }
+        ) {
+            if let themeStudioModel {
+                ThemeStudioView(model: themeStudioModel, onSaved: themeSaved)
+            }
+        }
         .confirmationDialog(
             "Remove this Habitat pack?",
             isPresented: Binding(
@@ -108,6 +122,21 @@ struct ThemesSettingsView: View {
     private func importPack() {
         guard let url = ResourcePackPanels.chooseImport() else { return }
         Task { await model.importResourcePackage(from: url) }
+    }
+
+    private func openThemeStudio() {
+        guard let studio = model.makeThemeStudioModel() else { return }
+        themeStudioModel = studio
+        isThemeStudioPresented = true
+    }
+
+    private func themeSaved(id: String, pairedPetID: String?) {
+        model.refreshResources()
+        model.selectTheme(id)
+        if let pairedPetID {
+            model.selectPet(pairedPetID)
+        }
+        isThemeStudioPresented = false
     }
 
     private func export(_ package: InstalledPackage) {

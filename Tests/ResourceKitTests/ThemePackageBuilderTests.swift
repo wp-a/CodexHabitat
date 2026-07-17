@@ -1,0 +1,131 @@
+import Foundation
+import HabitatCore
+import ImageIO
+import Testing
+@testable import ResourceKit
+
+@Test
+func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
+    let root = temporaryBuilderRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appending(path: "source.png")
+    try testPNG(width: 2_000, height: 1_200).write(to: source)
+    let work = root.appending(path: "Work", directoryHint: .isDirectory)
+    let archive = root.appending(path: "my-theme.habitat-pack")
+    let builder = ThemePackageBuilder(workingRoot: work)
+    let suggested = try builder.suggestPalette(from: source)
+    #expect(suggested == (try builder.suggestPalette(from: source)))
+    #expect(allPaletteColors(suggested).allSatisfy(isHexColor))
+
+    let manual = HabitatThemePalette(
+        surface: "#101820",
+        panel: "#182633",
+        panelAlt: "#24384A",
+        text: "#F4FAFF",
+        mutedText: "#A9BAC8",
+        accent: "#16C6D9",
+        secondary: "#FF4F9A",
+        highlight: "#FFE45C",
+        attention: "#FFAA33",
+        error: "#F04455"
+    )
+    let request = ThemePackageRequest(
+        name: "../../ My CSS <script>",
+        author: "Local Artist",
+        sourceImageURL: source,
+        palette: manual,
+        category: .custom,
+        styleFamily: .fantasyAdventure,
+        artFocus: HabitatThemeFocalPoint(x: 0.72, y: 0.42),
+        safeSide: .leading,
+        backgroundStrength: 0.48,
+        panelOpacity: 0.91,
+        blurRadius: 12,
+        density: .comfortable
+    )
+
+    let result = try builder.build(request, to: archive)
+
+    #expect(result.manifest.id == ThemePackageBuilder.safeID(for: request.name))
+    #expect(result.manifest.id.wholeMatch(of: /^[a-z0-9]+([.-][a-z0-9]+)*$/) != nil)
+    #expect(result.manifest.colors.accent == manual.accent)
+    #expect(result.manifest.theme?.styleFamily == .fantasyAdventure)
+    #expect(try ArchiveInspector().inspect(archive).entries.map(\.path).sorted() == [
+        "LICENSE", "background.jpg", "habitat.json", "preview.png",
+    ])
+
+    let library = root.appending(path: "Library", directoryHint: .isDirectory)
+    let installed = try PackageInstaller(libraryRoot: library, runtimeVersion: "1.0.0")
+        .install(archive)
+    #expect(installed.manifest.colors == result.manifest.colors)
+    #expect(try imageDimensions(installed.url.appending(path: "background.jpg")) ==
+        CGSize(width: 1_600, height: 1_000))
+    #expect(try imageDimensions(installed.url.appending(path: "preview.png")) ==
+        CGSize(width: 800, height: 500))
+    #expect(try directoryContents(work).isEmpty)
+}
+
+@Test
+func themePackageBuilderRejectsUnsafeOrOversizedSourceImagesAndCleansUp() throws {
+    let root = temporaryBuilderRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let work = root.appending(path: "Work", directoryHint: .isDirectory)
+    let builder = ThemePackageBuilder(workingRoot: work, maxSourcePixels: 100)
+    #expect(throws: ThemePackageBuildError.unsafeSourceImage) {
+        try builder.suggestPalette(from: #require(URL(string: "https://example.com/theme.png")))
+    }
+    let validData = try testPNG(width: 11, height: 10)
+    let disguised = root.appending(path: "source.txt")
+    try validData.write(to: disguised)
+    #expect(throws: ThemePackageBuildError.unsupportedSourceType) {
+        try builder.suggestPalette(from: disguised)
+    }
+
+    let source = root.appending(path: "source.png")
+    try validData.write(to: source)
+    #expect(throws: ThemePackageBuildError.sourceImageTooLarge) {
+        try builder.suggestPalette(from: source)
+    }
+
+    let target = root.appending(path: "target.png")
+    try testPNG(width: 8, height: 8).write(to: target)
+    let link = root.appending(path: "link.png")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+    #expect(throws: ThemePackageBuildError.unsafeSourceImage) {
+        try ThemePackageBuilder(workingRoot: work).suggestPalette(from: link)
+    }
+    #expect(try directoryContents(work).isEmpty)
+}
+
+private func temporaryBuilderRoot() -> URL {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeBuilder-\(UUID().uuidString)", directoryHint: .isDirectory)
+    try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    return root
+}
+
+private func directoryContents(_ url: URL) throws -> [URL] {
+    guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+    return try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+}
+
+private func imageDimensions(_ url: URL) throws -> CGSize {
+    let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+    let properties = try #require(
+        CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+    )
+    let width = try #require((properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue)
+    let height = try #require((properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue)
+    return CGSize(width: width, height: height)
+}
+
+private func allPaletteColors(_ palette: HabitatThemePalette) -> [String] {
+    [
+        palette.surface, palette.panel, palette.panelAlt, palette.text, palette.mutedText,
+        palette.accent, palette.secondary, palette.highlight, palette.attention, palette.error,
+    ]
+}
+
+private func isHexColor(_ value: String) -> Bool {
+    value.wholeMatch(of: /^#[0-9A-F]{6}$/) != nil
+}
