@@ -33,11 +33,13 @@ func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
     settings.onboardingCompleted = true
     controller.apply(settings: settings, pets: [], isVisible: true)
     let rightEdge = controller.panelFrame.maxX
+    controller.beginTemporaryMoveMode()
 
     controller.setWidgetRailExpanded(false)
 
     #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
     #expect(controller.panelFrame.maxX == rightEdge)
+    #expect(controller.isTemporaryMoveMode)
     #expect(controller.dragRegionFrame == CGRect(
         origin: .zero,
         size: HabitatOverlayLayout.petSize
@@ -47,6 +49,7 @@ func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
 
     #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
     #expect(controller.panelFrame.maxX == rightEdge)
+    #expect(controller.isTemporaryMoveMode)
     #expect(controller.dragRegionFrame == CGRect(
         origin: CGPoint(x: 188, y: 0),
         size: HabitatOverlayLayout.petSize

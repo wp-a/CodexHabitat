@@ -127,9 +127,6 @@ public final class OverlayController: NSObject {
                 panelSize: nextSize
             )
         )
-        if let savedPlacement {
-            onPlacementChange?(savedPlacement)
-        }
     }
 
     public func hide() {
