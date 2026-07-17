@@ -35,9 +35,15 @@ struct PetsSettingsView: View {
         }
         .onChange(of: source) { _, newValue in
             if newValue == .local {
-                model.refreshPets()
+                model.refreshResources()
             }
         }
+        .onChange(of: marketplaceModel.lastInstalledID) { _, installedID in
+            if installedID != nil {
+                model.refreshResources()
+            }
+        }
+        .resourceReplacementConfirmation(model: model)
     }
 
     @ViewBuilder
@@ -47,7 +53,14 @@ struct PetsSettingsView: View {
                 Text("\(model.validPets.count) available")
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button(action: model.refreshPets) {
+                Button(action: importPack) {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderless)
+                .help("Import Habitat pack")
+                .accessibilityLabel("Import Habitat pack")
+                .accessibilityIdentifier("pets.import-pack")
+                Button(action: model.refreshResources) {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
@@ -55,6 +68,8 @@ struct PetsSettingsView: View {
                 .accessibilityLabel("Refresh pets")
                 .accessibilityIdentifier("pets.refresh")
             }
+
+            ResourceOperationStatusView(state: model.resourceOperationState)
 
             if model.validPets.isEmpty {
                 ContentUnavailableView(
@@ -75,6 +90,11 @@ struct PetsSettingsView: View {
                 }
             }
         }
+    }
+
+    private func importPack() {
+        guard let url = ResourcePackPanels.chooseImport() else { return }
+        Task { await model.importResourcePackage(from: url) }
     }
 }
 

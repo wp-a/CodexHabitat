@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes, including security and performance budgets.
+- [x] Full Swift test suite passes: 196 tests including security and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -27,7 +27,13 @@ explicit user action.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] Workbench, Night Shift, Arcade Signal, and Quiet Garden references contain no blank sprites or layout shifts.
 - [x] Overlay does not activate the app and can be made click-through.
+- [x] Menu-bar connection state and Pomodoro/countdown controls render without clipping and share live timer state with the overlay.
+- [x] Themes, native Codex theme export, resource-pack controls, and the five-widget overlay pass native screenshot review.
+- [x] Resource packs support validated import, explicit replacement, export, and uninstall from native settings.
+- [x] Position lock and per-display relative placement are persisted through settings schema v3.
+- [x] Launch-at-login uses `SMAppService.mainApp`; registration, rollback, and stored-state reconciliation are covered by tests.
 - [x] Reduce Motion removes the pet refresh timer.
+- [ ] Toggle the packaged login item on a disposable account and verify the post-login launch.
 - [ ] Increased Contrast and large text review on a dedicated accessibility test account.
 
 ## Performance budgets
@@ -39,6 +45,7 @@ explicit user action.
 - [x] Sprite frames are cropped once and reused by subsequent redraws.
 - [x] Packaged idle CPU averaged 0.191% over 150 two-second `top` samples; 144/150 were below 1%.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
+- [x] Post-enhancement static regression averaged 0.037% CPU over 30 one-second samples; all samples were below 1% and final memory was 21 MB.
 - [ ] Memory, wakeups, and energy-impact baseline from the notarized build.
 
 ## Privacy and recovery
@@ -50,6 +57,8 @@ explicit user action.
 - [x] Invalid packages, symlinks, active content, and archive traversal fail before publication.
 - [x] Official Codex bundle verification is read-only and passes for `26.707.91948` arm64.
 - [x] Session fallback reads file metadata only and exposes an explicit `Local activity estimate` state.
+- [x] Installed Codex `26.707.91948` contains the `codex-theme-v1` Import/Copy shape; Habitat's clipboard encoder matches its required local schema.
+- [ ] Paste a Habitat-generated native theme into Codex Appearance and visually confirm both light and dark variants with user approval.
 - [ ] Exact control-socket activity on Codex `26.707.91948`; this build does not publish the proxy socket.
 - [ ] Live CDP apply, screenshot health review, helper crash, and official-appearance restore with fresh user confirmation.
 - [ ] Confirm the CDP listener closes after the live restore.

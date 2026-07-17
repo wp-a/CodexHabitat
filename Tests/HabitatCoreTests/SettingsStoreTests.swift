@@ -6,11 +6,12 @@ import Testing
 func defaultSettingsKeepRiskyFeaturesDisabled() {
     let settings = HabitatSettings.default
 
-    #expect(settings.schemaVersion == 2)
+    #expect(settings.schemaVersion == 3)
     #expect(settings.selectedThemeID == "workbench")
     #expect(settings.scale == 1)
     #expect(settings.themeBridgeEnabled == false)
     #expect(settings.launchAtLogin == false)
+    #expect(settings.positionLocked == false)
     #expect(settings.onboardingCompleted == false)
 }
 
@@ -23,6 +24,7 @@ func settingsRoundTripThroughInjectedRoot() async throws {
         settings.selectedThemeID = "night-shift"
         settings.scale = 1.25
         settings.clickThrough = true
+        settings.positionLocked = true
         settings.overlayPositions["display-1"] = OverlayPosition(x: 0.75, y: 0.2)
 
         try await store.save(settings)
@@ -74,7 +76,7 @@ func schemaZeroMigratesWithThemeBridgeDisabled() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 2)
+        #expect(settings.schemaVersion == 3)
         #expect(settings.selectedPetID == "test-pet")
         #expect(settings.selectedThemeID == "night-shift")
         #expect(settings.themeBridgeEnabled == false)
@@ -99,9 +101,10 @@ func schemaOnePreservesThemeBridgeAndDefaultsOnboardingToIncomplete() async thro
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 2)
+        #expect(settings.schemaVersion == 3)
         #expect(settings.themeBridgeEnabled)
         #expect(settings.onboardingCompleted == false)
+        #expect(settings.positionLocked == false)
     }
 }
 

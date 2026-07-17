@@ -62,6 +62,16 @@ struct HabitatSettingsView: View {
                 .accessibilityIdentifier("habitat.click-through")
 
                 Toggle(
+                    "Lock overlay position",
+                    isOn: Binding(
+                        get: { model.settings.positionLocked },
+                        set: { model.setPositionLocked($0) }
+                    )
+                )
+                .disabled(model.settings.clickThrough)
+                .accessibilityIdentifier("habitat.position-locked")
+
+                Toggle(
                     "Open Codex Habitat at login",
                     isOn: Binding(
                         get: { model.settings.launchAtLogin },
@@ -69,6 +79,27 @@ struct HabitatSettingsView: View {
                     )
                 )
                 .accessibilityIdentifier("habitat.launch-at-login")
+
+                if model.launchAtLoginStatus == .requiresApproval {
+                    HStack(spacing: 8) {
+                        Label("Approval required in Login Items", systemImage: "person.badge.key.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Settings", action: model.openLoginItemSettings)
+                            .controlSize(.small)
+                    }
+                } else if model.launchAtLoginStatus == .unavailable {
+                    Label("Login item unavailable for this app location", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let errorMessage = model.errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
         }
     }

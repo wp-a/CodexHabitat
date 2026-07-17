@@ -25,7 +25,7 @@ public struct OverlayPosition: Codable, Equatable, Sendable {
 }
 
 public struct HabitatSettings: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
     private static let themeBridgeSchemaVersion = 1
 
     public var schemaVersion: Int
@@ -35,6 +35,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
     public var overlayPositions: [String: OverlayPosition]
     public var scale: Double
     public var clickThrough: Bool
+    public var positionLocked: Bool
     public var launchAtLogin: Bool
     public var reduceMotion: ReduceMotionPreference
     public var themeBridgeEnabled: Bool
@@ -48,6 +49,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         overlayPositions: [:],
         scale: 1,
         clickThrough: false,
+        positionLocked: false,
         launchAtLogin: false,
         reduceMotion: .system,
         themeBridgeEnabled: false,
@@ -62,6 +64,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         overlayPositions: [String: OverlayPosition],
         scale: Double,
         clickThrough: Bool,
+        positionLocked: Bool,
         launchAtLogin: Bool,
         reduceMotion: ReduceMotionPreference,
         themeBridgeEnabled: Bool,
@@ -74,6 +77,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         self.overlayPositions = overlayPositions
         self.scale = scale
         self.clickThrough = clickThrough
+        self.positionLocked = positionLocked
         self.launchAtLogin = launchAtLogin
         self.reduceMotion = reduceMotion
         self.themeBridgeEnabled = themeBridgeEnabled
@@ -98,6 +102,8 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? defaults.scale
         clickThrough = try container.decodeIfPresent(Bool.self, forKey: .clickThrough)
             ?? defaults.clickThrough
+        positionLocked = try container.decodeIfPresent(Bool.self, forKey: .positionLocked)
+            ?? defaults.positionLocked
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin)
             ?? defaults.launchAtLogin
         reduceMotion = try container.decodeIfPresent(

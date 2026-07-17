@@ -244,6 +244,11 @@ check passes.
 
 ## 8. Theme Bridge
 
+When the installed Codex version exposes its native theme import flow, Habitat
+may export a static `codex-theme-v1` share string to the clipboard. The user
+imports it in Codex; Habitat never writes Codex preferences. This is preferred
+for color, font, contrast, and semantic diff tokens.
+
 The bridge does not accept arbitrary CSS from resource packages. Themes provide
 tokens and local art; Habitat compiles them into a maintained, versioned style
 template with semantic selectors.
@@ -349,10 +354,11 @@ The implementation may reuse compatible licensed code only after attribution
 and dependency review. The design specifically draws ideas from:
 
 - Codex Dream Skin: CDP injection, verification, and restoration.
-- CodexUI: theme tokens, presets, and visual regression concepts.
+- Awesome Codex Themes and its linked builders: native theme share formats,
+  semantic tokens, previews, and palette portability.
 - OpenPets and OpenPetsKit: native macOS pet and local state protocol patterns.
 - Petdex: public pet catalog and package distribution.
-- TokenTracker: usage widgets and privacy-first local aggregation.
+- CodexBar: compact usage visibility and explicit unavailable states.
 - Ping Island and CodexMonitor: Codex app-server integration and desktop state
   presentation.
 
@@ -360,3 +366,6 @@ CodexPet Nest informed the static theme and widget model, but its repository did
 not expose a clear license during research, so its source must not be copied.
 Third-party pet assets require per-asset license review regardless of the
 catalog code's license.
+
+The full comparison and adoption boundaries are recorded in
+`docs/research/open-source-landscape.md`.

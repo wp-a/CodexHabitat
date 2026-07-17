@@ -20,11 +20,16 @@ timers work offline and do not require an account.
 - Exact sanitized Codex activity when the local control socket is available,
   with an explicitly labelled metadata-only estimate when it is not.
 - Clock, status, usage, Pomodoro, and countdown widgets in a compact rail.
+- Shared menu-bar timer controls, explicit connection health, pet context
+  actions, position locking, and per-display placement persistence.
 - Four built-in native themes with light and dark visual directions.
+- Clipboard export to the native `codex-theme-v1` import shape verified in the
+  locally installed Codex build, without writing Codex preferences.
 - Explicit opt-in Petdex browsing; only license-declared, hash-verified Habitat
   packages are installable.
 - A versioned `.habitat-pack` protocol for portable themes, pets, assets, and
-  widget configuration.
+  widget configuration, with native import, explicit replacement, export, and
+  uninstall workflows.
 - An optional CDP appearance bridge that verifies the official Codex signature,
   binds to loopback only, checks layout health, and restores normal Codex on
   failure.
@@ -113,8 +118,10 @@ hash mismatches are rejected before atomic installation.
 
 The design was informed by
 [Codex Dream Skin](https://github.com/Fei-Away/Codex-Dream-Skin) and
-[Petdex](https://github.com/crafter-station/petdex). No Dream Skin injector or
-theme CSS is copied. Runtime dependencies are pinned and documented in
+[Petdex](https://github.com/crafter-station/petdex), plus the native pet,
+theme-gallery, status-surface, and app-server projects compared in the
+[`open-source landscape`](docs/research/open-source-landscape.md). No Dream
+Skin injector or theme CSS is copied. Runtime dependencies are pinned and documented in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 Codex Habitat is an independent project and is not affiliated with or endorsed

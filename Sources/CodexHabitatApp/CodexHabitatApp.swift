@@ -17,6 +17,9 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
         Task {
             let model = HabitatAppEnvironment.model
             await model.load()
+            HabitatAppEnvironment.desktopController.onOpenSettings = {
+                HabitatAppEnvironment.settingsWindowController.show(model: model)
+            }
             HabitatAppEnvironment.desktopController.bind(to: model)
             HabitatAppEnvironment.runtimeController.start(
                 desktopController: HabitatAppEnvironment.desktopController
@@ -52,7 +55,10 @@ struct CodexHabitatGUI: App {
 
     var body: some Scene {
         MenuBarExtra("Codex Habitat", systemImage: "pawprint.fill") {
-            HabitatMenuBarView(model: model)
+            HabitatMenuBarView(
+                model: model,
+                desktopController: HabitatAppEnvironment.desktopController
+            )
         }
         .menuBarExtraStyle(.window)
 
@@ -61,6 +67,7 @@ struct CodexHabitatGUI: App {
 
 private struct HabitatMenuBarView: View {
     @ObservedObject var model: HabitatAppModel
+    @ObservedObject var desktopController: HabitatDesktopController
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -84,10 +91,23 @@ private struct HabitatMenuBarView: View {
 
             Divider()
 
+            connectionRow
+
             Toggle("Show Habitat", isOn: $model.isHabitatVisible)
                 .toggleStyle(.switch)
                 .accessibilityIdentifier("menu.show-habitat")
 
+            if model.settings.widgetOrder.contains(.pomodoro)
+                || model.settings.widgetOrder.contains(.countdown) {
+                Divider()
+                HabitatMenuTimerControls(
+                    model: desktopController.widgetModel,
+                    showsPomodoro: model.settings.widgetOrder.contains(.pomodoro),
+                    showsCountdown: model.settings.widgetOrder.contains(.countdown)
+                )
+            }
+
+            Divider()
             Button(action: openSettings) {
                 Label("Settings…", systemImage: "gearshape")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,7 +135,7 @@ private struct HabitatMenuBarView: View {
             .accessibilityIdentifier("menu.quit")
         }
         .padding(14)
-        .frame(width: 260)
+        .frame(width: 292)
         .task {
             await model.load()
         }
@@ -123,6 +143,156 @@ private struct HabitatMenuBarView: View {
 
     private func openSettings() {
         HabitatAppEnvironment.settingsWindowController.show(model: model)
+    }
+
+    private var connectionRow: some View {
+        let connection = HabitatMenuConnectionPresentation(
+            health: desktopController.currentSnapshot.connectionHealth
+        )
+        return HStack(spacing: 9) {
+            Image(systemName: connection.symbol)
+                .foregroundStyle(connectionTint)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(connection.title)
+                    .font(.subheadline.weight(.medium))
+                Text(activityTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(connection.badge)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(connectionTint)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("menu.connection")
+    }
+
+    private var connectionTint: Color {
+        switch desktopController.currentSnapshot.connectionHealth {
+        case .online: .teal
+        case .estimated, .reconnecting: .orange
+        case .offline: .secondary
+        }
+    }
+
+    private var activityTitle: String {
+        switch desktopController.currentSnapshot.activity {
+        case .resting: "Codex resting"
+        case .working: "Codex working"
+        case .attention: "Review requested"
+        case .succeeded: "Task complete"
+        case .failed: "Needs attention"
+        case .offline: "No activity available"
+        }
+    }
+}
+
+struct HabitatMenuConnectionPresentation: Equatable {
+    let title: String
+    let badge: String
+    let symbol: String
+
+    init(health: ConnectionHealth) {
+        switch health {
+        case .online:
+            (title, badge, symbol) = ("Connected", "LIVE", "network")
+        case .estimated:
+            (title, badge, symbol) = ("Local activity estimate", "EST.", "waveform.path.ecg")
+        case .reconnecting:
+            (title, badge, symbol) = (
+                "Reconnecting",
+                "RETRY",
+                "arrow.trianglehead.2.clockwise.rotate.90"
+            )
+        case .offline:
+            (title, badge, symbol) = ("Disconnected", "OFF", "network.slash")
+        }
+    }
+}
+
+private struct HabitatMenuTimerControls: View {
+    @ObservedObject var model: WidgetRailModel
+    let showsPomodoro: Bool
+    let showsCountdown: Bool
+
+    var body: some View {
+        VStack(spacing: 8) {
+            if showsPomodoro {
+                timerRow(
+                    title: model.pomodoroSnapshot.phase == .rest ? "Rest" : "Focus",
+                    duration: model.pomodoroSnapshot.remainingSeconds,
+                    isRunning: model.pomodoroSnapshot.isRunning,
+                    tint: .pink,
+                    toggle: model.togglePomodoro,
+                    reset: model.resetPomodoro
+                )
+            }
+            if showsCountdown {
+                timerRow(
+                    title: "Countdown",
+                    duration: model.countdownSnapshot.remainingSeconds,
+                    isRunning: model.countdownSnapshot.isRunning,
+                    tint: .teal,
+                    toggle: model.toggleCountdown,
+                    reset: model.resetCountdown
+                )
+            }
+        }
+    }
+
+    private func timerRow(
+        title: String,
+        duration: Int,
+        isRunning: Bool,
+        tint: Color,
+        toggle: @escaping () -> Void,
+        reset: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: title == "Countdown" ? "hourglass" : "timer")
+                .foregroundStyle(tint)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(formattedDuration(duration))
+                    .font(.system(.body, design: .rounded).monospacedDigit().weight(.semibold))
+            }
+            Spacer()
+            menuTimerButton(
+                systemImage: isRunning ? "pause.fill" : "play.fill",
+                label: isRunning ? "Pause \(title)" : "Start \(title)",
+                action: toggle
+            )
+            menuTimerButton(
+                systemImage: "arrow.counterclockwise",
+                label: "Reset \(title)",
+                action: reset
+            )
+        }
+    }
+
+    private func menuTimerButton(
+        systemImage: String,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
+        .help(label)
+        .accessibilityLabel(label)
+    }
+
+    private func formattedDuration(_ seconds: Int) -> String {
+        String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 }
 

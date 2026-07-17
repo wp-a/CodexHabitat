@@ -53,6 +53,7 @@ let package = Package(
             ],
             resources: [.copy("Resources")],
             linkerSettings: [
+                .linkedFramework("ServiceManagement"),
                 .unsafeFlags([
                     "-Xlinker", "-rpath",
                     "-Xlinker", "@executable_path/../Frameworks",
@@ -82,7 +83,9 @@ let package = Package(
         .testTarget(name: "OverlayHostTests", dependencies: ["OverlayHost"]),
         .testTarget(
             name: "CodexHabitatAppTests",
-            dependencies: ["CodexHabitatApp", "CodexConnector", "HabitatCore", "PetRuntime"]
+            dependencies: [
+                "CodexHabitatApp", "CodexConnector", "HabitatCore", "PetRuntime", "WidgetRuntime",
+            ]
         ),
         .testTarget(
             name: "WidgetRuntimeTests",

@@ -26,3 +26,19 @@ func controllerTogglesClickThroughWithoutChangingPanelSize() {
     #expect(!controller.panel.ignoresMouseEvents)
     #expect(controller.panel.frame.size == originalSize)
 }
+
+@Test @MainActor
+func positionLockDisablesMovementWithoutDisablingOverlayInteraction() {
+    let controller = OverlayController(panelSize: CGSize(width: 160, height: 180))
+
+    controller.setInteractive(true)
+    controller.setMovementLocked(true)
+
+    #expect(controller.isInteractive)
+    #expect(controller.isMovementLocked)
+    #expect(!controller.isMovementEnabled)
+    #expect(!controller.panel.ignoresMouseEvents)
+
+    controller.setMovementLocked(false)
+    #expect(controller.isMovementEnabled)
+}

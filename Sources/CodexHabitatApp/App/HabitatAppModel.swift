@@ -54,6 +54,33 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
     let attentionHex: String
     let errorHex: String
     let previewURL: URL?
+    let widgets: [HabitatWidget]
+
+    init(
+        id: String,
+        name: String,
+        detail: String,
+        symbol: String,
+        surfaceHex: String,
+        textHex: String,
+        accentHex: String,
+        attentionHex: String,
+        errorHex: String,
+        previewURL: URL?,
+        widgets: [HabitatWidget] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.detail = detail
+        self.symbol = symbol
+        self.surfaceHex = surfaceHex
+        self.textHex = textHex
+        self.accentHex = accentHex
+        self.attentionHex = attentionHex
+        self.errorHex = errorHex
+        self.previewURL = previewURL
+        self.widgets = widgets
+    }
 
     static let builtIn = [
         bundled(
@@ -85,6 +112,22 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
             fallbackColors: ("#F5F8F4", "#203127", "#3D8B63", "#C86A45", "#C4455D")
         ),
     ]
+
+    static func installed(_ package: InstalledPackage) -> HabitatThemeDescriptor {
+        HabitatThemeDescriptor(
+            id: package.id,
+            name: package.manifest.name,
+            detail: "\(package.manifest.author) · \(package.version)",
+            symbol: "shippingbox.fill",
+            surfaceHex: package.manifest.colors.surface,
+            textHex: package.manifest.colors.text,
+            accentHex: package.manifest.colors.accent,
+            attentionHex: package.manifest.colors.attention,
+            errorHex: package.manifest.colors.error,
+            previewURL: package.url.appending(path: package.manifest.preview),
+            widgets: package.manifest.widgets
+        )
+    }
 
     private static func bundled(
         id: String,
@@ -124,19 +167,43 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
                 forResource: "preview",
                 withExtension: "png",
                 subdirectory: directory
-            )
+            ),
+            widgets: manifest?.widgets ?? []
         )
     }
+}
+
+struct HabitatPetPresentation: Equatable, Sendable {
+    let renderMode: PetRenderMode
+    let scale: Double
+}
+
+enum ResourceLibraryOperationState: Equatable, Sendable {
+    case idle
+    case importing
+    case imported(String)
+    case replacementRequired(String)
+    case exporting
+    case exported(String)
+    case uninstalling
+    case uninstalled(String)
+    case failed
 }
 
 @MainActor
 final class HabitatAppModel: ObservableObject {
     @Published private(set) var settings = HabitatSettings.default
     @Published private(set) var validPets: [PetLibraryEntry] = []
+    @Published private(set) var petPresentations: [String: HabitatPetPresentation] = [:]
+    @Published private(set) var installedPackages: [InstalledPackage] = []
+    @Published private(set) var availableThemes = HabitatThemeDescriptor.builtIn
+    @Published private(set) var resourceOperationState = ResourceLibraryOperationState.idle
+    @Published private(set) var pendingReplacementArchiveURL: URL?
     @Published private(set) var onboardingStep = OnboardingStep.habitat
     @Published var selectedSettingsSection = SettingsSection.habitat
     @Published private(set) var isLoaded = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var launchAtLoginStatus: HabitatLaunchAtLoginStatus
     @Published var isHabitatVisible = true
 
     let requiresAccount = false
@@ -144,18 +211,29 @@ final class HabitatAppModel: ObservableObject {
     private let settingsStore: SettingsStore
     private let petRoot: URL
     private let resourceLibraryRoot: URL?
+    private let launchAtLoginController: any HabitatLaunchAtLoginControlling
     private var saveTask: Task<Void, Never>?
 
     var requiresOnboarding: Bool { !settings.onboardingCompleted }
+    var selectedTheme: HabitatThemeDescriptor {
+        availableThemes.first(where: { $0.id == settings.selectedThemeID })
+            ?? HabitatThemeDescriptor.builtIn[0]
+    }
+    var selectedThemeSupportsCodexBridge: Bool {
+        HabitatThemeDescriptor.builtIn.contains { $0.id == settings.selectedThemeID }
+    }
 
     init(
         settingsStore: SettingsStore,
         petRoot: URL,
-        resourceLibraryRoot: URL? = nil
+        resourceLibraryRoot: URL? = nil,
+        launchAtLoginController: any HabitatLaunchAtLoginControlling = InMemoryHabitatLaunchAtLoginController()
     ) {
         self.settingsStore = settingsStore
         self.petRoot = petRoot
         self.resourceLibraryRoot = resourceLibraryRoot
+        self.launchAtLoginController = launchAtLoginController
+        launchAtLoginStatus = launchAtLoginController.status
     }
 
     static func live(
@@ -177,7 +255,8 @@ final class HabitatAppModel: ObservableObject {
         return HabitatAppModel(
             settingsStore: SettingsStore(root: root),
             petRoot: PetLibrary.petRoot(),
-            resourceLibraryRoot: root.appending(path: "Library", directoryHint: .isDirectory)
+            resourceLibraryRoot: root.appending(path: "Library", directoryHint: .isDirectory),
+            launchAtLoginController: SystemHabitatLaunchAtLoginController()
         )
     }
 
@@ -190,9 +269,16 @@ final class HabitatAppModel: ObservableObject {
             errorMessage = "Settings could not be loaded. Defaults are active."
         }
 
-        validPets = discoverValidPets()
+        reloadInstalledPackages()
+        reloadPets()
         let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
         var repairedSettings = normalized(settings)
+        launchAtLoginStatus = launchAtLoginController.status
+        if repairedSettings.launchAtLogin && launchAtLoginStatus == .disabled {
+            launchAtLoginStatus = (try? launchAtLoginController.setEnabled(true))
+                ?? launchAtLoginController.status
+        }
+        repairedSettings.launchAtLogin = launchAtLoginStatus.isRequested
         if repairedSettings.selectedPetID.map(validPetIDs.contains) != true {
             repairedSettings.selectedPetID = validPets.first?.manifest?.id
         }
@@ -235,11 +321,17 @@ final class HabitatAppModel: ObservableObject {
     }
 
     func refreshPets() {
-        validPets = discoverValidPets()
+        reloadPets()
         let validIDs = Set(validPets.compactMap(\.manifest?.id))
         if settings.selectedPetID.map(validIDs.contains) != true {
             updateSettings { $0.selectedPetID = validPets.first?.manifest?.id }
         }
+    }
+
+    func refreshResources() {
+        reloadInstalledPackages()
+        reloadPets()
+        reconcileResourceSelections()
     }
 
     func selectPet(_ id: String?) {
@@ -249,8 +341,83 @@ final class HabitatAppModel: ObservableObject {
     }
 
     func selectTheme(_ id: String) {
-        guard HabitatThemeDescriptor.builtIn.contains(where: { $0.id == id }) else { return }
+        guard availableThemes.contains(where: { $0.id == id }) else { return }
         updateSettings { $0.selectedThemeID = id }
+    }
+
+    func importResourcePackage(from archiveURL: URL, replacing: Bool = false) async {
+        guard let resourceLibraryRoot else {
+            resourceOperationState = .failed
+            return
+        }
+        pendingReplacementArchiveURL = nil
+        resourceOperationState = .importing
+        do {
+            let package = try await Task.detached {
+                try PackageInstaller(
+                    libraryRoot: resourceLibraryRoot,
+                    runtimeVersion: "1.0.0"
+                ).install(archiveURL, replacing: replacing)
+            }.value
+            refreshResources()
+            resourceOperationState = .imported(package.manifest.name)
+        } catch PackageInstallationError.alreadyInstalled {
+            pendingReplacementArchiveURL = archiveURL
+            resourceOperationState = .replacementRequired(archiveURL.lastPathComponent)
+        } catch {
+            resourceOperationState = .failed
+        }
+    }
+
+    func replacePendingResourcePackage() async {
+        guard let pendingReplacementArchiveURL else { return }
+        await importResourcePackage(from: pendingReplacementArchiveURL, replacing: true)
+    }
+
+    func cancelPendingResourceReplacement() {
+        pendingReplacementArchiveURL = nil
+        resourceOperationState = .idle
+    }
+
+    func exportResourcePackage(id: String, to destination: URL) async {
+        guard let resourceLibraryRoot else {
+            resourceOperationState = .failed
+            return
+        }
+        resourceOperationState = .exporting
+        do {
+            try await Task.detached {
+                try InstalledPackageLibrary(
+                    root: resourceLibraryRoot,
+                    runtimeVersion: "1.0.0"
+                ).export(packageID: id, to: destination)
+            }.value
+            let name = installedPackages.first(where: { $0.id == id })?.manifest.name ?? id
+            resourceOperationState = .exported(name)
+        } catch {
+            resourceOperationState = .failed
+        }
+    }
+
+    func uninstallResourcePackage(id: String) async {
+        guard let resourceLibraryRoot else {
+            resourceOperationState = .failed
+            return
+        }
+        resourceOperationState = .uninstalling
+        let name = installedPackages.first(where: { $0.id == id })?.manifest.name ?? id
+        do {
+            try await Task.detached {
+                try InstalledPackageLibrary(
+                    root: resourceLibraryRoot,
+                    runtimeVersion: "1.0.0"
+                ).uninstall(packageID: id)
+            }.value
+            refreshResources()
+            resourceOperationState = .uninstalled(name)
+        } catch {
+            resourceOperationState = .failed
+        }
     }
 
     func setWidget(_ id: WidgetIdentifier, enabled: Bool) {
@@ -273,8 +440,34 @@ final class HabitatAppModel: ObservableObject {
         updateSettings { $0.clickThrough = enabled }
     }
 
+    func setPositionLocked(_ locked: Bool) {
+        updateSettings { $0.positionLocked = locked }
+    }
+
+    func setOverlayPosition(displayID: String, x: Double, y: Double) {
+        guard !displayID.isEmpty else { return }
+        let position = OverlayPosition(
+            x: min(max(x, 0), 1),
+            y: min(max(y, 0), 1)
+        )
+        guard settings.overlayPositions[displayID] != position else { return }
+        updateSettings { $0.overlayPositions[displayID] = position }
+    }
+
     func setLaunchAtLogin(_ enabled: Bool) {
-        updateSettings { $0.launchAtLogin = enabled }
+        do {
+            launchAtLoginStatus = try launchAtLoginController.setEnabled(enabled)
+            errorMessage = nil
+        } catch {
+            launchAtLoginStatus = launchAtLoginController.status
+            errorMessage = "macOS could not update the login item."
+        }
+        let requested = launchAtLoginStatus.isRequested
+        updateSettings { $0.launchAtLogin = requested }
+    }
+
+    func openLoginItemSettings() {
+        launchAtLoginController.openSystemSettings()
     }
 
     func setReduceMotion(_ preference: ReduceMotionPreference) {
@@ -319,7 +512,7 @@ final class HabitatAppModel: ObservableObject {
 
     private func normalized(_ source: HabitatSettings) -> HabitatSettings {
         var result = source
-        if !HabitatThemeDescriptor.builtIn.contains(where: { $0.id == result.selectedThemeID }) {
+        if !availableThemes.contains(where: { $0.id == result.selectedThemeID }) {
             result.selectedThemeID = HabitatSettings.default.selectedThemeID
         }
         let knownWidgets = Set(WidgetIdentifier.allCases)
@@ -331,17 +524,27 @@ final class HabitatAppModel: ObservableObject {
         return result
     }
 
-    private func discoverValidPets() -> [PetLibraryEntry] {
+    private func reloadPets() {
+        let discovery = discoverValidPets()
+        petPresentations = discovery.presentations
+        validPets = discovery.entries
+    }
+
+    private func discoverValidPets() -> (
+        entries: [PetLibraryEntry],
+        presentations: [String: HabitatPetPresentation]
+    ) {
         let local = ((try? PetLibrary(root: petRoot).discover()) ?? [])
             .filter { $0.status == .valid }
         var result: [PetLibraryEntry] = []
+        var presentations: [String: HabitatPetPresentation] = [:]
         var identifiers: Set<String> = []
         for entry in local {
             guard let id = entry.manifest?.id, identifiers.insert(id).inserted else { continue }
             result.append(entry)
         }
 
-        guard let resourceLibraryRoot else { return result }
+        guard let resourceLibraryRoot else { return (result, presentations) }
         let packages = InstalledPackageLibrary(
             root: resourceLibraryRoot,
             runtimeVersion: "1.0.0"
@@ -361,8 +564,54 @@ final class HabitatAppModel: ObservableObject {
                     continue
                 }
                 result.append(entry)
+                presentations[adapter.id] = HabitatPetPresentation(
+                    renderMode: adapter.rendering.petRenderMode,
+                    scale: adapter.scale
+                )
             }
         }
-        return result
+        return (result, presentations)
+    }
+
+    private func reloadInstalledPackages() {
+        guard let resourceLibraryRoot else {
+            installedPackages = []
+            availableThemes = HabitatThemeDescriptor.builtIn
+            return
+        }
+        installedPackages = InstalledPackageLibrary(
+            root: resourceLibraryRoot,
+            runtimeVersion: "1.0.0"
+        ).currentPackages()
+        let builtInIDs = Set(HabitatThemeDescriptor.builtIn.map(\.id))
+        availableThemes = HabitatThemeDescriptor.builtIn + installedPackages
+            .filter { !builtInIDs.contains($0.id) }
+            .map(HabitatThemeDescriptor.installed)
+    }
+
+    private func reconcileResourceSelections() {
+        let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
+        let validThemeIDs = Set(availableThemes.map(\.id))
+        var repaired = settings
+        if repaired.selectedPetID.map(validPetIDs.contains) != true {
+            repaired.selectedPetID = validPets.first?.manifest?.id
+        }
+        if !validThemeIDs.contains(repaired.selectedThemeID) {
+            repaired.selectedThemeID = HabitatSettings.default.selectedThemeID
+        }
+        guard repaired != settings else { return }
+        updateSettings { settings in
+            settings = repaired
+        }
+    }
+}
+
+private extension HabitatRendering {
+    var petRenderMode: PetRenderMode {
+        switch self {
+        case .auto: .auto
+        case .pixelated: .pixelated
+        case .smooth: .smooth
+        }
     }
 }

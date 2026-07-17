@@ -2,6 +2,7 @@ import Foundation
 import HabitatCore
 import PetRuntime
 import Testing
+import WidgetRuntime
 @testable import CodexHabitatApp
 
 @Test @MainActor
@@ -32,6 +33,33 @@ func invalidPetFrameKeepsAStableFallbackModel() {
 
     #expect(model.currentFrame() == PetFrame(animation: .idle, row: 0, column: 0))
     #expect(model.overlaySize == CGSize(width: 160, height: 180))
+}
+
+@Test @MainActor
+func countdownControlsRunPauseAndReset() {
+    let clock = OverlayTimerClock()
+    let model = WidgetRailModel(
+        countdownConfiguration: CountdownConfiguration(durationSeconds: 10),
+        timerClock: clock
+    )
+
+    model.toggleCountdown()
+    clock.advance(seconds: 4)
+    model.refreshTimersForTesting()
+    #expect(model.countdownSnapshot.remainingSeconds == 6)
+    #expect(model.countdownSnapshot.isRunning)
+
+    model.toggleCountdown()
+    model.resetCountdown()
+    #expect(model.countdownSnapshot.remainingSeconds == 10)
+    #expect(!model.countdownSnapshot.isRunning)
+}
+
+private final class OverlayTimerClock: TimerClock, @unchecked Sendable {
+    private var date = Date(timeIntervalSince1970: 1_700_000_000)
+
+    func now() -> Date { date }
+    func advance(seconds: TimeInterval) { date = date.addingTimeInterval(seconds) }
 }
 
 private final class OverlayTestClock: AnimationClock, @unchecked Sendable {

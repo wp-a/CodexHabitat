@@ -5,6 +5,12 @@ import SwiftUI
 public final class OverlayController: NSObject {
     public let panel: HabitatPanel
     public private(set) var isInteractive = false
+    public private(set) var isMovementLocked = false
+    public var onPlacementChange: ((SavedOverlayPlacement) -> Void)?
+
+    public var isMovementEnabled: Bool {
+        isInteractive && !isMovementLocked
+    }
 
     private let panelSize: CGSize
     private let snapper: EdgeSnapper
@@ -73,8 +79,12 @@ public final class OverlayController: NSObject {
     public func setInteractive(_ interactive: Bool) {
         isInteractive = interactive
         panel.ignoresMouseEvents = !interactive
-        dragRegion.isDragEnabled = interactive
-        dragRegion.isHidden = !interactive
+        updateDragRegion()
+    }
+
+    public func setMovementLocked(_ locked: Bool) {
+        isMovementLocked = locked
+        updateDragRegion()
     }
 
     public func hide() {
@@ -135,6 +145,9 @@ public final class OverlayController: NSObject {
             displayID: display.id,
             relativePosition: display.relativePosition(for: snapped, panelSize: panelSize)
         )
+        if let savedPlacement {
+            onPlacementChange?(savedPlacement)
+        }
     }
 
     @objc private func screenParametersChanged() {
@@ -156,6 +169,14 @@ public final class OverlayController: NSObject {
                 panelSize: panelSize
             )
         )
+        if let savedPlacement = self.savedPlacement {
+            onPlacementChange?(savedPlacement)
+        }
+    }
+
+    private func updateDragRegion() {
+        dragRegion.isDragEnabled = isMovementEnabled
+        dragRegion.isHidden = !isMovementEnabled
     }
 
     private func display(containingPanelAt origin: CGPoint) -> DisplayGeometry? {

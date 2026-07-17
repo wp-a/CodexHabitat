@@ -1,4 +1,5 @@
 import CoreGraphics
+import HabitatCore
 import Testing
 @testable import CodexHabitatApp
 
@@ -13,4 +14,18 @@ func widgetRailExpansionKeepsThePetFrameStable() {
     #expect(expanded.petFrame == CGRect(x: 200, y: 0, width: 160, height: 180))
     #expect(collapsed.widgetRailFrame == nil)
     #expect(expanded.widgetRailFrame == CGRect(x: 4, y: 4, width: 184, height: 172))
+}
+
+@Test
+func themeRelativePositionsDetermineSafeCompactWidgetOrder() {
+    let enabled: [WidgetIdentifier] = [
+        .pomodoro, .countdown, .clock, .usage, .status,
+    ]
+
+    let ordered = HabitatWidgetLayoutOrder.resolve(
+        enabled: enabled,
+        themeWidgets: HabitatThemeDescriptor.builtIn[0].widgets
+    )
+
+    #expect(ordered == [.status, .usage, .clock, .pomodoro, .countdown])
 }
