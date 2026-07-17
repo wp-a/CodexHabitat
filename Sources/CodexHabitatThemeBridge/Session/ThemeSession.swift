@@ -3,6 +3,8 @@ import Foundation
 
 protocol ThemeProcessLaunching: AnyObject, Sendable {
     func launch(executableURL: URL, arguments: [String]) throws -> Int32
+    func terminateLaunchedProcess(pid: Int32) -> Bool
+    func releaseLaunchedProcess(pid: Int32)
 }
 
 protocol ThemeProcessSignaling: AnyObject, Sendable {
@@ -86,16 +88,21 @@ final class ThemeSession: ThemeSessionManaging, @unchecked Sendable {
                 "--remote-debugging-port=\(port)",
             ]
         )
+        defer { launcher.releaseLaunchedProcess(pid: pid) }
         guard let identity = processInspector.identity(for: pid) else {
+            _ = launcher.terminateLaunchedProcess(pid: pid)
             throw ThemeSessionError.processInspectionFailed
         }
         guard identity.executableURL.standardizedFileURL.resolvingSymlinksInPath()
             == bundle.executableURL.standardizedFileURL.resolvingSymlinksInPath()
         else {
+            _ = launcher.terminateLaunchedProcess(pid: pid)
             throw ThemeSessionError.unexpectedExecutable
         }
         guard processInspector.isDescendant(pid, of: ownerPID) else {
-            _ = signaler.terminate(process: identity)
+            if !signaler.terminate(process: identity) {
+                _ = launcher.terminateLaunchedProcess(pid: pid)
+            }
             throw ThemeSessionError.unexpectedProcessAncestry
         }
 
@@ -111,7 +118,11 @@ final class ThemeSession: ThemeSessionManaging, @unchecked Sendable {
         } catch {
             if let current = processInspector.identity(for: pid),
                current.matchesPersistentIdentity(identity) {
-                _ = signaler.terminate(process: current)
+                if !signaler.terminate(process: current) {
+                    _ = launcher.terminateLaunchedProcess(pid: pid)
+                }
+            } else {
+                _ = launcher.terminateLaunchedProcess(pid: pid)
             }
             throw error
         }
@@ -149,6 +160,9 @@ final class ThemeSession: ThemeSessionManaging, @unchecked Sendable {
 }
 
 final class LiveThemeProcessLauncher: ThemeProcessLaunching, @unchecked Sendable {
+    private let lock = NSLock()
+    private var launchedProcesses: [Int32: Process] = [:]
+
     func launch(executableURL: URL, arguments: [String]) throws -> Int32 {
         let process = Process()
         process.executableURL = executableURL
@@ -156,7 +170,32 @@ final class LiveThemeProcessLauncher: ThemeProcessLaunching, @unchecked Sendable
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         try process.run()
-        return process.processIdentifier
+        let pid = process.processIdentifier
+        lock.withLock { launchedProcesses[pid] = process }
+        return pid
+    }
+
+    func terminateLaunchedProcess(pid: Int32) -> Bool {
+        let process = lock.withLock { launchedProcesses[pid] }
+        guard let process else { return false }
+        guard process.isRunning else { return true }
+        process.terminate()
+        for _ in 0..<40 {
+            guard process.isRunning else { break }
+            usleep(50_000)
+        }
+        if process.isRunning {
+            _ = Darwin.kill(pid, SIGKILL)
+        }
+        for _ in 0..<40 {
+            guard process.isRunning else { break }
+            usleep(50_000)
+        }
+        return !process.isRunning
+    }
+
+    func releaseLaunchedProcess(pid: Int32) {
+        _ = lock.withLock { launchedProcesses.removeValue(forKey: pid) }
     }
 }
 

@@ -69,7 +69,12 @@ helper_signature="$(codesign -d --verbose=4 "$HELPER" 2>&1)"
 pass "strict signatures and hardened runtime"
 
 entitlements_file="$(mktemp)"
-trap 'rm -f "$entitlements_file"' EXIT
+otool_output="$(mktemp)"
+all_strings="$(mktemp)"
+main_strings="$(mktemp)"
+helper_strings="$(mktemp)"
+key_file=""
+trap 'rm -f "$entitlements_file" "$otool_output" "$all_strings" "$main_strings" "$helper_strings"; [[ -z "$key_file" ]] || rm -f "$key_file"' EXIT
 codesign -d --entitlements :- "$APP" >"$entitlements_file" 2>/dev/null \
     || fail "could not inspect app entitlements"
 if grep -Eq 'get-task-allow|allow-unsigned-executable-memory' "$entitlements_file"; then
@@ -81,19 +86,22 @@ if grep -F 'disable-library-validation' "$entitlements_file" >/dev/null \
 fi
 pass "release entitlements"
 
-if otool -l "$MAIN" "$HELPER" \
-    | grep -Eq '/Applications/Xcode|/Users/|/home/runner|/private/tmp/'; then
+otool -l "$MAIN" "$HELPER" >"$otool_output"
+strings "$MAIN" "$HELPER" >"$all_strings"
+strings "$MAIN" >"$main_strings"
+strings "$HELPER" >"$helper_strings"
+if grep -Eq '^[[:space:]]+path (/Applications/Xcode|/Users/|/home/runner|/private/tmp/)' "$otool_output"; then
     fail "development runpath embedded"
 fi
-if strings "$MAIN" "$HELPER" | grep -Eq '/Users/|/home/runner/'; then
+if grep -Eq '/Users/|/home/runner/' "$all_strings"; then
     fail "developer home path embedded"
 fi
-if strings "$MAIN" | grep -Eq -- '--remote-debugging-(address|port)'; then
+if grep -Eq -- '--remote-debugging-(address|port)' "$main_strings"; then
     fail "CDP launch flags leaked into the main application"
 fi
-strings "$HELPER" | grep -F -- '--remote-debugging-address=127.0.0.1' >/dev/null \
+grep -F -- '--remote-debugging-address=127.0.0.1' "$helper_strings" >/dev/null \
     || fail "helper loopback-only CDP address missing"
-if strings "$HELPER" | grep -F -- '--remote-debugging-address=0.0.0.0' >/dev/null; then
+if grep -F -- '--remote-debugging-address=0.0.0.0' "$helper_strings" >/dev/null; then
     fail "helper contains a wildcard CDP address"
 fi
 pass "release paths and CDP isolation"

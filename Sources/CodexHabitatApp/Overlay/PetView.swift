@@ -9,7 +9,7 @@ struct PetView: View {
 
     var body: some View {
         PetSpriteView(
-            activity: model.snapshot.activity,
+            activity: model.isAnimationActive ? model.snapshot.activity : .resting,
             renderer: renderer,
             renderMode: renderMode,
             pixelArtHint: pixelArtHint,

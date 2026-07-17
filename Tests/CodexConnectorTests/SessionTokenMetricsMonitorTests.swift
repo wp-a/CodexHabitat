@@ -69,6 +69,64 @@ func sessionTokenMonitorResetsSpeedWhenTheLatestSessionChanges() async throws {
     #expect(switched.outputTokensPerMinute == nil)
 }
 
+@Test
+func sessionTokenSpeedExpiresWithoutANewTokenEvent() async throws {
+    let root = FileManager.default.temporaryDirectory.appending(
+        path: "HabitatTokenMetricsExpiry-\(UUID().uuidString)",
+        directoryHint: .isDirectory
+    )
+    let day = root.appending(path: "2026/07/17", directoryHint: .isDirectory)
+    let session = day.appending(path: "rollout-first.jsonl")
+    try FileManager.default.createDirectory(at: day, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data((
+        tokenLine(timestamp: "2026-07-17T04:00:00.000Z", output: 100) + "\n"
+            + tokenLine(timestamp: "2026-07-17T04:00:20.000Z", output: 140) + "\n"
+    ).utf8).write(to: session)
+    let monitor = SessionTokenMetricsMonitor(sessionsRoot: root, calendar: utcCalendar)
+    let start = Date(timeIntervalSince1970: 1_784_260_800)
+
+    #expect(await monitor.sample(at: start.addingTimeInterval(20))?.outputTokensPerMinute == 120)
+    #expect(await monitor.sample(at: start.addingTimeInterval(81))?.outputTokensPerMinute == nil)
+}
+
+@Test
+func preferredThreadKeepsMetricsBoundToTheMatchingSessionAcrossParallelUpdates() async throws {
+    let root = FileManager.default.temporaryDirectory.appending(
+        path: "HabitatTokenMetricsPreferred-\(UUID().uuidString)",
+        directoryHint: .isDirectory
+    )
+    let oldDay = root.appending(path: "2026/07/10", directoryHint: .isDirectory)
+    let today = root.appending(path: "2026/07/17", directoryHint: .isDirectory)
+    try FileManager.default.createDirectory(at: oldDay, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: today, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let preferredID = "019F1234-1111-7222-8333-123456789ABC"
+    let competingID = "019f1234-4444-7555-8666-abcdef123456"
+    let preferred = oldDay.appending(path: "rollout-2026-07-10T10-00-00-\(preferredID).jsonl")
+    let competing = today.appending(path: "rollout-2026-07-17T10-00-00-\(competingID).jsonl")
+    try Data((tokenLine(timestamp: "2026-07-17T04:00:00.000Z", output: 40) + "\n").utf8)
+        .write(to: preferred)
+    try Data((tokenLine(timestamp: "2026-07-17T04:00:00.000Z", output: 900) + "\n").utf8)
+        .write(to: competing)
+    try FileManager.default.setAttributes(
+        [.modificationDate: Date(timeIntervalSince1970: 1_784_260_900)],
+        ofItemAtPath: competing.path
+    )
+    let monitor = SessionTokenMetricsMonitor(
+        sessionsRoot: root,
+        calendar: utcCalendar,
+        threadIDHasher: { "hash:\($0)" }
+    )
+
+    await monitor.selectThread(idHash: "hash:\(preferredID)")
+    let metrics = try #require(
+        await monitor.sample(at: Date(timeIntervalSince1970: 1_784_260_900))
+    )
+
+    #expect(metrics.outputTokens == 40)
+}
+
 private func tokenLine(timestamp: String, output: Int) -> String {
     """
     {"timestamp":"\(timestamp)","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":600,"output_tokens":\(output),"reasoning_output_tokens":20,"total_tokens":\(1000 + output)},"last_token_usage":{"input_tokens":500,"cached_input_tokens":300,"output_tokens":40,"reasoning_output_tokens":10,"total_tokens":540},"model_context_window":1000}}}

@@ -140,11 +140,8 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
         let manifestURL = PackagedResourceLocator.url(
             forResource: "habitat",
             withExtension: "json",
-            subdirectory: directory
-        ) ?? Bundle.module.url(
-            forResource: "habitat",
-            withExtension: "json",
-            subdirectory: directory
+            subdirectory: directory,
+            packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
         )
         let manifest = manifestURL.flatMap { url in
             try? ManifestDecoder(runtimeVersion: "1.0.0").decode(Data(contentsOf: url))
@@ -162,11 +159,8 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
             previewURL: PackagedResourceLocator.url(
                 forResource: "preview",
                 withExtension: "png",
-                subdirectory: directory
-            ) ?? Bundle.module.url(
-                forResource: "preview",
-                withExtension: "png",
-                subdirectory: directory
+                subdirectory: directory,
+                packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
             ),
             widgets: manifest?.widgets ?? []
         )

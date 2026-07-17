@@ -50,6 +50,32 @@ func lowPortAndUnexpectedProcessAncestryAreRejected() {
 }
 
 @Test
+func launchedProcessIsTerminatedWhenInspectionOrExecutableValidationFails() {
+    let missing = ThemeSessionFixture()
+    defer { missing.cleanup() }
+    missing.inspector.identities.removeValue(forKey: missing.process.pid)
+
+    #expect(throws: ThemeSessionError.processInspectionFailed) {
+        try missing.session.start(bundleURL: missing.bundle.bundleURL, authorized: true)
+    }
+    #expect(missing.launcher.terminatedPIDs == [missing.process.pid])
+
+    let unexpected = ThemeSessionFixture()
+    defer { unexpected.cleanup() }
+    unexpected.inspector.identities[unexpected.process.pid] = ProcessIdentity(
+        pid: unexpected.process.pid,
+        parentPID: unexpected.process.parentPID,
+        executableURL: URL(fileURLWithPath: "/usr/bin/unexpected"),
+        startTimeMicroseconds: unexpected.process.startTimeMicroseconds
+    )
+
+    #expect(throws: ThemeSessionError.unexpectedExecutable) {
+        try unexpected.session.start(bundleURL: unexpected.bundle.bundleURL, authorized: true)
+    }
+    #expect(unexpected.launcher.terminatedPIDs == [unexpected.process.pid])
+}
+
+@Test
 func pidReuseDefenseMarksStaleAndRefusesToStopAnUnrelatedProcess() throws {
     let fixture = ThemeSessionFixture()
     defer { fixture.cleanup() }
@@ -198,6 +224,7 @@ private final class StubLauncher: ThemeProcessLaunching, @unchecked Sendable {
 
     let pid: Int32
     var invocations: [Invocation] = []
+    var terminatedPIDs: [Int32] = []
 
     init(pid: Int32) { self.pid = pid }
 
@@ -205,6 +232,13 @@ private final class StubLauncher: ThemeProcessLaunching, @unchecked Sendable {
         invocations.append(Invocation(executableURL: executableURL, arguments: arguments))
         return pid
     }
+
+    func terminateLaunchedProcess(pid: Int32) -> Bool {
+        terminatedPIDs.append(pid)
+        return true
+    }
+
+    func releaseLaunchedProcess(pid _: Int32) {}
 }
 
 private final class StubProcessInspector: CodexProcessInspecting, @unchecked Sendable {

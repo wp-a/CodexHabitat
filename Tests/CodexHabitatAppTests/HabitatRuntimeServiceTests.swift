@@ -104,6 +104,31 @@ func runtimePublishesLocalTokenMetricsWhenTheControlPlaneIsUnavailable() async {
     await service.stop()
 }
 
+@Test
+func hiddenRuntimePausesAndVisibleRuntimeResumesLocalMetricSampling() async {
+    let monitor = CountingTokenMetricsMonitor()
+    let service = HabitatRuntimeService(
+        clientFactory: { throw RuntimeFixtureError.unavailable },
+        reconnectClock: BlockingRuntimeClock(),
+        metricsMonitor: monitor
+    )
+
+    await service.setMonitoringActive(false)
+    await service.start()
+    for _ in 0..<100 { await Task.yield() }
+    #expect(await monitor.sampleCount == 0)
+
+    await service.setMonitoringActive(true)
+    let resumed = await eventually { await monitor.sampleCount == 1 }
+    #expect(resumed)
+
+    await service.setMonitoringActive(false)
+    let pausedCount = await monitor.sampleCount
+    for _ in 0..<100 { await Task.yield() }
+    #expect(await monitor.sampleCount == pausedCount)
+    await service.stop()
+}
+
 private actor FakeCodexRuntimeClient: CodexRuntimeClient {
     let rateLimits: CodexRateLimitUpdate?
     var events: [CodexReadEvent]
@@ -153,6 +178,26 @@ private actor FakeTokenMetricsMonitor: CodexTokenMetricsMonitoring {
 
     func sample(at _: Date) -> TokenMetricsSummary? {
         metrics
+    }
+}
+
+private actor CountingTokenMetricsMonitor: CodexTokenMetricsMonitoring {
+    private(set) var sampleCount = 0
+
+    func sample(at date: Date) -> TokenMetricsSummary? {
+        sampleCount += 1
+        return TokenMetricsSummary(
+            inputTokens: 1,
+            cachedInputTokens: 0,
+            outputTokens: sampleCount,
+            reasoningOutputTokens: 0,
+            totalTokens: sampleCount + 1,
+            lastInputTokens: 1,
+            lastOutputTokens: 1,
+            modelContextWindow: 100,
+            outputTokensPerMinute: nil,
+            updatedAt: date
+        )
     }
 }
 

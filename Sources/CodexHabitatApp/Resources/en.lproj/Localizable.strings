@@ -138,6 +138,11 @@
 "Start %@" = "Start %@";
 "Reset %@" = "Reset %@";
 "API Key" = "API Key";
+"%@/min" = "%@/min";
+"%d diagnostic event" = "%d diagnostic event";
+"%d diagnostic events" = "%d diagnostic events";
+"%d pets, %d packs valid" = "%d pets, %d packs valid";
+"%d resources need attention" = "%d resources need attention";
 "Appearance restore failed" = "Appearance restore failed";
 "Arcade Signal" = "Arcade Signal";
 "Author: %@\nLicense: %@\nSource: %@" = "Author: %@\nLicense: %@\nSource: %@";

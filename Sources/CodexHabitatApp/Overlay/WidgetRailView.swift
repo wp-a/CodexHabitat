@@ -169,13 +169,12 @@ struct WidgetRailView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(resolvedWidgets.enumerated()), id: \.element) { index, id in
-                row(for: id)
-                if index < resolvedWidgets.count - 1 {
-                    Divider()
-                        .overlay(textColor.opacity(0.13))
-                }
+        Group {
+            if Self.requiresScrolling(for: resolvedWidgets) {
+                ScrollView(.vertical) { rows }
+                    .scrollIndicators(.visible)
+            } else {
+                rows
             }
         }
         .padding(.horizontal, 10)
@@ -192,6 +191,22 @@ struct WidgetRailView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text("Habitat widgets"))
+    }
+
+    private var rows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(resolvedWidgets.enumerated()), id: \.element) { index, id in
+                row(for: id)
+                if index < resolvedWidgets.count - 1 {
+                    Divider()
+                        .overlay(textColor.opacity(0.13))
+                }
+            }
+        }
+    }
+
+    static func requiresScrolling(for widgets: [WidgetIdentifier]) -> Bool {
+        widgets.count > 5
     }
 
     private var resolvedWidgets: [WidgetIdentifier] {
@@ -230,7 +245,7 @@ struct WidgetRailView: View {
                 .lineLimit(1)
             Spacer(minLength: 4)
             if showsConnectionHealth {
-                Text(connectionBadgeTitle)
+                Text(L10n.text(connectionBadgeTitle))
                     .font(.system(size: 8, weight: .bold, design: .rounded))
                     .foregroundStyle(connectionColor)
                     .frame(width: 30, alignment: .trailing)
@@ -418,7 +433,7 @@ struct WidgetRailView: View {
 
     private var speedValue: String {
         guard let speed = model.snapshot.tokenMetrics?.outputTokensPerMinute else { return "--" }
-        return "\(Self.compactCount(Int(speed.rounded())))/m"
+        return L10n.format("%@/min", Self.compactCount(Int(speed.rounded())))
     }
 
     private static func compactCount(_ value: Int) -> String {

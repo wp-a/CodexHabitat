@@ -174,7 +174,12 @@ actor ThemeBridgeCoordinator {
 
         let css = try compiler.compile(theme: theme, profile: profile)
         let healthCheck = LayoutHealthCheck(profile: profile)
+        var installedCount = 0
         for target in newTargets {
+            if try await client.isStyleInstalled(on: target) {
+                maintainedTargetIDs.insert(target.id)
+                continue
+            }
             try await client.installStyle(css, on: target)
             let report = healthCheck.evaluate(
                 try await client.healthSnapshot(on: target, check: healthCheck)
@@ -184,8 +189,9 @@ actor ThemeBridgeCoordinator {
                 throw ThemeBridgeCoordinatorError.healthCheckFailed
             }
             maintainedTargetIDs.insert(target.id)
+            installedCount += 1
         }
-        return newTargets.count
+        return installedCount
     }
 
     private func waitForReadySession(
@@ -270,29 +276,96 @@ enum CodexRestartError: Error {
     case normalLaunchFailed
 }
 
+@MainActor
+protocol RunningCodexApplication: AnyObject, Sendable {
+    var bundleURL: URL? { get }
+    var isTerminated: Bool { get }
+    func terminate() -> Bool
+    func forceTerminate() -> Bool
+}
+
+@MainActor
+private final class LiveRunningCodexApplication: RunningCodexApplication, @unchecked Sendable {
+    private let application: NSRunningApplication
+
+    init(_ application: NSRunningApplication) {
+        self.application = application
+    }
+
+    var bundleURL: URL? { application.bundleURL }
+    var isTerminated: Bool { application.isTerminated }
+    func terminate() -> Bool { application.terminate() }
+    func forceTerminate() -> Bool { application.forceTerminate() }
+}
+
 final class LiveCodexApplicationRestarter: CodexApplicationRestarting, @unchecked Sendable {
+    typealias ApplicationProvider = @MainActor @Sendable (String) -> [any RunningCodexApplication]
+    typealias Pause = @Sendable () async throws -> Void
+
+    private let applicationProvider: ApplicationProvider
+    private let pause: Pause
+    private let gracefulAttempts: Int
+    private let forcedAttempts: Int
+
+    init(
+        applicationProvider: @escaping ApplicationProvider = { bundleIdentifier in
+            NSRunningApplication.runningApplications(
+                withBundleIdentifier: bundleIdentifier
+            ).map(LiveRunningCodexApplication.init)
+        },
+        pause: @escaping Pause = {
+            try await Task.sleep(for: .milliseconds(100))
+        },
+        gracefulAttempts: Int = 50,
+        forcedAttempts: Int = 50
+    ) {
+        self.applicationProvider = applicationProvider
+        self.pause = pause
+        self.gracefulAttempts = max(1, gracefulAttempts)
+        self.forcedAttempts = max(1, forcedAttempts)
+    }
+
     func prepareForThemedLaunch(_ bundle: VerifiedCodexBundle) async throws {
         let expectedPath = bundle.bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+        let candidates = await applicationProvider(bundle.bundleIdentifier)
         let applications = await MainActor.run {
-            NSRunningApplication.runningApplications(
-                withBundleIdentifier: bundle.bundleIdentifier
-            ).filter { application in
+            candidates.filter { application in
                 application.bundleURL?.standardizedFileURL.resolvingSymlinksInPath()
                     == expectedPath
             }
         }
         for application in applications {
-            let accepted = await MainActor.run { application.terminate() }
+            _ = await MainActor.run { application.terminate() }
+        }
+        if try await waitForTermination(applications, attempts: gracefulAttempts) {
+            return
+        }
+        let remaining = await MainActor.run {
+            applications.filter { !$0.isTerminated }
+        }
+        for application in remaining {
+            let accepted = await MainActor.run { application.forceTerminate() }
             guard accepted else { throw CodexRestartError.terminationRefused }
         }
-        for _ in 0..<100 {
-            let stillRunning = await MainActor.run {
-                applications.contains { !$0.isTerminated }
-            }
-            if !stillRunning { return }
-            try await Task.sleep(for: .milliseconds(100))
+        if try await waitForTermination(applications, attempts: forcedAttempts) {
+            return
         }
         throw CodexRestartError.terminationTimedOut
+    }
+
+    private func waitForTermination(
+        _ applications: [any RunningCodexApplication],
+        attempts: Int
+    ) async throws -> Bool {
+        for _ in 0..<attempts {
+            if await MainActor.run(body: { applications.allSatisfy(\.isTerminated) }) {
+                return true
+            }
+            try await pause()
+        }
+        return await MainActor.run {
+            applications.allSatisfy(\.isTerminated)
+        }
     }
 
     func launchNormally(bundleURL: URL) throws {

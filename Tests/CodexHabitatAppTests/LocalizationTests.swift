@@ -20,6 +20,10 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     #expect(localization.text("Pomodoro") == "番茄钟")
     #expect(localization.text("Context used") == "上下文用量")
     #expect(localization.text("Output speed") == "输出速度")
+    #expect(localization.format("%d diagnostic events", 3) == "3 条诊断事件")
+    #expect(localization.format("%d pets, %d packs valid", 2, 4) == "2 个宠物、4 个资源包有效")
+    #expect(localization.format("%@/min", "120") == "120/分钟")
+    #expect(localization.text("LIVE") == "实时")
 }
 
 @Test

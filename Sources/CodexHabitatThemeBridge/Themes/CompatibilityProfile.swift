@@ -58,11 +58,8 @@ struct CompatibilityProfileStore {
         guard let url = PackagedResourceLocator.url(
             forResource: "compatibility",
             withExtension: "json",
-            subdirectory: "Resources"
-        ) ?? Bundle.module.url(
-            forResource: "compatibility",
-            withExtension: "json",
-            subdirectory: "Resources"
+            subdirectory: "Resources",
+            packageBundleName: "CodexHabitat_CodexHabitatThemeBridge.bundle"
         ) else {
             throw CompatibilityProfileError.unsupportedSchema
         }

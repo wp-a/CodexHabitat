@@ -14,6 +14,7 @@ public actor SessionTokenMetricsMonitor {
     private let initialTailByteLimit: UInt64
     private let maximumReadBytes: Int
     private let speedWindow: TimeInterval
+    private let threadIDHasher: (@Sendable (String) -> String)?
 
     private var currentFile: URL?
     private var offset: UInt64 = 0
@@ -21,6 +22,8 @@ public actor SessionTokenMetricsMonitor {
     private var discardLeadingPartialLine = false
     private var outputPoints: [OutputPoint] = []
     private var latestMetrics: TokenMetricsSummary?
+    private var preferredThreadIDHash: String?
+    private var preferredFile: URL?
 
     public init(
         sessionsRoot: URL,
@@ -28,7 +31,8 @@ public actor SessionTokenMetricsMonitor {
         fileManager: FileManager = .default,
         initialTailByteLimit: UInt64 = 1_048_576,
         maximumReadBytes: Int = 1_048_576,
-        speedWindow: TimeInterval = 60
+        speedWindow: TimeInterval = 60,
+        threadIDHasher: (@Sendable (String) -> String)? = nil
     ) {
         self.sessionsRoot = sessionsRoot
         self.calendar = calendar
@@ -36,11 +40,13 @@ public actor SessionTokenMetricsMonitor {
         self.initialTailByteLimit = initialTailByteLimit
         self.maximumReadBytes = maximumReadBytes
         self.speedWindow = speedWindow
+        self.threadIDHasher = threadIDHasher
     }
 
     public static func live(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        threadIDHasher: (@Sendable (String) -> String)? = nil
     ) -> SessionTokenMetricsMonitor {
         let codexHome: URL
         if let configured = environment["CODEX_HOME"]?.trimmingCharacters(
@@ -51,12 +57,20 @@ public actor SessionTokenMetricsMonitor {
             codexHome = homeDirectory.appending(path: ".codex", directoryHint: .isDirectory)
         }
         return SessionTokenMetricsMonitor(
-            sessionsRoot: codexHome.appending(path: "sessions", directoryHint: .isDirectory)
+            sessionsRoot: codexHome.appending(path: "sessions", directoryHint: .isDirectory),
+            threadIDHasher: threadIDHasher
         )
     }
 
+    public func selectThread(idHash: String?) {
+        guard preferredThreadIDHash != idHash else { return }
+        preferredThreadIDHash = idHash
+        preferredFile = idHash.flatMap { findSessionFile(matching: $0) }
+        reset(file: nil, fileSize: 0)
+    }
+
     public func sample(at now: Date = Date()) async -> TokenMetricsSummary? {
-        guard let latestFile = latestSessionFile(at: now),
+        guard let latestFile = selectedSessionFile(at: now),
               let fileSize = fileSize(of: latestFile)
         else {
             reset(file: nil, fileSize: 0)
@@ -70,7 +84,50 @@ public actor SessionTokenMetricsMonitor {
         }
 
         readAvailableBytes(from: latestFile, fileSize: fileSize)
+        expireOutputSpeed(at: now)
         return latestMetrics
+    }
+
+    private func selectedSessionFile(at now: Date) -> URL? {
+        guard let preferredThreadIDHash else { return latestSessionFile(at: now) }
+        if let preferredFile, fileSize(of: preferredFile) != nil {
+            return preferredFile
+        }
+        preferredFile = findSessionFile(matching: preferredThreadIDHash)
+        return preferredFile
+    }
+
+    private func findSessionFile(matching idHash: String) -> URL? {
+        guard let threadIDHasher,
+              let enumerator = fileManager.enumerator(
+                at: sessionsRoot,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles, .skipsPackageDescendants]
+              )
+        else {
+            return nil
+        }
+        var inspected = 0
+        for case let file as URL in enumerator {
+            guard inspected < 20_000 else { break }
+            inspected += 1
+            guard file.pathExtension == "jsonl",
+                  let sessionID = Self.sessionID(from: file),
+                  threadIDHasher(sessionID) == idHash,
+                  (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            else {
+                continue
+            }
+            return file
+        }
+        return nil
+    }
+
+    private static func sessionID(from file: URL) -> String? {
+        let name = file.deletingPathExtension().lastPathComponent
+        guard name.count >= 36 else { return nil }
+        let candidate = String(name.suffix(36))
+        return UUID(uuidString: candidate) == nil ? nil : candidate
     }
 
     private func reset(file: URL?, fileSize: UInt64) {
@@ -150,6 +207,13 @@ public actor SessionTokenMetricsMonitor {
         }
         let seconds = last.timestamp.timeIntervalSince(first.timestamp)
         return Double(last.outputTokens - first.outputTokens) / seconds * 60
+    }
+
+    private func expireOutputSpeed(at now: Date) {
+        let cutoff = now.addingTimeInterval(-speedWindow)
+        outputPoints.removeAll { $0.timestamp < cutoff }
+        guard let latestMetrics else { return }
+        self.latestMetrics = latestMetrics.withOutputTokensPerMinute(outputSpeed())
     }
 
     private func latestSessionFile(at date: Date) -> URL? {

@@ -37,3 +37,9 @@ func usefulCodexMetricsFitTheDefaultCompactRail() {
     #expect(enabled == [.status, .tokens, .context, .speed, .usage])
     #expect(enabled.count * 26 + (enabled.count - 1) + 12 <= Int(HabitatOverlayLayout.widgetRailSize.height))
 }
+
+@Test @MainActor
+func enablingEveryOptionalWidgetUsesTheRailOverflowPolicy() {
+    #expect(WidgetRailView.requiresScrolling(for: WidgetIdentifier.allCases))
+    #expect(!WidgetRailView.requiresScrolling(for: HabitatSettings.default.widgetOrder))
+}

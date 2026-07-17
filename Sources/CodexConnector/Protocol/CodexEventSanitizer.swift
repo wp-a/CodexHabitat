@@ -9,6 +9,10 @@ public struct CodexEventSanitizer: Sendable {
         self.salt = salt
     }
 
+    public func hashThreadID(_ threadID: String) -> String {
+        hash(threadID)
+    }
+
     public func sanitize(
         _ message: JSONRPCMessage,
         receivedAt: Date = Date()

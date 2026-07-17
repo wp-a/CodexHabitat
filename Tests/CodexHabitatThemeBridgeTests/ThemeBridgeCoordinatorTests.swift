@@ -151,6 +151,51 @@ func maintainInstallsOnlyNewTargetsAndKeepsExistingTargetsIdempotent() async thr
     #expect(fixture.restarter.normalLaunches.isEmpty)
 }
 
+@Test
+func aNewWatcherDoesNotRegisterAnotherBootstrapOnAnAlreadyStyledTarget() async throws {
+    let fixture = try CoordinatorFixture(initiallyActive: true)
+    defer { fixture.cleanup() }
+    fixture.client.styledTargetIDs = [fixture.target.id]
+
+    let count = try await fixture.coordinator.maintain(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil)
+    )
+
+    #expect(count == 0)
+    #expect(fixture.client.installedTargets.isEmpty)
+}
+
+@Test
+@MainActor
+func liveRestarterForceTerminatesOnlyTheVerifiedAppAfterGracefulTimeout() async throws {
+    let bundleURL = URL(fileURLWithPath: "/Applications/ChatGPT.app", isDirectory: true)
+    let application = StubRunningCodexApplication(
+        bundleURL: bundleURL,
+        acceptsGracefulTermination: false
+    )
+    let restarter = LiveCodexApplicationRestarter(
+        applicationProvider: { _ in [application] },
+        pause: {},
+        gracefulAttempts: 1,
+        forcedAttempts: 1
+    )
+    let bundle = VerifiedCodexBundle(
+        bundleURL: bundleURL,
+        executableURL: bundleURL.appending(path: "Contents/MacOS/ChatGPT"),
+        bundleIdentifier: "com.openai.codex",
+        teamIdentifier: "2DC432GLL2",
+        version: "26.707.91948",
+        architectures: [.current]
+    )
+
+    try await restarter.prepareForThemedLaunch(bundle)
+
+    #expect(application.terminateCount == 1)
+    #expect(application.forceTerminateCount == 1)
+    #expect(application.isTerminated)
+}
+
 private final class CoordinatorFixture {
     let root: URL
     let bundle: VerifiedCodexBundle
@@ -280,6 +325,7 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     let screenshot: Data
     var installedTargets: [CDPTarget] = []
     var removedTargets: [CDPTarget] = []
+    var styledTargetIDs: Set<String> = []
 
     init(targets: [CDPTarget], snapshot: LayoutHealthSnapshot, screenshot: Data) {
         self.targets = targets
@@ -290,6 +336,10 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     func listPageTargets() async throws -> [CDPTarget] { targets }
     func installStyle(_ css: String, on target: CDPTarget) async throws {
         installedTargets.append(target)
+        styledTargetIDs.insert(target.id)
+    }
+    func isStyleInstalled(on target: CDPTarget) async throws -> Bool {
+        styledTargetIDs.contains(target.id)
     }
     func removeStyle(from target: CDPTarget) async throws { removedTargets.append(target) }
     func healthSnapshot(
@@ -312,4 +362,29 @@ private final class StubCodexRestarter: CodexApplicationRestarting, @unchecked S
         prepareCount += 1
     }
     func launchNormally(bundleURL: URL) throws { normalLaunches.append(bundleURL) }
+}
+
+@MainActor
+private final class StubRunningCodexApplication: RunningCodexApplication, @unchecked Sendable {
+    let bundleURL: URL?
+    let acceptsGracefulTermination: Bool
+    var isTerminated = false
+    var terminateCount = 0
+    var forceTerminateCount = 0
+
+    init(bundleURL: URL, acceptsGracefulTermination: Bool) {
+        self.bundleURL = bundleURL
+        self.acceptsGracefulTermination = acceptsGracefulTermination
+    }
+
+    func terminate() -> Bool {
+        terminateCount += 1
+        return acceptsGracefulTermination
+    }
+
+    func forceTerminate() -> Bool {
+        forceTerminateCount += 1
+        isTerminated = true
+        return true
+    }
 }

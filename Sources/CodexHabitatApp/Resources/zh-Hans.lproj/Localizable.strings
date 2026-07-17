@@ -138,6 +138,11 @@
 "Start %@" = "开始%@";
 "Reset %@" = "重置%@";
 "API Key" = "API Key";
+"%@/min" = "%@/分钟";
+"%d diagnostic event" = "%d 条诊断事件";
+"%d diagnostic events" = "%d 条诊断事件";
+"%d pets, %d packs valid" = "%d 个宠物、%d 个资源包有效";
+"%d resources need attention" = "%d 个资源需要处理";
 "Appearance restore failed" = "外观恢复失败";
 "Arcade Signal" = "街机信号";
 "Author: %@\nLicense: %@\nSource: %@" = "作者：%@\n许可证：%@\n来源：%@";

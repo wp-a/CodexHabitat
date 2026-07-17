@@ -1,4 +1,5 @@
 import Foundation
+import HabitatCore
 
 struct HabitatLocalization: Sendable {
     let resolvedLanguage: String
@@ -25,23 +26,23 @@ struct HabitatLocalization: Sendable {
 
     static func catalog(language: String) throws -> [String: String] {
         let resolved = resolveLanguage(language)
-        let fileManager = FileManager.default
-        for root in resourceRoots() {
-            let url = root
-                .appending(path: "\(resolved).lproj", directoryHint: .isDirectory)
-                .appending(path: "Localizable.strings")
-            guard fileManager.isReadableFile(atPath: url.path) else { continue }
-            let data = try Data(contentsOf: url, options: .mappedIfSafe)
-            guard let catalog = try PropertyListSerialization.propertyList(
-                from: data,
-                options: [],
-                format: nil
-            ) as? [String: String] else {
-                throw CocoaError(.propertyListReadCorrupt)
-            }
-            return catalog
+        guard let url = PackagedResourceLocator.url(
+            forResource: "Localizable",
+            withExtension: "strings",
+            subdirectory: "Resources/\(resolved).lproj",
+            packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
+        ) else {
+            throw CocoaError(.fileNoSuchFile)
         }
-        throw CocoaError(.fileNoSuchFile)
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        guard let catalog = try PropertyListSerialization.propertyList(
+            from: data,
+            options: [],
+            format: nil
+        ) as? [String: String] else {
+            throw CocoaError(.propertyListReadCorrupt)
+        }
+        return catalog
     }
 
     static func formatPlaceholders(in value: String) -> [String] {
@@ -62,20 +63,6 @@ struct HabitatLocalization: Sendable {
         return "en"
     }
 
-    private static func resourceRoots() -> [URL] {
-        var roots: [URL] = []
-        if let root = Bundle.main.resourceURL {
-            roots.append(root)
-            roots.append(root.appending(path: "Resources", directoryHint: .isDirectory))
-        }
-        roots.append(
-            URL(fileURLWithPath: #filePath)
-                .deletingLastPathComponent()
-                .deletingLastPathComponent()
-                .appending(path: "Resources", directoryHint: .isDirectory)
-        )
-        return roots
-    }
 }
 
 enum L10n {

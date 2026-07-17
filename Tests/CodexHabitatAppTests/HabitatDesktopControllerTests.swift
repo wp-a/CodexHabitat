@@ -13,6 +13,7 @@ func completedSetupShowsAndHidesTheDesktopHabitat() {
     controller.apply(settings: settings, pets: [], isVisible: true)
 
     #expect(controller.isVisible)
+    #expect(controller.isPetAnimationActive)
     #expect(controller.panelSize == HabitatOverlayLayout.containerSize)
     #expect(controller.isInteractive)
 
@@ -22,6 +23,7 @@ func completedSetupShowsAndHidesTheDesktopHabitat() {
 
     controller.apply(settings: settings, pets: [], isVisible: false)
     #expect(controller.isVisible == false)
+    #expect(!controller.isPetAnimationActive)
 }
 
 @Test @MainActor
@@ -31,6 +33,21 @@ func incompleteSetupNeverShowsTheDesktopHabitat() {
     controller.apply(settings: .default, pets: [], isVisible: true)
 
     #expect(controller.isVisible == false)
+}
+
+@Test @MainActor
+func changingReduceMotionRebuildsTheActivePetDriverImmediately() {
+    let controller = HabitatDesktopController()
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.reduceMotion = .full
+    controller.apply(settings: settings, pets: [], isVisible: true)
+    #expect(controller.currentPetReduceMotion == false)
+
+    settings.reduceMotion = .reduce
+    controller.apply(settings: settings, pets: [], isVisible: true)
+
+    #expect(controller.currentPetReduceMotion == true)
 }
 
 @Test @MainActor

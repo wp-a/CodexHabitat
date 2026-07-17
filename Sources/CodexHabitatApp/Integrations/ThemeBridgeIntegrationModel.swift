@@ -9,6 +9,8 @@ protocol ThemeBridgeCommandExecuting: Sendable {
     func run(arguments: [String]) async throws -> ThemeBridgeCommandResult
     func startWatching(themeID: String) throws
     func stopWatching()
+    func isWatching() -> Bool
+    func confirmWatching() async -> Bool
 }
 
 enum ThemeBridgeIntegrationState: Equatable {
@@ -28,6 +30,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
     static let shared = ThemeBridgeIntegrationModel.live()
 
     private let runner: (any ThemeBridgeCommandExecuting)?
+    private var watchHealthTask: Task<Void, Never>?
 
     var statusText: String {
         switch state {
@@ -100,7 +103,14 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             }
             do {
                 try runner.startWatching(themeID: themeID)
+                guard await runner.confirmWatching() else {
+                    stopWatching()
+                    _ = try? await runner.run(arguments: ["restore"])
+                    state = .failed
+                    return
+                }
                 state = .active
+                startWatchHealthMonitor()
             } catch {
                 _ = try? await runner.run(arguments: ["restore"])
                 state = .failed
@@ -115,7 +125,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             state = .unavailable
             return
         }
-        runner.stopWatching()
+        stopWatching()
         state = .restoring
         do {
             let result = try await runner.run(arguments: ["restore"])
@@ -131,7 +141,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         await restore()
     }
 
-    func resumeWatching(themeID: String) {
+    func resumeWatching(themeID: String) async {
         guard state == .active,
               ["workbench", "night-shift", "arcade-signal", "quiet-garden"]
                 .contains(themeID),
@@ -141,9 +151,43 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         }
         do {
             try runner.startWatching(themeID: themeID)
+            guard await runner.confirmWatching() else {
+                stopWatching()
+                state = .failed
+                return
+            }
+            startWatchHealthMonitor()
         } catch {
             state = .failed
         }
+    }
+
+    private func startWatchHealthMonitor() {
+        watchHealthTask?.cancel()
+        watchHealthTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+                guard let self else { return }
+                self.refreshWatchHealth()
+                guard self.state == .active else { return }
+            }
+        }
+    }
+
+    private func refreshWatchHealth() {
+        guard state == .active, let runner, !runner.isWatching() else { return }
+        stopWatching()
+        state = .failed
+    }
+
+    private func stopWatching() {
+        watchHealthTask?.cancel()
+        watchHealthTask = nil
+        runner?.stopWatching()
     }
 }
 
@@ -229,5 +273,19 @@ private final class ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting, @unche
             process.terminate()
         }
         watchProcess = nil
+    }
+
+    func isWatching() -> Bool {
+        watchProcess?.isRunning == true
+    }
+
+    func confirmWatching() async -> Bool {
+        guard isWatching() else { return false }
+        do {
+            try await Task.sleep(for: .milliseconds(150))
+        } catch {
+            return false
+        }
+        return isWatching()
     }
 }

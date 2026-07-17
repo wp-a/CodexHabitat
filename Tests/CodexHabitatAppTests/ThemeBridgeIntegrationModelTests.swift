@@ -74,6 +74,24 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(runner.invocations == [["verify"], ["status"], ["restore"]])
         #expect(runner.stopWatchingCount == 1)
     }
+
+    @Test
+    func watcherExitCannotLeaveTheBridgeReportedAsActive() async {
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "restored"),
+        ])
+        runner.watchRunning = false
+        let model = ThemeBridgeIntegrationModel(runner: runner)
+
+        await model.enable(themeID: "workbench")
+
+        #expect(model.state == .failed)
+        #expect(runner.invocations == [
+            ["apply", "--authorized", "--theme", "workbench"],
+            ["restore"],
+        ])
+    }
 }
 
 private final class StubThemeBridgeRunner: ThemeBridgeCommandExecuting, @unchecked Sendable {
@@ -81,6 +99,7 @@ private final class StubThemeBridgeRunner: ThemeBridgeCommandExecuting, @uncheck
     var invocations: [[String]] = []
     var watchedThemes: [String] = []
     var stopWatchingCount = 0
+    var watchRunning = true
 
     init(results: [ThemeBridgeCommandResult]) { self.results = results }
 
@@ -95,5 +114,13 @@ private final class StubThemeBridgeRunner: ThemeBridgeCommandExecuting, @uncheck
 
     func stopWatching() {
         stopWatchingCount += 1
+    }
+
+    func isWatching() -> Bool {
+        watchRunning
+    }
+
+    func confirmWatching() async -> Bool {
+        watchRunning
     }
 }

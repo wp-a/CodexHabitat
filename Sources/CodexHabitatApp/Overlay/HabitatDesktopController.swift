@@ -33,10 +33,11 @@ final class HabitatDesktopController: ObservableObject {
     private var renderedWidgets: [WidgetIdentifier] = []
     private var renderedThemeID: String?
     private var renderedScale: Double?
+    private var renderedReduceMotion: Bool?
     private var storedClickThrough = false
     private var storedPositionLocked = false
 
-    private(set) var isVisible = false
+    @Published private(set) var isVisible = false
     var currentThemeID: String? { renderedThemeID }
     var onOpenSettings: (() -> Void)?
 
@@ -45,6 +46,8 @@ final class HabitatDesktopController: ObservableObject {
     var currentPetSnapshot: HabitatSnapshot? { petModel?.snapshot }
     var currentPetRenderMode: PetRenderMode? { renderedPetPresentation?.renderMode }
     var currentPetScale: Double? { renderedPetPresentation?.scale }
+    var currentPetReduceMotion: Bool? { petModel?.reduceMotion }
+    var isPetAnimationActive: Bool { petModel?.isAnimationActive ?? false }
     var currentWidgetSnapshot: HabitatSnapshot { widgetModel.snapshot }
     var panelSize: CGSize {
         overlay?.panel.frame.size ?? HabitatOverlayLayout.containerSize
@@ -77,6 +80,7 @@ final class HabitatDesktopController: ObservableObject {
         let shouldShow = settings.onboardingCompleted && requestedVisibility
         guard shouldShow else {
             endTemporaryMoveMode()
+            petModel?.setAnimationActive(false)
             overlay?.hide()
             isVisible = false
             return
@@ -91,12 +95,14 @@ final class HabitatDesktopController: ObservableObject {
         let theme = themes.first(where: {
             $0.id == settings.selectedThemeID
         }) ?? HabitatThemeDescriptor.builtIn[0]
+        let reduceMotion = resolvedReduceMotion(settings.reduceMotion)
         let needsNewPanel = overlay == nil || renderedScale != scale
         let needsNewContent = needsNewPanel
             || renderedPetID != petAsset?.id
             || renderedPetPresentation != petAsset?.presentation
             || renderedWidgets != settings.widgetOrder
             || renderedThemeID != theme.id
+            || renderedReduceMotion != reduceMotion
         let savedPlacement = needsNewPanel
             ? overlay?.currentPlacement() ?? Self.savedPlacement(from: settings.overlayPositions)
             : nil
@@ -124,7 +130,7 @@ final class HabitatDesktopController: ObservableObject {
             let petModel = HabitatOverlayModel(
                 initialSnapshot: currentSnapshot,
                 availableRows: petAsset?.availableRows ?? Set(0..<9),
-                reduceMotion: resolvedReduceMotion(settings.reduceMotion)
+                reduceMotion: reduceMotion
             )
             self.petModel = petModel
             overlay.setContent(HabitatDesktopView(
@@ -157,9 +163,11 @@ final class HabitatDesktopController: ObservableObject {
         renderedWidgets = settings.widgetOrder
         renderedThemeID = theme.id
         renderedScale = scale
+        renderedReduceMotion = reduceMotion
         storedClickThrough = settings.clickThrough
         storedPositionLocked = settings.positionLocked
         applyInteractionState()
+        petModel?.setAnimationActive(true)
         if !isVisible || needsNewPanel {
             overlay?.show(savedPlacement: savedPlacement ?? overlay?.currentPlacement())
         }

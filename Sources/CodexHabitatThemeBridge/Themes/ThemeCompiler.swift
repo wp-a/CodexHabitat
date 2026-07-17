@@ -75,20 +75,13 @@ extension BridgeTheme {
 
     private static func builtInArtDataURL(id: String) -> String? {
         let subdirectory = "Resources/Themes/\(id)"
-        let sourceRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
         let candidates = [
             PackagedResourceLocator.url(
                 forResource: "preview",
                 withExtension: "png",
-                subdirectory: subdirectory
+                subdirectory: subdirectory,
+                packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
             ),
-            sourceRoot
-                .appending(path: "CodexHabitatApp", directoryHint: .isDirectory)
-                .appending(path: subdirectory, directoryHint: .isDirectory)
-                .appending(path: "preview.png"),
         ].compactMap { $0 }
         for url in candidates {
             guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),
@@ -157,11 +150,8 @@ struct ThemeCompiler {
         guard let url = PackagedResourceLocator.url(
             forResource: "codex-theme-template",
             withExtension: "css",
-            subdirectory: "Resources"
-        ) ?? Bundle.module.url(
-            forResource: "codex-theme-template",
-            withExtension: "css",
-            subdirectory: "Resources"
+            subdirectory: "Resources",
+            packageBundleName: "CodexHabitat_CodexHabitatThemeBridge.bundle"
         ) else {
             throw ThemeCompilationError.unsafeTemplate
         }

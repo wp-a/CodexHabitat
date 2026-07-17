@@ -1,4 +1,5 @@
 import CodexConnector
+import Combine
 import Foundation
 import HabitatCore
 
@@ -15,6 +16,11 @@ extension CodexControlClient: CodexRuntimeClient {}
 
 protocol CodexTokenMetricsMonitoring: Sendable {
     func sample(at date: Date) async -> TokenMetricsSummary?
+    func selectThread(idHash: String?) async
+}
+
+extension CodexTokenMetricsMonitoring {
+    func selectThread(idHash _: String?) async {}
 }
 
 extension SessionTokenMetricsMonitor: CodexTokenMetricsMonitoring {}
@@ -139,6 +145,7 @@ actor HabitatRuntimeService {
     private var metricsTask: Task<Void, Never>?
     private var currentClient: (any CodexRuntimeClient)?
     private var primaryOnline = false
+    private var monitoringActive = true
 
     init(
         state: HabitatState = HabitatState(),
@@ -161,9 +168,21 @@ actor HabitatRuntimeService {
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> HabitatRuntimeService {
         let root = applicationSupportRoot(fileManager: fileManager, environment: environment)
+        let privateRoot = root.appending(path: "Private", directoryHint: .isDirectory)
+        let initialSalt = try? EventHashSaltStore(
+            root: privateRoot,
+            fileManager: fileManager
+        ).loadOrCreate()
+        let threadIDHasher: (@Sendable (String) -> String)?
+        if let initialSalt {
+            let sanitizer = CodexEventSanitizer(salt: initialSalt)
+            threadIDHasher = { sanitizer.hashThreadID($0) }
+        } else {
+            threadIDHasher = nil
+        }
         return HabitatRuntimeService(clientFactory: {
             let salt = try EventHashSaltStore(
-                root: root.appending(path: "Private", directoryHint: .isDirectory),
+                root: privateRoot,
                 fileManager: .default
             ).loadOrCreate()
             return CodexControlClient(
@@ -171,13 +190,18 @@ actor HabitatRuntimeService {
                 sanitizer: CodexEventSanitizer(salt: salt)
             )
         }, fallbackMonitor: .live(environment: environment),
-           metricsMonitor: SessionTokenMetricsMonitor.live(environment: environment))
+           metricsMonitor: SessionTokenMetricsMonitor.live(
+            environment: environment,
+            threadIDHasher: threadIDHasher
+           ))
     }
 
     func start() {
         guard loopTask == nil else { return }
-        startFallbackMonitor()
-        startMetricsMonitor()
+        if monitoringActive {
+            startFallbackMonitor()
+            startMetricsMonitor()
+        }
         loopTask = Task { [weak self] in
             await self?.runLoop()
         }
@@ -209,6 +233,25 @@ actor HabitatRuntimeService {
 
     func snapshots() async -> AsyncStream<HabitatSnapshot> {
         await state.snapshots()
+    }
+
+    func setMonitoringActive(_ active: Bool) async {
+        guard monitoringActive != active else { return }
+        monitoringActive = active
+        if active {
+            guard loopTask != nil else { return }
+            startFallbackMonitor()
+            startMetricsMonitor()
+            return
+        }
+        fallbackTask?.cancel()
+        let fallbackTask = fallbackTask
+        self.fallbackTask = nil
+        metricsTask?.cancel()
+        let metricsTask = metricsTask
+        self.metricsTask = nil
+        await fallbackTask?.value
+        await metricsTask?.value
     }
 
     func currentSnapshot() async -> HabitatSnapshot {
@@ -276,12 +319,14 @@ actor HabitatRuntimeService {
     private func apply(_ action: HabitatRuntimeAction) async {
         switch action {
         case let .activity(activity, threadIDHash, timestamp):
+            await metricsMonitor?.selectThread(idHash: threadIDHash)
             await state.update(
                 activity: activity,
                 threadIDHash: threadIDHash,
                 eventTimestamp: timestamp
             )
         case let .completed(threadIDHash, timestamp):
+            await metricsMonitor?.selectThread(idHash: threadIDHash)
             Task {
                 await state.markCompleted(
                     threadIDHash: threadIDHash,
@@ -392,6 +437,7 @@ actor HabitatRuntimeService {
 final class HabitatRuntimeController {
     private let service: HabitatRuntimeService
     private var snapshotTask: Task<Void, Never>?
+    private var visibilityCancellable: AnyCancellable?
 
     init(service: HabitatRuntimeService) {
         self.service = service
@@ -403,7 +449,13 @@ final class HabitatRuntimeController {
 
     func start(desktopController: HabitatDesktopController) {
         guard snapshotTask == nil else { return }
+        visibilityCancellable = desktopController.$isVisible
+            .removeDuplicates()
+            .sink { [service] isVisible in
+                Task { await service.setMonitoringActive(isVisible) }
+            }
         snapshotTask = Task { [weak desktopController, service] in
+            await service.setMonitoringActive(desktopController?.isVisible ?? false)
             let stream = await service.snapshots()
             await service.start()
             for await snapshot in stream {
@@ -414,6 +466,8 @@ final class HabitatRuntimeController {
     }
 
     func stop() async {
+        visibilityCancellable?.cancel()
+        visibilityCancellable = nil
         snapshotTask?.cancel()
         snapshotTask = nil
         await service.stop()

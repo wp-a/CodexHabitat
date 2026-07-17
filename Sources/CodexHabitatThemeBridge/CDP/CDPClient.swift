@@ -70,6 +70,16 @@ actor CDPClient {
         )
     }
 
+    func isStyleInstalled(on target: CDPTarget) async throws -> Bool {
+        _ = try validator.validate(target)
+        let value = try await evaluate(
+            "document.documentElement.getAttribute(\"data-codex-habitat-theme\") === \"1\"",
+            on: target
+        )
+        guard let installed = value as? Bool else { throw CDPClientError.invalidResult }
+        return installed
+    }
+
     private static func styleInstallerExpression(
         css: String,
         reportsResult: Bool
@@ -205,6 +215,7 @@ actor CDPClient {
 protocol CDPControlling: Sendable {
     func listPageTargets() async throws -> [CDPTarget]
     func installStyle(_ css: String, on target: CDPTarget) async throws
+    func isStyleInstalled(on target: CDPTarget) async throws -> Bool
     func removeStyle(from target: CDPTarget) async throws
     func healthSnapshot(
         on target: CDPTarget,

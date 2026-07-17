@@ -16,7 +16,8 @@ func resourceCheckExportAndClearUseStableRedactedStates() async throws {
     let model = DiagnosticsViewModel(
         root: appRoot,
         petRoot: petRoot,
-        appVersion: "0.1.0-dev"
+        appVersion: "0.1.0-dev",
+        localization: HabitatLocalization(localeIdentifier: "en")
     )
 
     await model.validateResources()

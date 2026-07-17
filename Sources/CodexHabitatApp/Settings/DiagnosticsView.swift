@@ -154,12 +154,19 @@ final class DiagnosticsViewModel: ObservableObject {
     private let petRoot: URL
     private let store: DiagnosticStore
     private let appVersion: String?
+    private let localization: HabitatLocalization
 
-    init(root: URL, petRoot: URL, appVersion: String?) {
+    init(
+        root: URL,
+        petRoot: URL,
+        appVersion: String?,
+        localization: HabitatLocalization = HabitatLocalization()
+    ) {
         self.root = root
         self.petRoot = petRoot
         store = DiagnosticStore(root: AppDirectories(root: root).diagnostics)
         self.appVersion = appVersion
+        self.localization = localization
     }
 
     static func live(
@@ -195,7 +202,9 @@ final class DiagnosticsViewModel: ObservableObject {
     func refreshEventCount() async {
         do {
             let count = try await store.events().count
-            localDataStatus = count == 1 ? "1 diagnostic event" : "\(count) diagnostic events"
+            localDataStatus = count == 1
+                ? localization.format("%d diagnostic event", count)
+                : localization.format("%d diagnostic events", count)
             localDataSucceeded = true
         } catch {
             localDataStatus = "Diagnostics unavailable"
@@ -247,10 +256,14 @@ final class DiagnosticsViewModel: ObservableObject {
             return (pets.count, invalid, packages.count)
         }.value
         if result.1 == 0 {
-            resourceStatus = "\(result.0) pets, \(result.2) packs valid"
+            resourceStatus = localization.format(
+                "%d pets, %d packs valid",
+                result.0,
+                result.2
+            )
             try? await record(.resourceLibrary, .resourcesValidated)
         } else {
-            resourceStatus = "\(result.1) resources need attention"
+            resourceStatus = localization.format("%d resources need attention", result.1)
             try? await record(.resourceLibrary, .resourcesRejected)
         }
     }

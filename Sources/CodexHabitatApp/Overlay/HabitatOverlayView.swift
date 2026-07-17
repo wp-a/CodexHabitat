@@ -7,6 +7,7 @@ import SwiftUI
 @MainActor
 final class HabitatOverlayModel: ObservableObject {
     @Published private(set) var snapshot: HabitatSnapshot
+    @Published private(set) var isAnimationActive = true
     let clock: any AnimationClock
     let availableRows: Set<Int>
     let overlaySize = CGSize(width: 160, height: 180)
@@ -26,6 +27,10 @@ final class HabitatOverlayModel: ObservableObject {
 
     func apply(_ snapshot: HabitatSnapshot) {
         self.snapshot = snapshot
+    }
+
+    func setAnimationActive(_ active: Bool) {
+        isAnimationActive = active
     }
 }
 
