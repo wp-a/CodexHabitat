@@ -214,8 +214,18 @@ struct WidgetRailView: View {
     }
 
     static func requiresScrolling(for widgets: [WidgetIdentifier]) -> Bool {
-        widgets.count > 5
+        contentHeight(for: widgets) > HabitatOverlayLayout.widgetRailSize.height
     }
+
+    static func contentHeight(for widgets: [WidgetIdentifier]) -> CGFloat {
+        guard !widgets.isEmpty else { return 12 }
+        let rows = widgets.reduce(CGFloat.zero) { height, widget in
+            height + (widget == .pomodoro ? 44 : compactRowHeight)
+        }
+        return rows + CGFloat(widgets.count - 1) + 12
+    }
+
+    fileprivate static let compactRowHeight: CGFloat = 23
 
     private var resolvedWidgets: [WidgetIdentifier] {
         HabitatWidgetLayoutOrder.resolve(
@@ -623,6 +633,6 @@ private struct WidgetRow<Content: View>: View {
                 .frame(width: 18)
             content
         }
-        .frame(height: 26)
+        .frame(height: WidgetRailView.compactRowHeight)
     }
 }

@@ -17,7 +17,7 @@ enum OverlayPreview {
 
 @MainActor
 private final class OverlayPreviewCoordinator: NSObject {
-    private let overlay = OverlayController(panelSize: HabitatOverlayLayout.containerSize)
+    private let overlay = OverlayController(panelSize: HabitatOverlayLayout.expandedSize)
     private let presentation = OverlayPreviewPresentation()
     private let widgetModel = WidgetRailModel(snapshot: HabitatSnapshot(
         activity: .working,
@@ -54,6 +54,7 @@ private final class OverlayPreviewCoordinator: NSObject {
             theme: theme
         ))
         overlay.setInteractive(true)
+        overlay.setDragFrame(HabitatOverlayLayout(isWidgetRailExpanded: true).petFrame)
         overlay.show()
         installStatusItem()
         NSApplication.shared.run()
@@ -101,6 +102,11 @@ private final class OverlayPreviewCoordinator: NSObject {
 
     @objc private func toggleWidgets() {
         presentation.isWidgetRailExpanded.toggle()
+        let layout = HabitatOverlayLayout(
+            isWidgetRailExpanded: presentation.isWidgetRailExpanded
+        )
+        overlay.resize(to: layout.containerSize, preservingRightEdge: true)
+        overlay.setDragFrame(layout.petFrame)
         widgetItem?.title = L10n.text(
             presentation.isWidgetRailExpanded ? "Collapse Widgets" : "Expand Widgets"
         )
@@ -147,7 +153,10 @@ private struct OverlayPreviewView: View {
         ZStack(alignment: .topLeading) {
             if presentation.isWidgetRailExpanded {
                 WidgetRailView(model: widgetModel, theme: theme)
-                    .offset(x: 4, y: 4)
+                    .offset(
+                        x: layout.widgetRailFrame?.minX ?? 0,
+                        y: layout.widgetRailFrame?.minY ?? 0
+                    )
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
 
@@ -156,16 +165,19 @@ private struct OverlayPreviewView: View {
                     width: HabitatOverlayLayout.petSize.width,
                     height: HabitatOverlayLayout.petSize.height
                 )
-                .offset(x: 200)
+                .offset(x: layout.petFrame.minX, y: layout.petFrame.minY)
         }
         .frame(
-            width: HabitatOverlayLayout.containerSize.width,
-            height: HabitatOverlayLayout.containerSize.height,
+            width: layout.containerSize.width,
+            height: layout.containerSize.height,
             alignment: .topLeading
         )
-        .animation(.snappy(duration: 0.22), value: presentation.isWidgetRailExpanded)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text("Codex Habitat overlay preview"))
+    }
+
+    private var layout: HabitatOverlayLayout {
+        HabitatOverlayLayout(isWidgetRailExpanded: presentation.isWidgetRailExpanded)
     }
 
     @ViewBuilder

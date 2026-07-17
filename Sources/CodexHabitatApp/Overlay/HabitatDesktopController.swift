@@ -15,7 +15,14 @@ struct HabitatPetAsset {
 
 @MainActor
 final class HabitatOverlayPresentation: ObservableObject {
-    @Published var isWidgetRailExpanded = true
+    @Published var isWidgetRailExpanded = true {
+        didSet {
+            guard isWidgetRailExpanded != oldValue else { return }
+            onExpansionChange?(isWidgetRailExpanded)
+        }
+    }
+
+    var onExpansionChange: ((Bool) -> Void)?
 }
 
 @MainActor
@@ -50,7 +57,17 @@ final class HabitatDesktopController: ObservableObject {
     var isPetAnimationActive: Bool { petModel?.isAnimationActive ?? false }
     var currentWidgetSnapshot: HabitatSnapshot { widgetModel.snapshot }
     var panelSize: CGSize {
-        overlay?.panel.frame.size ?? HabitatOverlayLayout.containerSize
+        overlay?.panel.frame.size ?? HabitatOverlayLayout(
+            isWidgetRailExpanded: presentation.isWidgetRailExpanded
+        ).containerSize
+    }
+    var panelFrame: CGRect { overlay?.panel.frame ?? .zero }
+    var dragRegionFrame: CGRect { overlay?.dragRegionFrame ?? .zero }
+
+    init() {
+        presentation.onExpansionChange = { [weak self] _ in
+            self?.resizePanelForPresentation()
+        }
     }
 
     func bind(to model: HabitatAppModel) {
@@ -96,6 +113,10 @@ final class HabitatDesktopController: ObservableObject {
             $0.id == settings.selectedThemeID
         }) ?? HabitatThemeDescriptor.builtIn[0]
         let reduceMotion = resolvedReduceMotion(settings.reduceMotion)
+        let layout = HabitatOverlayLayout(
+            isWidgetRailExpanded: presentation.isWidgetRailExpanded
+                && !settings.widgetOrder.isEmpty
+        )
         let needsNewPanel = overlay == nil || renderedScale != scale
         let needsNewContent = needsNewPanel
             || renderedPetID != petAsset?.id
@@ -109,8 +130,8 @@ final class HabitatDesktopController: ObservableObject {
 
         if needsNewPanel {
             overlay?.hide()
-            overlay = OverlayController(panelSize: Self.scaledPanelSize(scale: scale))
-            overlay?.setDragFrame(Self.scaledPetFrame(scale: scale))
+            overlay = OverlayController(panelSize: Self.scaledSize(layout.containerSize, scale: scale))
+            overlay?.setDragFrame(Self.scaledFrame(layout.petFrame, scale: scale))
             overlay?.onPrimaryClick = { [weak presentation] in
                 presentation?.isWidgetRailExpanded.toggle()
             }
@@ -164,6 +185,7 @@ final class HabitatDesktopController: ObservableObject {
         renderedThemeID = theme.id
         renderedScale = scale
         renderedReduceMotion = reduceMotion
+        resizePanelForPresentation()
         storedClickThrough = settings.clickThrough
         storedPositionLocked = settings.positionLocked
         applyInteractionState()
@@ -192,6 +214,10 @@ final class HabitatDesktopController: ObservableObject {
         widgetModel.apply(snapshot)
     }
 
+    func setWidgetRailExpanded(_ expanded: Bool) {
+        presentation.isWidgetRailExpanded = expanded
+    }
+
     private static func asset(
         id: String?,
         pets: [PetLibraryEntry],
@@ -215,17 +241,30 @@ final class HabitatDesktopController: ObservableObject {
         )
     }
 
-    private static func scaledPanelSize(scale: Double) -> CGSize {
+    private static func scaledSize(_ size: CGSize, scale: Double) -> CGSize {
         CGSize(
-            width: HabitatOverlayLayout.containerSize.width * scale,
-            height: HabitatOverlayLayout.containerSize.height * scale
+            width: size.width * scale,
+            height: size.height * scale
         )
     }
 
-    private static func scaledPetFrame(scale: Double) -> CGRect {
-        HabitatOverlayLayout(isWidgetRailExpanded: true).petFrame.applying(
+    private static func scaledFrame(_ frame: CGRect, scale: Double) -> CGRect {
+        frame.applying(
             CGAffineTransform(scaleX: scale, y: scale)
         )
+    }
+
+    private func resizePanelForPresentation() {
+        guard let overlay, let scale = renderedScale else { return }
+        let layout = HabitatOverlayLayout(
+            isWidgetRailExpanded: presentation.isWidgetRailExpanded
+                && !renderedWidgets.isEmpty
+        )
+        overlay.resize(
+            to: Self.scaledSize(layout.containerSize, scale: scale),
+            preservingRightEdge: true
+        )
+        overlay.setDragFrame(Self.scaledFrame(layout.petFrame, scale: scale))
     }
 
     private func applyInteractionState() {
@@ -318,16 +357,23 @@ private struct HabitatDesktopView: View {
     var body: some View {
         baseContent
             .frame(
-                width: HabitatOverlayLayout.containerSize.width,
-                height: HabitatOverlayLayout.containerSize.height,
+                width: layout.containerSize.width,
+                height: layout.containerSize.height,
                 alignment: .topLeading
             )
             .scaleEffect(scale, anchor: .topLeading)
             .frame(
-                width: HabitatOverlayLayout.containerSize.width * scale,
-                height: HabitatOverlayLayout.containerSize.height * scale,
+                width: layout.containerSize.width * scale,
+                height: layout.containerSize.height * scale,
                 alignment: .topLeading
             )
+    }
+
+    private var layout: HabitatOverlayLayout {
+        HabitatOverlayLayout(
+            isWidgetRailExpanded: presentation.isWidgetRailExpanded
+                && !enabledWidgets.isEmpty
+        )
     }
 
     private var baseContent: some View {
@@ -338,7 +384,10 @@ private struct HabitatDesktopView: View {
                     enabledWidgets: enabledWidgets,
                     theme: theme
                 )
-                    .offset(x: 4, y: 4)
+                    .offset(
+                        x: layout.widgetRailFrame?.minX ?? 0,
+                        y: layout.widgetRailFrame?.minY ?? 0
+                    )
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
 
@@ -387,9 +436,8 @@ private struct HabitatDesktopView: View {
                     presentation.isWidgetRailExpanded.toggle()
                 }
                 .accessibilityIdentifier("overlay.pet.toggle-widgets")
-                .offset(x: 200)
+                .offset(x: layout.petFrame.minX, y: layout.petFrame.minY)
         }
-        .animation(.snappy(duration: 0.22), value: presentation.isWidgetRailExpanded)
     }
 
     @ViewBuilder

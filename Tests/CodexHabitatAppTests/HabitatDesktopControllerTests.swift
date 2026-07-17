@@ -14,7 +14,7 @@ func completedSetupShowsAndHidesTheDesktopHabitat() {
 
     #expect(controller.isVisible)
     #expect(controller.isPetAnimationActive)
-    #expect(controller.panelSize == HabitatOverlayLayout.containerSize)
+    #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
     #expect(controller.isInteractive)
 
     settings.clickThrough = true
@@ -24,6 +24,33 @@ func completedSetupShowsAndHidesTheDesktopHabitat() {
     controller.apply(settings: settings, pets: [], isVisible: false)
     #expect(controller.isVisible == false)
     #expect(!controller.isPetAnimationActive)
+}
+
+@Test @MainActor
+func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
+    let controller = HabitatDesktopController()
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    controller.apply(settings: settings, pets: [], isVisible: true)
+    let rightEdge = controller.panelFrame.maxX
+
+    controller.setWidgetRailExpanded(false)
+
+    #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
+    #expect(controller.panelFrame.maxX == rightEdge)
+    #expect(controller.dragRegionFrame == CGRect(
+        origin: .zero,
+        size: HabitatOverlayLayout.petSize
+    ))
+
+    controller.setWidgetRailExpanded(true)
+
+    #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
+    #expect(controller.panelFrame.maxX == rightEdge)
+    #expect(controller.dragRegionFrame == CGRect(
+        origin: CGPoint(x: 188, y: 0),
+        size: HabitatOverlayLayout.petSize
+    ))
 }
 
 @Test @MainActor

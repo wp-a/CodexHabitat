@@ -35,7 +35,7 @@ enum PetPreview {
 
 @MainActor
 private final class PetPreviewCoordinator: NSObject {
-    private let overlay = OverlayController(panelSize: CGSize(width: 160, height: 180))
+    private let overlay = OverlayController(panelSize: HabitatOverlayLayout.collapsedSize)
     private let model: HabitatOverlayModel
     private let renderer: SpriteSheetRenderer
     private var statusItem: NSStatusItem?

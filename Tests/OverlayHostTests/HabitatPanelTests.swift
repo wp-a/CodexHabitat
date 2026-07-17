@@ -52,3 +52,25 @@ func dragRegionCanCoverTheCompletePetFrame() {
 
     #expect(controller.dragRegionFrame == petFrame)
 }
+
+@Test @MainActor
+func boundedPanelResizePreservesTheRightEdgeAndUpdatesTheContentGeometry() throws {
+    let controller = OverlayController(panelSize: CGSize(width: 324, height: 144))
+    controller.panel.setFrameOrigin(CGPoint(x: 400, y: 220))
+    let rightEdge = controller.panel.frame.maxX
+
+    controller.resize(to: CGSize(width: 136, height: 144), preservingRightEdge: true)
+
+    #expect(controller.panel.frame.size == CGSize(width: 136, height: 144))
+    #expect(controller.panel.frame.maxX == rightEdge)
+    #expect(try #require(controller.panel.contentView).bounds.size == CGSize(width: 136, height: 144))
+    controller.setDragFrame(CGRect(origin: .zero, size: CGSize(width: 136, height: 144)))
+    #expect(controller.dragRegionFrame == CGRect(x: 0, y: 0, width: 136, height: 144))
+    controller.setDragFrame(CGRect(x: 500, y: 500, width: 20, height: 20))
+    #expect(controller.dragRegionFrame == .zero)
+
+    controller.resize(to: CGSize(width: 1, height: 9_999), preservingRightEdge: true)
+    #expect(controller.panel.frame.size == CGSize(width: 64, height: 2_048))
+    #expect(controller.panel.frame.maxX == rightEdge)
+    controller.resize(to: CGSize(width: 136, height: 144), preservingRightEdge: true)
+}

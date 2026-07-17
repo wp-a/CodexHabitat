@@ -17,7 +17,7 @@ public final class OverlayController: NSObject {
 
     public var dragRegionFrame: CGRect { dragRegion.frame }
 
-    private let panelSize: CGSize
+    private var panelSize: CGSize
     private let snapper: EdgeSnapper
     private let hostingView: NSHostingView<AnyView>
     private let dragRegion = OverlayDragRegionView()
@@ -94,7 +94,42 @@ public final class OverlayController: NSObject {
 
     public func setDragFrame(_ frame: CGRect) {
         let panelBounds = CGRect(origin: .zero, size: panelSize)
-        dragRegion.frame = frame.standardized.intersection(panelBounds)
+        let clippedFrame = frame.standardized.intersection(panelBounds)
+        dragRegion.frame = clippedFrame.isNull ? .zero : clippedFrame
+    }
+
+    public func resize(to requestedSize: CGSize, preservingRightEdge: Bool = true) {
+        let nextSize = Self.boundedSize(requestedSize)
+        guard nextSize != panelSize else { return }
+
+        let oldFrame = panel.frame
+        let activeDisplay = display(for: panel.screen)
+            ?? display(containingPanelAt: oldFrame.origin)
+        var origin = oldFrame.origin
+        if preservingRightEdge {
+            origin.x = oldFrame.maxX - nextSize.width
+        }
+        panelSize = nextSize
+        if let activeDisplay {
+            origin = activeDisplay.clampedOrigin(origin, panelSize: nextSize)
+        }
+        panel.setFrame(CGRect(origin: origin, size: nextSize), display: true)
+        let clippedDragFrame = dragRegion.frame.intersection(
+            CGRect(origin: .zero, size: nextSize)
+        )
+        dragRegion.frame = clippedDragFrame.isNull ? .zero : clippedDragFrame
+
+        guard let activeDisplay else { return }
+        savedPlacement = SavedOverlayPlacement(
+            displayID: activeDisplay.id,
+            relativePosition: activeDisplay.relativePosition(
+                for: origin,
+                panelSize: nextSize
+            )
+        )
+        if let savedPlacement {
+            onPlacementChange?(savedPlacement)
+        }
     }
 
     public func hide() {
@@ -107,6 +142,7 @@ public final class OverlayController: NSObject {
 
     private func configureContentView() {
         let container = NSView(frame: NSRect(origin: .zero, size: panelSize))
+        container.autoresizingMask = [.width, .height]
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor.clear.cgColor
         hostingView.translatesAutoresizingMaskIntoConstraints = false
@@ -211,6 +247,15 @@ public final class OverlayController: NSObject {
             return nil
         }
         return number.stringValue
+    }
+
+    private static func boundedSize(_ requested: CGSize) -> CGSize {
+        let width = requested.width.isFinite ? requested.width : 64
+        let height = requested.height.isFinite ? requested.height : 64
+        return CGSize(
+            width: min(max(width, 64), 2_048),
+            height: min(max(height, 64), 2_048)
+        )
     }
 }
 

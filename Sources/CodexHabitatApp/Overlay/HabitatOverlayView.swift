@@ -10,7 +10,7 @@ final class HabitatOverlayModel: ObservableObject {
     @Published private(set) var isAnimationActive = true
     let clock: any AnimationClock
     let availableRows: Set<Int>
-    let overlaySize = CGSize(width: 160, height: 180)
+    let overlaySize = CGSize(width: 136, height: 144)
     let reduceMotion: Bool
 
     init(

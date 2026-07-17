@@ -1,13 +1,16 @@
 import CoreGraphics
 
 struct HabitatOverlayLayout: Equatable {
-    static let containerSize = CGSize(width: 360, height: 180)
-    static let petSize = CGSize(width: 160, height: 180)
-    static let widgetRailSize = CGSize(width: 184, height: 172)
+    static let collapsedSize = CGSize(width: 136, height: 144)
+    static let expandedSize = CGSize(width: 324, height: 144)
+    static let petSize = CGSize(width: 136, height: 144)
+    static let widgetRailSize = CGSize(width: 176, height: 136)
 
     let isWidgetRailExpanded: Bool
 
-    var containerSize: CGSize { Self.containerSize }
+    var containerSize: CGSize {
+        isWidgetRailExpanded ? Self.expandedSize : Self.collapsedSize
+    }
 
     var petFrame: CGRect {
         CGRect(
