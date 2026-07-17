@@ -8,38 +8,17 @@ struct PetView: View {
     let pixelArtHint: Bool
 
     var body: some View {
-        Group {
-            if let interval = PetRefreshPolicy.interval(
-                activity: model.snapshot.activity,
-                reduceMotion: model.reduceMotion
-            ) {
-                TimelineView(.periodic(from: .now, by: interval)) { _ in
-                    frameView(model.currentFrame())
-                }
-            } else {
-                frameView(model.currentFrame())
-            }
-        }
+        PetSpriteView(
+            activity: model.snapshot.activity,
+            renderer: renderer,
+            renderMode: renderMode,
+            pixelArtHint: pixelArtHint,
+            clock: model.clock,
+            availableRows: model.availableRows,
+            reduceMotion: model.reduceMotion
+        )
         .frame(width: model.overlaySize.width, height: model.overlaySize.height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Codex Habitat pet")
-    }
-
-    @ViewBuilder
-    private func frameView(_ frame: PetFrame) -> some View {
-        if let image = renderer.frame(frame) {
-            Image(decorative: image, scale: 1, orientation: .up)
-                .resizable()
-                .interpolation(interpolation)
-                .aspectRatio(contentMode: .fit)
-        } else {
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 38, weight: .medium))
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var interpolation: Image.Interpolation {
-        renderMode.resolved(pixelArtHint: pixelArtHint) == .pixelated ? .none : .high
     }
 }

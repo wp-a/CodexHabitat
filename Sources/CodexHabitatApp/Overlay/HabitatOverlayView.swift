@@ -7,7 +7,8 @@ import SwiftUI
 @MainActor
 final class HabitatOverlayModel: ObservableObject {
     @Published private(set) var snapshot: HabitatSnapshot
-    private var animator: PetAnimator
+    let clock: any AnimationClock
+    let availableRows: Set<Int>
     let overlaySize = CGSize(width: 160, height: 180)
     let reduceMotion: Bool
 
@@ -18,22 +19,13 @@ final class HabitatOverlayModel: ObservableObject {
         reduceMotion: Bool = false
     ) {
         snapshot = initialSnapshot
-        animator = PetAnimator(
-            clock: clock,
-            initialActivity: initialSnapshot.activity,
-            availableRows: availableRows,
-            reduceMotion: reduceMotion
-        )
+        self.clock = clock
+        self.availableRows = availableRows
         self.reduceMotion = reduceMotion
     }
 
     func apply(_ snapshot: HabitatSnapshot) {
         self.snapshot = snapshot
-        _ = animator.update(activity: snapshot.activity)
-    }
-
-    func currentFrame() -> PetFrame {
-        animator.currentFrame()
     }
 }
 
