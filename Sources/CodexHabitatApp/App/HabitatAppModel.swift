@@ -135,13 +135,19 @@ final class HabitatAppModel: ObservableObject {
 
     private let settingsStore: SettingsStore
     private let petRoot: URL
+    private let resourceLibraryRoot: URL?
     private var saveTask: Task<Void, Never>?
 
     var requiresOnboarding: Bool { !settings.onboardingCompleted }
 
-    init(settingsStore: SettingsStore, petRoot: URL) {
+    init(
+        settingsStore: SettingsStore,
+        petRoot: URL,
+        resourceLibraryRoot: URL? = nil
+    ) {
         self.settingsStore = settingsStore
         self.petRoot = petRoot
+        self.resourceLibraryRoot = resourceLibraryRoot
     }
 
     static func live(
@@ -162,7 +168,8 @@ final class HabitatAppModel: ObservableObject {
         }
         return HabitatAppModel(
             settingsStore: SettingsStore(root: root),
-            petRoot: PetLibrary.petRoot()
+            petRoot: PetLibrary.petRoot(),
+            resourceLibraryRoot: root.appending(path: "Library", directoryHint: .isDirectory)
         )
     }
 
@@ -175,8 +182,7 @@ final class HabitatAppModel: ObservableObject {
             errorMessage = "Settings could not be loaded. Defaults are active."
         }
 
-        validPets = ((try? PetLibrary(root: petRoot).discover()) ?? [])
-            .filter { $0.status == .valid }
+        validPets = discoverValidPets()
         let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
         var repairedSettings = normalized(settings)
         if repairedSettings.selectedPetID.map(validPetIDs.contains) != true {
@@ -221,8 +227,7 @@ final class HabitatAppModel: ObservableObject {
     }
 
     func refreshPets() {
-        validPets = ((try? PetLibrary(root: petRoot).discover()) ?? [])
-            .filter { $0.status == .valid }
+        validPets = discoverValidPets()
         let validIDs = Set(validPets.compactMap(\.manifest?.id))
         if settings.selectedPetID.map(validIDs.contains) != true {
             updateSettings { $0.selectedPetID = validPets.first?.manifest?.id }
@@ -315,6 +320,41 @@ final class HabitatAppModel: ObservableObject {
             knownWidgets.contains($0) && seen.insert($0).inserted
         }
         result.scale = min(max(result.scale, 0.75), 1.5)
+        return result
+    }
+
+    private func discoverValidPets() -> [PetLibraryEntry] {
+        let local = ((try? PetLibrary(root: petRoot).discover()) ?? [])
+            .filter { $0.status == .valid }
+        var result: [PetLibraryEntry] = []
+        var identifiers: Set<String> = []
+        for entry in local {
+            guard let id = entry.manifest?.id, identifiers.insert(id).inserted else { continue }
+            result.append(entry)
+        }
+
+        guard let resourceLibraryRoot else { return result }
+        let packages = InstalledPackageLibrary(
+            root: resourceLibraryRoot,
+            runtimeVersion: "1.0.0"
+        ).currentPackages()
+        let validator = PetValidator()
+        for package in packages {
+            for adapter in package.manifest.pets {
+                let directory = package.url.appending(
+                    path: adapter.path,
+                    directoryHint: .isDirectory
+                )
+                let entry = validator.validate(directory: directory)
+                guard entry.status == .valid,
+                      entry.manifest?.id == adapter.id,
+                      identifiers.insert(adapter.id).inserted
+                else {
+                    continue
+                }
+                result.append(entry)
+            }
+        }
         return result
     }
 }

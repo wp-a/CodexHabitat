@@ -222,7 +222,7 @@ public struct ManifestValidator: Sendable {
     }
 }
 
-private struct SemanticVersion: Comparable, Sendable {
+struct SemanticVersion: Comparable, Sendable {
     let major: Int
     let minor: Int
     let patch: Int

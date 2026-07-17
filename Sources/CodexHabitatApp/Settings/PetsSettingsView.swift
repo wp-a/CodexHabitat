@@ -2,14 +2,47 @@ import PetRuntime
 import SwiftUI
 
 struct PetsSettingsView: View {
+    private enum Source: String, CaseIterable, Identifiable {
+        case local = "Installed"
+        case petdex = "Petdex"
+
+        var id: String { rawValue }
+    }
+
     @ObservedObject var model: HabitatAppModel
+    @StateObject private var marketplaceModel = PetMarketplaceModel.live()
+    @State private var source = Source.local
     private let columns = [GridItem(.adaptive(minimum: 142, maximum: 180), spacing: 12)]
 
     var body: some View {
         SettingsPage(
             "Pets",
-            subtitle: "Validated local companions discovered from Codex"
+            subtitle: "Use validated local companions or optionally browse Petdex"
         ) {
+            Picker("Pet source", selection: $source) {
+                ForEach(Source.allCases) { source in
+                    Text(source.rawValue).tag(source)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("pets.source")
+
+            if source == .local {
+                localPets
+            } else {
+                PetMarketplaceView(model: marketplaceModel)
+            }
+        }
+        .onChange(of: source) { _, newValue in
+            if newValue == .local {
+                model.refreshPets()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var localPets: some View {
+        VStack(alignment: .leading, spacing: 18) {
             HStack {
                 Text("\(model.validPets.count) available")
                     .foregroundStyle(.secondary)

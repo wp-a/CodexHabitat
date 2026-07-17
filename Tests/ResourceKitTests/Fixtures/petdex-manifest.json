@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-07-16T13:26:04.978Z",
+  "total": 2,
+  "pets": [
+    {
+      "slug": "codie",
+      "displayName": "Codie",
+      "kind": "original",
+      "submittedBy": "Codex Habitat",
+      "spritesheetUrl": "https://assets.petdex.dev/pets/codie/sprite.webp",
+      "petJsonUrl": "https://assets.petdex.dev/pets/codie/petjson.json",
+      "zipUrl": "https://assets.petdex.dev/pets/codie/codie.habitat.zip",
+      "sourceUrl": "https://github.com/example/codie",
+      "packageSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "contentId": "studio.codex-habitat.codie",
+      "license": {
+        "spdx": "MIT",
+        "url": "https://github.com/example/codie/blob/main/LICENSE"
+      }
+    },
+    {
+      "slug": "legacy-pet",
+      "displayName": "Legacy Pet",
+      "kind": "character",
+      "submittedBy": "Community Artist",
+      "spritesheetUrl": "https://assets.petdex.dev/pets/legacy-pet/sprite.webp",
+      "petJsonUrl": "https://assets.petdex.dev/pets/legacy-pet/petjson.json",
+      "zipUrl": "https://assets.petdex.dev/pets/legacy-pet/zip.zip"
+    }
+  ]
+}

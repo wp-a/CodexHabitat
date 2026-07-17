@@ -23,6 +23,7 @@ public enum PackageInstallationError: Error, Equatable, Sendable {
     case imageDimensionsExceeded(String)
     case checksumMismatch(String)
     case unsafeExtractionPath(String)
+    case contentIDMismatch(expected: String, actual: String)
 }
 
 public struct PackageInstaller {
@@ -46,7 +47,8 @@ public struct PackageInstaller {
 
     public func install(
         _ archiveURL: URL,
-        replacing: Bool = false
+        replacing: Bool = false,
+        expectedID: String? = nil
     ) throws -> InstalledPackage {
         try prepareLibraryRoot()
         let transactionURL = libraryRoot.appending(
@@ -75,6 +77,12 @@ public struct PackageInstaller {
         )
         try extract(inspection, to: stagingURL)
         let manifest = try loadManifest(from: stagingURL)
+        if let expectedID, manifest.id != expectedID {
+            throw PackageInstallationError.contentIDMismatch(
+                expected: expectedID,
+                actual: manifest.id
+            )
+        }
         try validateContents(manifest, inspection: inspection, stagingURL: stagingURL)
         try synchronizeTree(at: stagingURL)
 
