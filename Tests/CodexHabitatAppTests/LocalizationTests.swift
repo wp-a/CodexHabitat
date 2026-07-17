@@ -13,6 +13,11 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     #expect(localization.text("Widgets") == "组件")
     #expect(localization.text("Apply Selected Theme to Codex") == "将所选主题应用到 Codex")
     #expect(localization.text("Tokens") == "Token 用量")
+    #expect(localization.text("Status") == "状态")
+    #expect(localization.text("Context") == "上下文")
+    #expect(localization.text("Speed") == "速度")
+    #expect(localization.text("Clock") == "时钟")
+    #expect(localization.text("Pomodoro") == "番茄钟")
     #expect(localization.text("Context used") == "上下文用量")
     #expect(localization.text("Output speed") == "输出速度")
 }

@@ -251,3 +251,8 @@
 "Open source for %@" = "打开 %@ 的来源";
 "Quit Preview" = "退出预览";
 "Remove %@" = "移除 %@";
+"Status" = "状态";
+"Context" = "上下文";
+"Speed" = "速度";
+"Clock" = "时钟";
+"Pomodoro" = "番茄钟";
