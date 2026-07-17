@@ -4,9 +4,12 @@ import SwiftUI
 
 @MainActor
 private enum HabitatAppEnvironment {
+    static let visualQAOptions = HabitatVisualQALaunchOptions.current
     static let model = HabitatAppModel.live()
     static let settingsWindowController = HabitatSettingsWindowController()
-    static let desktopController = HabitatDesktopController()
+    static let desktopController = HabitatDesktopController(
+        isWidgetRailExpanded: !visualQAOptions.collapsesOverlay
+    )
     static let runtimeController = HabitatRuntimeController.live()
     static let updaterController = HabitatUpdaterController()
 }

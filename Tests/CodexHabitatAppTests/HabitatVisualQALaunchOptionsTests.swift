@@ -7,6 +7,7 @@ func visualQALaunchOptionsRequireAnExplicitGate() {
         "CodexHabitatApp",
         "--visual-qa-theme-filter", "anime",
         "--visual-qa-theme-studio",
+        "--visual-qa-overlay-collapsed",
         "--visual-qa-settings-width", "1040",
     ])
 
@@ -19,11 +20,13 @@ func visualQALaunchOptionsParseOnlyBoundedViewState() {
         "CodexHabitatApp", "--visual-qa",
         "--visual-qa-theme-filter", "nostalgia",
         "--visual-qa-theme-studio",
+        "--visual-qa-overlay-collapsed",
         "--visual-qa-settings-width", "1040",
     ])
 
     #expect(options.themeFilter == .nostalgia)
     #expect(options.opensThemeStudio)
+    #expect(options.collapsesOverlay)
     #expect(options.settingsWidth == 1040)
 
     let invalid = HabitatVisualQALaunchOptions(arguments: [
@@ -33,5 +36,6 @@ func visualQALaunchOptionsParseOnlyBoundedViewState() {
     ])
     #expect(invalid.themeFilter == .all)
     #expect(!invalid.opensThemeStudio)
+    #expect(!invalid.collapsesOverlay)
     #expect(invalid.settingsWidth == 1_200)
 }

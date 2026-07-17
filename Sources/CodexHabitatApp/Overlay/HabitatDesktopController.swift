@@ -64,7 +64,8 @@ final class HabitatDesktopController: ObservableObject {
     var panelFrame: CGRect { overlay?.panel.frame ?? .zero }
     var dragRegionFrame: CGRect { overlay?.dragRegionFrame ?? .zero }
 
-    init() {
+    init(isWidgetRailExpanded: Bool = true) {
+        presentation.isWidgetRailExpanded = isWidgetRailExpanded
         presentation.onExpansionChange = { [weak self] _ in
             self?.resizePanelForPresentation()
         }

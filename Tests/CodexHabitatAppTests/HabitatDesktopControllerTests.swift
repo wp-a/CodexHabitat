@@ -57,6 +57,17 @@ func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
 }
 
 @Test @MainActor
+func visualQAInitializerCanStartWithThePhysicalPanelCollapsed() {
+    let controller = HabitatDesktopController(isWidgetRailExpanded: false)
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+
+    controller.apply(settings: settings, pets: [], isVisible: true)
+
+    #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
+}
+
+@Test @MainActor
 func incompleteSetupNeverShowsTheDesktopHabitat() {
     let controller = HabitatDesktopController()
 
