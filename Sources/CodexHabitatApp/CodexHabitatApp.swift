@@ -350,6 +350,7 @@ private struct HabitatMenuTimerControls: View {
 enum CodexHabitatEntryPoint {
     @MainActor
     static func main() async {
+        _ = HabitatVisualQALaunchOptions.current
         if CommandLine.arguments.dropFirst() == ["--version"] {
             let version = Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"

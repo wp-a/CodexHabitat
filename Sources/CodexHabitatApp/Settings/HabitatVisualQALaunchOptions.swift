@@ -13,9 +13,7 @@ struct HabitatVisualQALaunchOptions: Equatable, Sendable {
         settingsWidth: 760
     )
 
-    static var current: HabitatVisualQALaunchOptions {
-        HabitatVisualQALaunchOptions(arguments: CommandLine.arguments)
-    }
+    static let current = HabitatVisualQALaunchOptions(arguments: CommandLine.arguments)
 
     init(arguments: [String]) {
         guard arguments.contains("--visual-qa") else {
