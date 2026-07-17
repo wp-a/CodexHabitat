@@ -63,4 +63,14 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     #expect(installed.map(\.id) == [id])
     #expect(installed.first?.manifest.theme?.background == "background.jpg")
     #expect(!model.isDirty)
+
+    let appModel = HabitatAppModel(
+        settingsStore: SettingsStore(root: root.appending(path: "Settings")),
+        petRoot: root.appending(path: "Pets"),
+        resourceLibraryRoot: library
+    )
+    await appModel.load()
+    appModel.selectTheme(id)
+    #expect(appModel.selectedThemeSupportsCodexBridge)
+    #expect(appModel.codexBridgeThemeIDs.contains(id))
 }

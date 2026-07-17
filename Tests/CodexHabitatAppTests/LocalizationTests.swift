@@ -1,3 +1,4 @@
+import HabitatCore
 import Testing
 @testable import CodexHabitatApp
 
@@ -24,6 +25,22 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     #expect(localization.format("%d pets, %d packs valid", 2, 4) == "2 个宠物、4 个资源包有效")
     #expect(localization.format("%@/min", "120") == "120/分钟")
     #expect(localization.text("LIVE") == "实时")
+
+    for definition in BuiltInThemeCatalog.all {
+        #expect(localization.text(definition.name) != definition.name)
+        #expect(localization.text(definition.detail) != definition.detail)
+    }
+    for key in [
+        "All", "Nostalgia", "Chat", "Anime", "Games", "Cozy", "Classic", "Custom",
+        "Search themes", "Create Theme", "Theme Studio", "Save Locally",
+        "Choose a local background image.",
+        "You are responsible for having permission to use and share the selected image.",
+    ] {
+        #expect(localization.text(key) != key)
+    }
+    for category in HabitatThemeCategory.allCases {
+        #expect(localization.text(category.localizationKey) != category.localizationKey)
+    }
 }
 
 @Test

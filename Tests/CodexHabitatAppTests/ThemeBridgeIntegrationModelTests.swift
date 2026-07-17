@@ -1,4 +1,5 @@
 import Foundation
+import HabitatCore
 import Testing
 @testable import CodexHabitatApp
 
@@ -40,6 +41,35 @@ struct ThemeBridgeIntegrationModelTests {
             "apply", "--authorized", "--theme", "night-shift",
         ]])
         #expect(runner.watchedThemes == ["night-shift"])
+    }
+
+    @Test
+    func allBuiltInsAndOnlyExplicitlyValidatedCustomThemesCanReachTheHelper() async {
+        for themeID in BuiltInThemeCatalog.all.map(\.id) {
+            let runner = StubThemeBridgeRunner(results: [
+                ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
+            ])
+            let model = ThemeBridgeIntegrationModel(runner: runner)
+            await model.enable(themeID: themeID)
+            #expect(model.state == .active)
+        }
+
+        let customID = "local.theme.bridge-test"
+        let rejectedRunner = StubThemeBridgeRunner(results: [])
+        let rejected = ThemeBridgeIntegrationModel(runner: rejectedRunner)
+        await rejected.enable(themeID: customID)
+        #expect(rejected.state == .failed)
+        #expect(rejectedRunner.invocations.isEmpty)
+
+        let approvedRunner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
+        ])
+        let approved = ThemeBridgeIntegrationModel(runner: approvedRunner)
+        await approved.enable(themeID: customID, approvedThemeIDs: [customID])
+        #expect(approved.state == .active)
+        #expect(approvedRunner.invocations == [[
+            "apply", "--authorized", "--theme", customID,
+        ]])
     }
 
     @Test

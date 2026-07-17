@@ -184,10 +184,18 @@ struct WidgetRailView: View {
             height: HabitatOverlayLayout.widgetRailSize.height
         )
         .foregroundStyle(textColor)
-        .background(surfaceColor.opacity(0.96), in: RoundedRectangle(cornerRadius: 8))
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(panelColor.opacity(0.96))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(panelAltColor.opacity(0.06))
+                }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(textColor.opacity(0.13), lineWidth: 1)
+                .allowsHitTesting(false)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text("Habitat widgets"))
@@ -534,7 +542,8 @@ struct WidgetRailView: View {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
-    private var surfaceColor: Color { Color(habitatHex: theme.surfaceHex) }
+    private var panelColor: Color { Color(habitatHex: theme.panelHex) }
+    private var panelAltColor: Color { Color(habitatHex: theme.panelAltHex) }
     private var textColor: Color { Color(habitatHex: theme.textHex) }
     private var accentColor: Color { Color(habitatHex: theme.accentHex) }
     private var attentionColor: Color { Color(habitatHex: theme.attentionHex) }

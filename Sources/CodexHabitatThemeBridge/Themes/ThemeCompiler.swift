@@ -3,31 +3,72 @@ import HabitatCore
 
 struct BridgeThemeTokens: Codable, Equatable, Sendable {
     let surface: String
+    let panel: String
+    let panelAlt: String
     let text: String
+    let mutedText: String
     let accent: String
+    let secondary: String
+    let highlight: String
     let attention: String
     let error: String
 
+    init(palette: HabitatThemePalette) {
+        surface = palette.surface
+        panel = palette.panel
+        panelAlt = palette.panelAlt
+        text = palette.text
+        mutedText = palette.mutedText
+        accent = palette.accent
+        secondary = palette.secondary
+        highlight = palette.highlight
+        attention = palette.attention
+        error = palette.error
+    }
+
     static let workbench = BridgeThemeTokens(
-        surface: "#F4F7F8",
-        text: "#172126",
-        accent: "#0F8B8D",
-        attention: "#D97706",
-        error: "#D64545"
+        palette: BuiltInThemeCatalog.definition(id: "workbench")!.palette
+    )
+}
+
+struct BridgeThemeAppearance: Codable, Equatable, Sendable {
+    let styleFamily: HabitatThemeStyleFamily
+    let artFocus: HabitatThemeFocalPoint
+    let safeSide: HabitatThemeSafeSide
+    let backgroundStrength: Double
+    let panelOpacity: Double
+    let blurRadius: Double
+    let density: HabitatThemeDensity
+
+    init(_ appearance: HabitatThemeAppearance) {
+        styleFamily = appearance.styleFamily
+        artFocus = appearance.artFocus
+        safeSide = appearance.safeSide
+        backgroundStrength = appearance.backgroundStrength
+        panelOpacity = appearance.panelOpacity
+        blurRadius = appearance.blurRadius
+        density = appearance.density
+    }
+
+    static let workbench = BridgeThemeAppearance(
+        BuiltInThemeCatalog.definition(id: "workbench")!.appearance(background: "background.jpg")
     )
 }
 
 struct BridgeTheme: Codable, Equatable, Sendable {
     let tokens: BridgeThemeTokens
+    let appearance: BridgeThemeAppearance
     let artBlobURL: String?
     let artDataURL: String?
 
     init(
         tokens: BridgeThemeTokens,
+        appearance: BridgeThemeAppearance = .workbench,
         artBlobURL: String?,
         artDataURL: String? = nil
     ) {
         self.tokens = tokens
+        self.appearance = appearance
         self.artBlobURL = artBlobURL
         self.artDataURL = artDataURL
     }
@@ -35,39 +76,10 @@ struct BridgeTheme: Codable, Equatable, Sendable {
 
 extension BridgeTheme {
     static func builtIn(id: String) -> BridgeTheme? {
-        let tokens: BridgeThemeTokens
-        switch id {
-        case "workbench":
-            tokens = .workbench
-        case "night-shift":
-            tokens = BridgeThemeTokens(
-                surface: "#171A1D",
-                text: "#F1F5F6",
-                accent: "#2DD4BF",
-                attention: "#F59E0B",
-                error: "#FB7185"
-            )
-        case "arcade-signal":
-            tokens = BridgeThemeTokens(
-                surface: "#14151A",
-                text: "#F7F7F2",
-                accent: "#2D8CFF",
-                attention: "#FFD23F",
-                error: "#FF4D5A"
-            )
-        case "quiet-garden":
-            tokens = BridgeThemeTokens(
-                surface: "#F5F8F4",
-                text: "#203127",
-                accent: "#3D8B63",
-                attention: "#C86A45",
-                error: "#C4455D"
-            )
-        default:
-            return nil
-        }
+        guard let definition = BuiltInThemeCatalog.definition(id: id) else { return nil }
         return BridgeTheme(
-            tokens: tokens,
+            tokens: BridgeThemeTokens(palette: definition.palette),
+            appearance: BridgeThemeAppearance(definition.appearance(background: "background.jpg")),
             artBlobURL: nil,
             artDataURL: builtInArtDataURL(id: id)
         )
@@ -75,30 +87,23 @@ extension BridgeTheme {
 
     private static func builtInArtDataURL(id: String) -> String? {
         let subdirectory = "Resources/Themes/\(id)"
-        let candidates = [
-            PackagedResourceLocator.url(
-                forResource: "preview",
-                withExtension: "png",
-                subdirectory: subdirectory,
-                packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
-            ),
-        ].compactMap { $0 }
-        for url in candidates {
-            guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),
-                  data.count <= 1024 * 1024,
-                  data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
-            else {
-                continue
-            }
-            return "data:image/png;base64,\(data.base64EncodedString())"
+        guard let url = PackagedResourceLocator.url(
+            forResource: "background",
+            withExtension: "jpg",
+            subdirectory: subdirectory,
+            packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
+        ), let data = try? Data(contentsOf: url, options: .mappedIfSafe)
+        else {
+            return nil
         }
-        return nil
+        return BridgeThemeArt.dataURL(data: data, pathExtension: "jpg")
     }
 }
 
 enum ThemeCompilationError: Error, Equatable {
     case unknownThemeField(String)
     case invalidColorToken(String)
+    case invalidAppearance(String)
     case invalidArtBlobURL
     case invalidArtDataURL
     case unsafeTemplate
@@ -111,23 +116,53 @@ struct BridgeThemeDecoder {
         else {
             throw ThemeCompilationError.unknownThemeField("document")
         }
-        let allowed: Set<String> = ["tokens", "artBlobURL", "artDataURL"]
-        let unknown = Set(object.keys).subtracting(allowed)
-        if unknown.contains("selectors") {
-            throw ThemeCompilationError.unknownThemeField("selectors")
+        try rejectUnknownFields(
+            in: object,
+            allowed: ["tokens", "appearance", "artBlobURL", "artDataURL"],
+            prefix: ""
+        )
+        if let tokens = object["tokens"] as? [String: Any] {
+            try rejectUnknownFields(
+                in: tokens,
+                allowed: [
+                    "surface", "panel", "panelAlt", "text", "mutedText", "accent",
+                    "secondary", "highlight", "attention", "error",
+                ],
+                prefix: "tokens."
+            )
         }
-        if let field = unknown.sorted().first {
-            throw ThemeCompilationError.unknownThemeField(field)
-        }
-        if let tokenObject = object["tokens"] as? [String: Any] {
-            let tokenAllowed: Set<String> = [
-                "surface", "text", "accent", "attention", "error",
-            ]
-            if let field = Set(tokenObject.keys).subtracting(tokenAllowed).sorted().first {
-                throw ThemeCompilationError.unknownThemeField("tokens.\(field)")
+        if let appearance = object["appearance"] as? [String: Any] {
+            try rejectUnknownFields(
+                in: appearance,
+                allowed: [
+                    "styleFamily", "artFocus", "safeSide", "backgroundStrength",
+                    "panelOpacity", "blurRadius", "density",
+                ],
+                prefix: "appearance."
+            )
+            if let artFocus = appearance["artFocus"] as? [String: Any] {
+                try rejectUnknownFields(
+                    in: artFocus,
+                    allowed: ["x", "y"],
+                    prefix: "appearance.artFocus."
+                )
             }
         }
         return try JSONDecoder().decode(BridgeTheme.self, from: data)
+    }
+
+    private func rejectUnknownFields(
+        in object: [String: Any],
+        allowed: Set<String>,
+        prefix: String
+    ) throws {
+        let unknown = Set(object.keys).subtracting(allowed)
+        if prefix.isEmpty, unknown.contains("selectors") {
+            throw ThemeCompilationError.unknownThemeField("selectors")
+        }
+        if let field = unknown.sorted().first {
+            throw ThemeCompilationError.unknownThemeField(prefix + field)
+        }
     }
 }
 
@@ -161,8 +196,13 @@ struct ThemeCompiler {
     func compile(theme: BridgeTheme, profile: CompatibilityProfile) throws -> String {
         let colors: [(String, String)] = [
             ("surface", theme.tokens.surface),
+            ("panel", theme.tokens.panel),
+            ("panel-alt", theme.tokens.panelAlt),
             ("text", theme.tokens.text),
+            ("muted-text", theme.tokens.mutedText),
             ("accent", theme.tokens.accent),
+            ("secondary", theme.tokens.secondary),
+            ("highlight", theme.tokens.highlight),
             ("attention", theme.tokens.attention),
             ("error", theme.tokens.error),
         ]
@@ -172,6 +212,8 @@ struct ThemeCompiler {
         ) == nil {
             throw ThemeCompilationError.invalidColorToken(name)
         }
+        try validate(theme.appearance)
+
         let artBackground: String
         if theme.artBlobURL != nil, theme.artDataURL != nil {
             throw ThemeCompilationError.invalidArtDataURL
@@ -184,13 +226,7 @@ struct ThemeCompiler {
             }
             artBackground = "url(\"\(artBlobURL)\")"
         } else if let artDataURL = theme.artDataURL {
-            let prefix = "data:image/png;base64,"
-            guard artDataURL.hasPrefix(prefix),
-                  artDataURL.count <= prefix.count + 1_400_000,
-                  let data = Data(base64Encoded: String(artDataURL.dropFirst(prefix.count))),
-                  data.count <= 1024 * 1024,
-                  data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
-            else {
+            guard BridgeThemeArt.isValidDataURL(artDataURL) else {
                 throw ThemeCompilationError.invalidArtDataURL
             }
             artBackground = "url(\"\(artDataURL)\")"
@@ -198,20 +234,45 @@ struct ThemeCompiler {
             artBackground = "none"
         }
 
+        let artX = Self.cssPercent(theme.appearance.artFocus.x * 100)
+        let artY = Self.cssPercent(theme.appearance.artFocus.y * 100)
+        let artVeil = Self.cssPercent((1 - theme.appearance.backgroundStrength) * 100)
+        let routeVeil = Self.cssPercent((1 - theme.appearance.backgroundStrength * 0.46) * 100)
+        let panelOpacity = Self.cssPercent(theme.appearance.panelOpacity * 100)
+        let direction = theme.appearance.safeSide == .leading ? "to right" : "to left"
+        let densitySpacing = theme.appearance.density == .compact ? "8px" : "12px"
+
         var result = template
         let replacements = [
             "surface": theme.tokens.surface,
+            "panel": theme.tokens.panel,
+            "panel-alt": theme.tokens.panelAlt,
             "text": theme.tokens.text,
+            "muted-text": theme.tokens.mutedText,
             "accent": theme.tokens.accent,
+            "secondary": theme.tokens.secondary,
+            "highlight": theme.tokens.highlight,
             "attention": theme.tokens.attention,
             "error": theme.tokens.error,
             "color-scheme": Self.colorScheme(for: theme.tokens.surface),
             "art-background": artBackground,
+            "art-position-x": artX,
+            "art-position-y": artY,
+            "art-veil": artVeil,
+            "route-veil": routeVeil,
+            "panel-opacity": panelOpacity,
+            "safe-scrim-direction": direction,
+            "blur-radius": Self.cssNumber(theme.appearance.blurRadius) + "px",
+            "density-spacing": densitySpacing,
             "sidebar": profile.selectors.sidebar,
             "main": profile.selectors.mainSurface,
             "composer": profile.selectors.composer,
             "thread": profile.selectors.threadScroll,
             "popover": profile.selectors.popover,
+            "style-treatment": Self.styleTreatment(
+                for: theme.appearance.styleFamily,
+                profile: profile
+            ),
         ]
         for (name, value) in replacements {
             let placeholder = "{{\(name)}}"
@@ -224,6 +285,113 @@ struct ThemeCompiler {
             throw ThemeCompilationError.unsafeTemplate
         }
         return result
+    }
+
+    static func styleTreatment(
+        for family: HabitatThemeStyleFamily,
+        profile: CompatibilityProfile
+    ) -> String {
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let sidebar = "\(root) \(profile.selectors.sidebar)"
+        let composer = "\(root) \(profile.selectors.composer)"
+        let popover = "\(root) \(profile.selectors.popover)"
+        let declarations: (sidebar: String, composer: String, popover: String) = switch family {
+        case .arcade:
+            (
+                "border-right-width: 2px; box-shadow: inset -3px 0 0 var(--habitat-secondary);",
+                "border-radius: 4px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--habitat-highlight) 34%, transparent), 0 8px 24px color-mix(in srgb, var(--habitat-accent) 22%, transparent);",
+                "border-radius: 4px; border-width: 2px;"
+            )
+        case .retroMessenger:
+            (
+                "border-right-width: 1px; box-shadow: inset -1px 0 0 color-mix(in srgb, white 58%, transparent), inset 0 34px 0 color-mix(in srgb, var(--habitat-secondary) 30%, transparent);",
+                "border-radius: 6px; border-top-color: color-mix(in srgb, white 72%, var(--habitat-accent)); box-shadow: inset 0 1px 0 color-mix(in srgb, white 76%, transparent), 0 5px 14px color-mix(in srgb, var(--habitat-text) 14%, transparent);",
+                "border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 70%, transparent);"
+            )
+        case .greenChat:
+            (
+                "border-right-width: 4px; border-right-color: var(--habitat-secondary); box-shadow: inset -1px 0 0 color-mix(in srgb, white 45%, transparent);",
+                "border-radius: 5px; border-left-width: 4px; border-left-color: var(--habitat-accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--habitat-text) 12%, transparent);",
+                "border-radius: 5px; border-top-width: 3px; border-top-color: var(--habitat-secondary);"
+            )
+        case .classicDesktop:
+            (
+                "border-right: 2px outset var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white, inset -1px -1px 0 color-mix(in srgb, black 55%, transparent);",
+                "border-radius: 0; border: 2px inset var(--habitat-panel-alt); box-shadow: none;",
+                "border-radius: 0; border: 2px outset var(--habitat-panel-alt); box-shadow: 2px 2px 0 color-mix(in srgb, black 55%, transparent);"
+            )
+        case .gameCinematic:
+            (
+                "border-right-width: 2px; border-right-color: color-mix(in srgb, var(--habitat-attention) 62%, transparent); box-shadow: inset -8px 0 18px color-mix(in srgb, var(--habitat-text) 10%, transparent);",
+                "border-radius: 3px; border-inline-start-width: 3px; border-inline-start-color: var(--habitat-attention); box-shadow: 0 12px 30px color-mix(in srgb, black 28%, transparent);",
+                "border-radius: 3px; border-block-start-width: 2px; border-block-start-color: var(--habitat-highlight);"
+            )
+        case .cozyWorld:
+            (
+                "border-right-width: 1px; box-shadow: inset -6px 0 14px color-mix(in srgb, var(--habitat-secondary) 14%, transparent);",
+                "border-radius: 8px; border-width: 1px; box-shadow: 0 7px 18px color-mix(in srgb, var(--habitat-text) 12%, transparent), inset 0 1px 0 color-mix(in srgb, white 35%, transparent);",
+                "border-radius: 8px; box-shadow: 0 8px 22px color-mix(in srgb, var(--habitat-secondary) 16%, transparent);"
+            )
+        case .animeEnergy:
+            (
+                "border-right-width: 3px; border-right-color: var(--habitat-highlight); box-shadow: inset -9px 0 0 color-mix(in srgb, var(--habitat-accent) 18%, transparent);",
+                "border-radius: 2px; border-top-width: 3px; border-bottom-width: 1px; border-top-color: var(--habitat-highlight); box-shadow: 7px 7px 0 color-mix(in srgb, var(--habitat-secondary) 20%, transparent);",
+                "border-radius: 2px; border-left-width: 3px; border-left-color: var(--habitat-secondary);"
+            )
+        case .fantasyAdventure:
+            (
+                "border-right-width: 2px; border-right-color: color-mix(in srgb, var(--habitat-highlight) 58%, var(--habitat-accent)); box-shadow: inset -4px 0 12px color-mix(in srgb, var(--habitat-accent) 18%, transparent);",
+                "border-radius: 7px; border-width: 2px; outline: 1px solid color-mix(in srgb, var(--habitat-highlight) 28%, transparent); outline-offset: 2px; box-shadow: inset 0 0 18px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);",
+                "border-radius: 7px; border-width: 2px; box-shadow: inset 0 0 14px color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
+            )
+        case .pixelWorld:
+            (
+                "border-right-width: 3px; border-right-style: solid; box-shadow: inset -3px 0 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;",
+                "border-radius: 0; border-width: 2px; box-shadow: 4px 4px 0 color-mix(in srgb, var(--habitat-text) 42%, transparent); image-rendering: pixelated;",
+                "border-radius: 0; border-width: 2px; box-shadow: 3px 3px 0 color-mix(in srgb, var(--habitat-text) 38%, transparent);"
+            )
+        }
+        return """
+        /* habitat-style-family: \(family.rawValue) */
+        \(sidebar) { \(declarations.sidebar) }
+        \(composer) { \(declarations.composer) }
+        \(popover) { \(declarations.popover) }
+        """
+    }
+
+    private func validate(_ appearance: BridgeThemeAppearance) throws {
+        guard appearance.artFocus.x.isFinite, (0...1).contains(appearance.artFocus.x),
+              appearance.artFocus.y.isFinite, (0...1).contains(appearance.artFocus.y)
+        else {
+            throw ThemeCompilationError.invalidAppearance("artFocus")
+        }
+        guard appearance.backgroundStrength.isFinite,
+              (0.10...0.70).contains(appearance.backgroundStrength)
+        else {
+            throw ThemeCompilationError.invalidAppearance("backgroundStrength")
+        }
+        guard appearance.panelOpacity.isFinite,
+              (0.65...1.0).contains(appearance.panelOpacity)
+        else {
+            throw ThemeCompilationError.invalidAppearance("panelOpacity")
+        }
+        guard appearance.blurRadius.isFinite, (0...24).contains(appearance.blurRadius) else {
+            throw ThemeCompilationError.invalidAppearance("blurRadius")
+        }
+    }
+
+    private static func cssPercent(_ value: Double) -> String {
+        cssNumber(value) + "%"
+    }
+
+    private static func cssNumber(_ value: Double) -> String {
+        if abs(value.rounded() - value) < 0.000_1 {
+            return String(Int(value.rounded()))
+        }
+        return String(format: "%.2f", value)
+            .replacingOccurrences(of: ",", with: ".")
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
     }
 
     private static func colorScheme(for surface: String) -> String {

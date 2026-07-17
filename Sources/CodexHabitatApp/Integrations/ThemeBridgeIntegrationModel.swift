@@ -1,4 +1,5 @@
 import Foundation
+import HabitatCore
 
 struct ThemeBridgeCommandResult: Equatable, Sendable {
     let exitCode: Int32
@@ -31,6 +32,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
 
     private let runner: (any ThemeBridgeCommandExecuting)?
     private var watchHealthTask: Task<Void, Never>?
+    private static let builtInThemeIDs = Set(BuiltInThemeCatalog.all.map(\.id))
 
     var statusText: String {
         switch state {
@@ -84,10 +86,9 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         }
     }
 
-    func enable(themeID: String) async {
+    func enable(themeID: String, approvedThemeIDs: Set<String> = []) async {
         guard let runner,
-              ["workbench", "night-shift", "arcade-signal", "quiet-garden"]
-                .contains(themeID)
+              Self.builtInThemeIDs.contains(themeID) || approvedThemeIDs.contains(themeID)
         else {
             state = .failed
             return
@@ -141,10 +142,9 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         await restore()
     }
 
-    func resumeWatching(themeID: String) async {
+    func resumeWatching(themeID: String, approvedThemeIDs: Set<String> = []) async {
         guard state == .active,
-              ["workbench", "night-shift", "arcade-signal", "quiet-garden"]
-                .contains(themeID),
+              Self.builtInThemeIDs.contains(themeID) || approvedThemeIDs.contains(themeID),
               let runner
         else {
             return

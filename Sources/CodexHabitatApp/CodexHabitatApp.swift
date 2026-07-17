@@ -27,7 +27,10 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             let bridge = ThemeBridgeIntegrationModel.shared
             await bridge.refresh()
             if model.settings.themeBridgeEnabled {
-                await bridge.resumeWatching(themeID: model.settings.selectedThemeID)
+                await bridge.resumeWatching(
+                    themeID: model.settings.selectedThemeID,
+                    approvedThemeIDs: model.codexBridgeThemeIDs
+                )
                 model.setThemeBridgeEnabled(bridge.state == .active)
             }
             let shouldShowSettings = model.requiresOnboarding

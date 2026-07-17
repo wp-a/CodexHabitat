@@ -26,11 +26,13 @@ func codexThemeShareStringUsesTheVerifiedLocalV1Shape() throws {
 }
 
 @Test
-func suggestedVariantFollowsThemeSurfaceLuminance() {
+func suggestedVariantFollowsThemeSurfaceLuminance() throws {
+    let light = try #require(HabitatThemeDescriptor.builtIn.first { $0.id == "retro-messenger" })
+    let dark = try #require(HabitatThemeDescriptor.builtIn.first { $0.id == "night-shift" })
     #expect(CodexThemeShareString.suggestedVariant(
-        for: HabitatThemeDescriptor.builtIn[0]
+        for: light
     ) == .light)
     #expect(CodexThemeShareString.suggestedVariant(
-        for: HabitatThemeDescriptor.builtIn[1]
+        for: dark
     ) == .dark)
 }

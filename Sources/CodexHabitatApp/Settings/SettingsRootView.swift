@@ -17,6 +17,14 @@ struct SettingsRootView: View {
             }
         }
         .frame(minWidth: 760, minHeight: 520)
+        .tint(Color(habitatHex: model.selectedTheme.accentHex))
+        .environment(
+            \.habitatSettingsThemeColors,
+            HabitatSettingsThemeColors(
+                surface: Color(habitatHex: model.selectedTheme.surfaceHex),
+                secondary: Color(habitatHex: model.selectedTheme.secondaryHex)
+            )
+        )
         .task {
             await model.load()
         }
@@ -61,6 +69,7 @@ struct SettingsPage<Content: View>: View {
     let title: String
     let subtitle: String
     @ViewBuilder let content: Content
+    @Environment(\.habitatSettingsThemeColors) private var themeColors
 
     init(
         _ title: String,
@@ -88,8 +97,30 @@ struct SettingsPage<Content: View>: View {
             .padding(28)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background {
+            ZStack {
+                Color(nsColor: .windowBackgroundColor)
+                themeColors.surface.opacity(0.08)
+                themeColors.secondary.opacity(0.025)
+            }
+        }
         .navigationTitle(L10n.text(title))
+    }
+}
+
+struct HabitatSettingsThemeColors {
+    let surface: Color
+    let secondary: Color
+}
+
+private struct HabitatSettingsThemeColorsKey: EnvironmentKey {
+    static let defaultValue = HabitatSettingsThemeColors(surface: .clear, secondary: .clear)
+}
+
+extension EnvironmentValues {
+    var habitatSettingsThemeColors: HabitatSettingsThemeColors {
+        get { self[HabitatSettingsThemeColorsKey.self] }
+        set { self[HabitatSettingsThemeColorsKey.self] = newValue }
     }
 }
 

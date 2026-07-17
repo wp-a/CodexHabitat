@@ -1,9 +1,16 @@
 html[data-codex-habitat-theme="1"] {
   --habitat-surface: {{surface}};
+  --habitat-panel: {{panel}};
+  --habitat-panel-alt: {{panel-alt}};
   --habitat-text: {{text}};
+  --habitat-muted-text: {{muted-text}};
   --habitat-accent: {{accent}};
+  --habitat-secondary: {{secondary}};
+  --habitat-highlight: {{highlight}};
   --habitat-attention: {{attention}};
   --habitat-error: {{error}};
+  --habitat-panel-opacity: {{panel-opacity}};
+  --habitat-density-spacing: {{density-spacing}};
   color-scheme: {{color-scheme}};
 }
 
@@ -14,40 +21,51 @@ html[data-codex-habitat-theme="1"] body {
 
 html[data-codex-habitat-theme="1"] {{sidebar}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-surface) 92%, black 8%);
-  border-right-color: color-mix(in srgb, var(--habitat-accent) 28%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-panel-opacity), transparent);
+  border-right-color: color-mix(in srgb, var(--habitat-accent) 40%, transparent);
+  backdrop-filter: blur({{blur-radius}}) saturate(1.08);
 }
 
 html[data-codex-habitat-theme="1"] {{main}} {
   color: var(--habitat-text);
   background-color: var(--habitat-surface);
-  background-image: {{art-background}};
-  background-position: right bottom;
+  background-image:
+    linear-gradient({{safe-scrim-direction}}, var(--habitat-surface) 0%, color-mix(in srgb, var(--habitat-surface) 92%, transparent) 38%, transparent 76%),
+    linear-gradient(color-mix(in srgb, var(--habitat-surface) {{art-veil}}, transparent), color-mix(in srgb, var(--habitat-surface) {{art-veil}}, transparent)),
+    {{art-background}};
+  background-position: center, center, {{art-position-x}} {{art-position-y}};
   background-repeat: no-repeat;
-  background-size: min(54vw, 800px) auto;
-  background-blend-mode: soft-light;
+  background-size: cover;
 }
 
 html[data-codex-habitat-theme="1"] {{composer}},
 html[data-codex-habitat-theme="1"] {{popover}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-surface) 88%, white 12%);
-  border-color: color-mix(in srgb, var(--habitat-accent) 34%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-panel-opacity), transparent);
+  border-color: color-mix(in srgb, var(--habitat-accent) 46%, transparent);
   box-shadow: 0 12px 34px color-mix(in srgb, var(--habitat-text) 12%, transparent);
-  backdrop-filter: blur(18px) saturate(1.12);
+  backdrop-filter: blur({{blur-radius}}) saturate(1.1);
+}
+
+html[data-codex-habitat-theme="1"] {{composer}} {
+  padding-block: var(--habitat-density-spacing);
 }
 
 html[data-codex-habitat-theme="1"] {{thread}} {
-  background-color: color-mix(in srgb, var(--habitat-surface) 82%, transparent);
-  scrollbar-color: var(--habitat-accent) transparent;
+  background-color: color-mix(in srgb, var(--habitat-surface) {{route-veil}}, transparent);
+  scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
 }
 
 html[data-codex-habitat-theme="1"] button[class~="bg-token-foreground"] {
   color: var(--habitat-surface);
   background-color: var(--habitat-accent);
+  border-color: var(--habitat-highlight);
 }
 
-html[data-codex-habitat-theme="1"] [data-state="open"] {
+html[data-codex-habitat-theme="1"] [data-state="open"],
+html[data-codex-habitat-theme="1"] [aria-selected="true"] {
+  color: var(--habitat-text);
+  background-color: color-mix(in srgb, var(--habitat-panel-alt) 72%, transparent);
   outline-color: var(--habitat-attention);
 }
 
@@ -57,9 +75,11 @@ html[data-codex-habitat-theme="1"] [aria-invalid="true"] {
 
 html[data-codex-habitat-theme="1"] ::selection {
   color: var(--habitat-surface);
-  background-color: var(--habitat-accent);
+  background-color: var(--habitat-highlight);
 }
 
 html[data-codex-habitat-theme="1"] :focus-visible {
-  outline-color: var(--habitat-accent);
+  outline-color: var(--habitat-secondary);
 }
+
+{{style-treatment}}

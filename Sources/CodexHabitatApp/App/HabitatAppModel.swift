@@ -241,7 +241,14 @@ final class HabitatAppModel: ObservableObject {
             ?? HabitatThemeDescriptor.builtIn[0]
     }
     var selectedThemeSupportsCodexBridge: Bool {
-        HabitatThemeDescriptor.builtIn.contains { $0.id == settings.selectedThemeID }
+        codexBridgeThemeIDs.contains(settings.selectedThemeID)
+    }
+    var codexBridgeThemeIDs: Set<String> {
+        Set(BuiltInThemeCatalog.all.map(\.id)).union(
+            installedPackages.compactMap { package in
+                package.manifest.theme == nil ? nil : package.id
+            }
+        )
     }
 
     init(

@@ -7,6 +7,8 @@ struct ThemesSettingsView: View {
     @State private var packageIDToRemove: String?
     @State private var themeStudioModel: ThemeStudioModel?
     @State private var isThemeStudioPresented = false
+    @State private var selectedFilter = ThemeGalleryFilter.all
+    @State private var searchText = ""
     private let columns = [GridItem(.adaptive(minimum: 190, maximum: 240), spacing: 12)]
 
     var body: some View {
@@ -36,13 +38,53 @@ struct ThemesSettingsView: View {
 
             ResourceOperationStatusView(state: model.resourceOperationState)
 
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                ForEach(model.availableThemes) { theme in
-                    ThemeChoiceCard(
-                        theme: theme,
-                        isSelected: model.settings.selectedThemeID == theme.id,
-                        action: { model.selectTheme(theme.id) }
-                    )
+            VStack(alignment: .leading, spacing: 10) {
+                ScrollView(.horizontal) {
+                    Picker("Theme category", selection: $selectedFilter) {
+                        ForEach(ThemeGalleryFilter.allCases) { filter in
+                            Text(L10n.text(filter.title)).tag(filter)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .labelsHidden()
+                }
+                .scrollIndicators(.hidden)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField(L10n.text("Search themes"), text: $searchText)
+                        .textFieldStyle(.plain)
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.borderless)
+                        .help(L10n.text("Clear search"))
+                        .accessibilityLabel(L10n.text("Clear search"))
+                    }
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 6))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                }
+            }
+
+            if filteredThemes.isEmpty {
+                emptyGallery
+            } else {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                    ForEach(filteredThemes) { theme in
+                        ThemeChoiceCard(
+                            theme: theme,
+                            isSelected: model.settings.selectedThemeID == theme.id,
+                            action: { model.selectTheme(theme.id) }
+                        )
+                    }
                 }
             }
 
@@ -87,6 +129,37 @@ struct ThemesSettingsView: View {
         } message: {
             Text("Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed.")
         }
+    }
+
+    private var filteredThemes: [HabitatThemeDescriptor] {
+        ThemeGalleryQuery.filter(
+            model.availableThemes,
+            by: selectedFilter,
+            search: searchText
+        )
+    }
+
+    private var emptyGallery: some View {
+        VStack(spacing: 10) {
+            Image(systemName: selectedFilter == .custom ? "paintpalette" : "magnifyingglass")
+                .font(.system(size: 24, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text(L10n.text(selectedFilter == .custom && searchText.isEmpty
+                ? "No custom themes"
+                : "No matching themes"))
+                .font(.headline)
+            if selectedFilter == .custom && searchText.isEmpty {
+                Button(action: openThemeStudio) {
+                    Label(L10n.text("Create Theme"), systemImage: "plus")
+                }
+            } else {
+                Button(action: { searchText = "" }) {
+                    Label(L10n.text("Clear search"), systemImage: "xmark.circle")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .accessibilityIdentifier("themes.empty")
     }
 
     private func installedPackageRow(_ package: InstalledPackage) -> some View {
@@ -159,22 +232,34 @@ struct ThemeChoiceCard: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 82)
+                        .frame(height: 100)
                         .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Rectangle()
+                        .fill(Color(habitatHex: theme.panelHex))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 100)
+                        .overlay {
+                            Image(systemName: theme.symbol)
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundStyle(palette[0])
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 HStack {
-                    Image(systemName: theme.symbol)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(palette[0])
-                    Spacer()
                     HStack(spacing: 5) {
                         ForEach(Array(palette.enumerated()), id: \.offset) { _, color in
                             Circle()
                                 .fill(color)
-                                .frame(width: 13, height: 13)
+                                .frame(width: 12, height: 12)
                         }
                     }
+                    Spacer()
+                    Text(L10n.text(theme.category.localizationKey))
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Text(L10n.text(theme.name))
                     .font(.body.weight(.semibold))
@@ -185,7 +270,7 @@ struct ThemeChoiceCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 204, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 224, alignment: .topLeading)
             .background(
                 isSelected ? palette[0].opacity(0.09) : Color.primary.opacity(0.03),
                 in: RoundedRectangle(cornerRadius: 8)
@@ -204,6 +289,8 @@ struct ThemeChoiceCard: View {
     private var palette: [Color] {
         [
             Color(habitatHex: theme.accentHex),
+            Color(habitatHex: theme.secondaryHex),
+            Color(habitatHex: theme.highlightHex),
             Color(habitatHex: theme.attentionHex),
             Color(habitatHex: theme.errorHex),
         ]

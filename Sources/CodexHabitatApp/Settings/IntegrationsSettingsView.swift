@@ -87,7 +87,7 @@ struct IntegrationsSettingsView: View {
 
                 if !model.selectedThemeSupportsCodexBridge {
                     Label(
-                        "Choose a built-in theme before applying it to Codex",
+                        "Choose a bridge-compatible theme before applying it to Codex",
                         systemImage: "lock.shield"
                     )
                     .font(.caption)
@@ -111,7 +111,10 @@ struct IntegrationsSettingsView: View {
             Button("Cancel", role: .cancel) {}
             Button("Restart and Apply") {
                 Task {
-                    await bridge.enable(themeID: model.settings.selectedThemeID)
+                    await bridge.enable(
+                        themeID: model.settings.selectedThemeID,
+                        approvedThemeIDs: model.codexBridgeThemeIDs
+                    )
                     model.setThemeBridgeEnabled(bridge.state == .active)
                 }
             }

@@ -43,11 +43,10 @@ enum CodexHabitatThemeBridge {
                 try liveSession().stop()
                 print("stopped")
             case "apply":
-                guard let themeID = value(after: "--theme", in: arguments),
-                      let theme = BridgeTheme.builtIn(id: themeID)
-                else {
+                guard let themeID = value(after: "--theme", in: arguments) else {
                     throw ThemeBridgeCLIError.invalidTheme
                 }
+                let theme = try BridgeThemeResolver().resolve(id: themeID)
                 let bundleURL = try resolveBundle(
                     path: value(after: "--app", in: arguments)
                 )
@@ -71,7 +70,6 @@ enum CodexHabitatThemeBridge {
                 print("restored")
             case "watch":
                 guard let themeID = value(after: "--theme", in: arguments),
-                      let theme = BridgeTheme.builtIn(id: themeID),
                       let parentValue = value(after: "--parent-pid", in: arguments),
                       let parentPID = Int32(parentValue),
                       parentPID > 1,
@@ -79,6 +77,7 @@ enum CodexHabitatThemeBridge {
                 else {
                     throw ThemeBridgeCLIError.invalidParentProcess
                 }
+                let theme = try BridgeThemeResolver().resolve(id: themeID)
                 let bundleURL = try resolveBundle(
                     path: value(after: "--app", in: arguments)
                 )
