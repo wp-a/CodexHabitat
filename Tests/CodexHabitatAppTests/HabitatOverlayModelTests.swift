@@ -1,3 +1,5 @@
+import AppKit
+import CoreGraphics
 import Foundation
 import HabitatCore
 import PetRuntime
@@ -55,6 +57,54 @@ func inactiveAndReducedMotionPetDriversInstallNoRefreshTimer() {
 }
 
 @Test @MainActor
+func petSpriteAnimationResumesAfterTheViewReattachesToItsWindow() throws {
+    let clock = OverlayTestClock()
+    let atlas = PetAtlasMetadata(pixelWidth: 32, pixelHeight: 36, columns: 8, rows: 9)
+    let context = try #require(CGContext(
+        data: nil,
+        width: atlas.pixelWidth,
+        height: atlas.pixelHeight,
+        bitsPerComponent: 8,
+        bytesPerRow: atlas.pixelWidth * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ))
+    context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 0, y: 4, width: 4, height: 4))
+    context.setFillColor(CGColor(red: 0, green: 1, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 4, y: 4, width: 4, height: 4))
+    let renderer = SpriteSheetRenderer(image: context.makeImage(), atlas: atlas)
+    let sourceFirstFrame = try #require(renderer.frame(row: 7, column: 0))
+    let sourceSecondFrame = try #require(renderer.frame(row: 7, column: 1))
+    #expect(firstPixel(in: sourceFirstFrame) != firstPixel(in: sourceSecondFrame))
+    let window = NSWindow(
+        contentRect: CGRect(x: 0, y: 0, width: 136, height: 144),
+        styleMask: .borderless,
+        backing: .buffered,
+        defer: false
+    )
+    let contentView = try #require(window.contentView)
+    let spriteView = PetSpriteNSView(frame: contentView.bounds)
+    contentView.addSubview(spriteView)
+    spriteView.configure(
+        activity: .working,
+        renderer: renderer,
+        interpolation: .nearest,
+        clock: clock,
+        availableRows: Set(0..<9),
+        reduceMotion: false
+    )
+    let firstFramePixel = try #require(renderedFirstPixel(in: spriteView))
+
+    spriteView.removeFromSuperview()
+    clock.set(121)
+    contentView.addSubview(spriteView)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+
+    #expect(try #require(renderedFirstPixel(in: spriteView)) != firstFramePixel)
+}
+
+@Test @MainActor
 func countdownControlsRunPauseAndReset() {
     let clock = OverlayTimerClock()
     let model = WidgetRailModel(
@@ -86,4 +136,22 @@ private final class OverlayTestClock: AnimationClock, @unchecked Sendable {
 
     func nowMilliseconds() -> UInt64 { milliseconds }
     func set(_ value: UInt64) { milliseconds = value }
+}
+
+@MainActor
+private func renderedFirstPixel(in view: PetSpriteNSView) -> [UInt8]? {
+    guard let contents = view.layer?.contents else { return nil }
+    let object = contents as CFTypeRef
+    guard CFGetTypeID(object) == CGImage.typeID else { return nil }
+    let image: CGImage = unsafeDowncast(contents as AnyObject, to: CGImage.self)
+    return firstPixel(in: image)
+}
+
+private func firstPixel(in image: CGImage) -> [UInt8]? {
+    guard let data = image.dataProvider?.data,
+          let bytes = CFDataGetBytePtr(data)
+    else {
+        return nil
+    }
+    return Array(UnsafeBufferPointer(start: bytes, count: 4))
 }

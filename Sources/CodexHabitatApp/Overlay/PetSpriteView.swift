@@ -107,6 +107,9 @@ final class PetSpriteNSView: NSView {
         layer?.contentsScale = window?.backingScaleFactor
             ?? NSScreen.main?.backingScaleFactor
             ?? 2
+        guard window != nil else { return }
+        updateTimerIfNeeded()
+        renderCurrentFrame()
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
