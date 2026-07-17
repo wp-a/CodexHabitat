@@ -106,6 +106,49 @@ func testPNG(width: Int = 1, height: Int = 1) throws -> Data {
     return data as Data
 }
 
+func testNoisePNG(width: Int, height: Int) throws -> Data {
+    var state: UInt32 = 0xA341_316C
+    var pixels = [UInt8](repeating: 0, count: width * height * 4)
+    for index in stride(from: 0, to: pixels.count, by: 4) {
+        state ^= state << 13
+        state ^= state >> 17
+        state ^= state << 5
+        pixels[index] = UInt8(truncatingIfNeeded: state)
+        pixels[index + 1] = UInt8(truncatingIfNeeded: state >> 8)
+        pixels[index + 2] = UInt8(truncatingIfNeeded: state >> 16)
+        pixels[index + 3] = 255
+    }
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let image = try pixels.withUnsafeMutableBytes { buffer -> CGImage in
+        guard let context = CGContext(
+            data: buffer.baseAddress,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ), let image = context.makeImage() else {
+            throw TestArchiveSupportError.imageCreationFailed
+        }
+        return image
+    }
+    let data = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(
+        data,
+        UTType.png.identifier as CFString,
+        1,
+        nil
+    ) else {
+        throw TestArchiveSupportError.imageCreationFailed
+    }
+    CGImageDestinationAddImage(destination, image, nil)
+    guard CGImageDestinationFinalize(destination) else {
+        throw TestArchiveSupportError.imageCreationFailed
+    }
+    return data as Data
+}
+
 enum TestArchiveSupportError: Error {
     case imageCreationFailed
 }

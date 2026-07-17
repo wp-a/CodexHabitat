@@ -155,6 +155,9 @@ func installedCustomThemeIsRevalidatedBeforeBridgeCompilation() throws {
         )
     )
     #expect(css.contains("habitat-style-family: retroMessenger"))
+    #expect(throws: BridgeThemeResolutionError.invalidThemeArt) {
+        try BridgeThemeResolver(libraryRoot: root, maximumImagePixels: 100).resolve(id: themeID)
+    }
 
     let backgroundURL = packageURL.appending(path: "background.jpg")
     var tampered = try Data(contentsOf: backgroundURL)
@@ -173,6 +176,35 @@ func installedCustomThemeIsRevalidatedBeforeBridgeCompilation() throws {
     #expect(throws: BridgeThemeResolutionError.invalidThemeArt) {
         try resolver.resolve(id: themeID)
     }
+}
+
+@Test
+func eightDigitProtocolColorsCompileWithoutChangingRGBColorScheme() throws {
+    let palette = HabitatThemePalette(
+        surface: "#10182080",
+        panel: "#182633F0",
+        panelAlt: "#24384AE0",
+        text: "#F4FAFFFF",
+        mutedText: "#A9BAC8FF",
+        accent: "#16C6D9CC",
+        secondary: "#FF4F9ACC",
+        highlight: "#FFE45CCC",
+        attention: "#FFAA33CC",
+        error: "#F04455CC"
+    )
+    let theme = BridgeTheme(
+        tokens: BridgeThemeTokens(palette: palette),
+        artBlobURL: nil
+    )
+    let css = try ThemeCompiler.bundled().compile(
+        theme: theme,
+        profile: try #require(
+            try CompatibilityProfileStore.bundled().profile(forVersion: "26.707.91948")
+        )
+    )
+
+    #expect(css.contains("--habitat-surface: #10182080"))
+    #expect(css.contains("color-scheme: dark"))
 }
 
 @Test

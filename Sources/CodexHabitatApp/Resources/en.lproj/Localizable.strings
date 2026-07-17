@@ -288,7 +288,7 @@
 "Unsaved theme changes will be lost." = "Unsaved theme changes will be lost.";
 "Confirm image rights" = "Confirm image rights";
 "Export Theme" = "Export Theme";
-"You are responsible for having permission to use and share the selected image." = "You are responsible for having permission to use and share the selected image.";
+"Export does not grant image rights. You confirm you may use and share this image." = "Export does not grant image rights. You confirm you may use and share this image.";
 "Identity" = "Identity";
 "Theme name" = "Theme name";
 "Author (optional)" = "Author (optional)";

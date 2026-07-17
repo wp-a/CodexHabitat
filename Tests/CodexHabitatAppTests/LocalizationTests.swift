@@ -34,7 +34,7 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "All", "Nostalgia", "Chat", "Anime", "Games", "Cozy", "Classic", "Custom",
         "Search themes", "Create Theme", "Theme Studio", "Save Locally",
         "Choose a local background image.",
-        "You are responsible for having permission to use and share the selected image.",
+        "Export does not grant image rights. You confirm you may use and share this image.",
     ] {
         #expect(localization.text(key) != key)
     }

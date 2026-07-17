@@ -288,7 +288,7 @@
 "Unsaved theme changes will be lost." = "未保存的主题更改将会丢失。";
 "Confirm image rights" = "确认图片权利";
 "Export Theme" = "导出主题";
-"You are responsible for having permission to use and share the selected image." = "你需要确保有权使用并分享所选图片。";
+"Export does not grant image rights. You confirm you may use and share this image." = "导出不会授予图片权利。你确认自己有权使用并分享所选图片。";
 "Identity" = "基本信息";
 "Theme name" = "主题名称";
 "Author (optional)" = "作者（可选）";

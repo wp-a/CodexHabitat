@@ -56,7 +56,7 @@ struct ThemeStudioView: View {
             }
             Button("Cancel", role: .cancel) { pendingExportURL = nil }
         } message: {
-            Text("You are responsible for having permission to use and share the selected image.")
+            Text("Export does not grant image rights. You confirm you may use and share this image.")
         }
     }
 

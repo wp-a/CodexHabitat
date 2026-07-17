@@ -50,6 +50,7 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
     #expect(result.manifest.id.wholeMatch(of: /^[a-z0-9]+([.-][a-z0-9]+)*$/) != nil)
     #expect(result.manifest.colors.accent == manual.accent)
     #expect(result.manifest.theme?.styleFamily == .fantasyAdventure)
+    #expect(result.manifest.license.spdx == "LicenseRef-Codex-Habitat-User-Content")
     #expect(try ArchiveInspector().inspect(archive).entries.map(\.path).sorted() == [
         "LICENSE", "background.jpg", "habitat.json", "preview.png",
     ])
@@ -62,7 +63,50 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
         CGSize(width: 1_600, height: 1_000))
     #expect(try imageDimensions(installed.url.appending(path: "preview.png")) ==
         CGSize(width: 800, height: 500))
+    let license = try String(
+        contentsOf: installed.url.appending(path: "LICENSE"),
+        encoding: .utf8
+    )
+    #expect(license.contains("does not grant"))
+    #expect(!license.contains("MIT License"))
     #expect(try directoryContents(work).isEmpty)
+}
+
+@Test
+func themePackageBuilderKeepsHighEntropyBridgeArtWithinOneMiB() throws {
+    let root = temporaryBuilderRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appending(path: "noise.png")
+    try testNoisePNG(width: 1_600, height: 1_000).write(to: source)
+    let work = root.appending(path: "Work", directoryHint: .isDirectory)
+    let archive = root.appending(path: "noise-theme.habitat-pack")
+    let builder = ThemePackageBuilder(workingRoot: work)
+    let palette = try builder.suggestPalette(from: source)
+    let request = ThemePackageRequest(
+        name: "Noise Test",
+        author: "Local Artist",
+        sourceImageURL: source,
+        palette: palette,
+        category: .custom,
+        styleFamily: .gameCinematic,
+        artFocus: HabitatThemeFocalPoint(x: 0.75, y: 0.5),
+        safeSide: .leading,
+        backgroundStrength: 0.42,
+        panelOpacity: 0.88,
+        blurRadius: 10,
+        density: .comfortable
+    )
+
+    _ = try builder.build(request, to: archive)
+    let installed = try PackageInstaller(
+        libraryRoot: root.appending(path: "Library", directoryHint: .isDirectory),
+        runtimeVersion: "1.0.0"
+    ).install(archive)
+    let size = try #require(
+        installed.url.appending(path: "background.jpg")
+            .resourceValues(forKeys: [.fileSizeKey]).fileSize
+    )
+    #expect(size <= 1_048_576)
 }
 
 @Test

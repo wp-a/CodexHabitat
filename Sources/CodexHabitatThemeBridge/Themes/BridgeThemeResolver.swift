@@ -12,13 +12,16 @@ enum BridgeThemeResolutionError: Error, Equatable {
 struct BridgeThemeResolver {
     let libraryRoot: URL
     let runtimeVersion: String
+    let maximumImagePixels: Int
 
     init(
         libraryRoot: URL = Self.defaultLibraryRoot(),
-        runtimeVersion: String = "1.0.0"
+        runtimeVersion: String = "1.0.0",
+        maximumImagePixels: Int = PackageLimits().maxImagePixels
     ) {
         self.libraryRoot = libraryRoot
         self.runtimeVersion = runtimeVersion
+        self.maximumImagePixels = maximumImagePixels
     }
 
     func resolve(id: String) throws -> BridgeTheme {
@@ -120,7 +123,11 @@ struct BridgeThemeResolver {
         else {
             return false
         }
-        return (1...8_192).contains(width) && (1...8_192).contains(height)
+        let pixels = width.multipliedReportingOverflow(by: height)
+        return (1...8_192).contains(width)
+            && (1...8_192).contains(height)
+            && !pixels.overflow
+            && pixels.partialValue <= maximumImagePixels
     }
 
     private func digest(_ data: Data) -> String {

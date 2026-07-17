@@ -207,7 +207,7 @@ struct ThemeCompiler {
             ("error", theme.tokens.error),
         ]
         for (name, color) in colors where color.range(
-            of: "^#[0-9A-Fa-f]{6}$",
+            of: "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$",
             options: .regularExpression
         ) == nil {
             throw ThemeCompilationError.invalidColorToken(name)
@@ -395,7 +395,8 @@ struct ThemeCompiler {
     }
 
     private static func colorScheme(for surface: String) -> String {
-        let value = UInt64(surface.dropFirst(), radix: 16) ?? 0
+        let rgb = surface.dropFirst().prefix(6)
+        let value = UInt64(rgb, radix: 16) ?? 0
         let red = Double((value >> 16) & 0xff) / 255
         let green = Double((value >> 8) & 0xff) / 255
         let blue = Double(value & 0xff) / 255

@@ -153,7 +153,7 @@ public struct ThemePackageBuilder: Sendable {
         let backgroundURL = transaction.appending(path: "background.jpg")
         let previewURL = transaction.appending(path: "preview.png")
         let normalized = try aspectFill(sourceImage, width: 1_600, height: 1_000)
-        try write(normalized, to: backgroundURL, type: .jpeg, quality: 0.84)
+        try writeBoundedJPEG(normalized, to: backgroundURL)
         let preview = try aspectFill(normalized, width: 800, height: 500)
         try write(preview, to: previewURL, type: .png, quality: nil)
 
@@ -337,8 +337,29 @@ public struct ThemePackageBuilder: Sendable {
         type: UTType,
         quality: Double?
     ) throws {
-        guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL,
+        let data = try encodedData(image, type: type, quality: quality)
+        try data.write(to: url, options: [.atomic])
+    }
+
+    private func writeBoundedJPEG(_ image: CGImage, to url: URL) throws {
+        for quality in [0.84, 0.72, 0.60, 0.48, 0.36, 0.24, 0.14, 0.08] {
+            let data = try encodedData(image, type: .jpeg, quality: quality)
+            if data.count <= Self.maximumBridgeArtBytes {
+                try data.write(to: url, options: [.atomic])
+                return
+            }
+        }
+        throw ThemePackageBuildError.imageEncodingFailed
+    }
+
+    private func encodedData(
+        _ image: CGImage,
+        type: UTType,
+        quality: Double?
+    ) throws -> Data {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
             type.identifier as CFString,
             1,
             nil
@@ -352,6 +373,7 @@ public struct ThemePackageBuilder: Sendable {
         guard CGImageDestinationFinalize(destination) else {
             throw ThemePackageBuildError.imageEncodingFailed
         }
+        return data as Data
     }
 
     private func averageRGB(_ image: CGImage) throws -> RGB {
@@ -409,7 +431,10 @@ public struct ThemePackageBuilder: Sendable {
             "author": request.author.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? "Local User"
                 : request.author.trimmingCharacters(in: .whitespacesAndNewlines),
-            "license": ["spdx": "MIT", "file": "LICENSE"],
+            "license": [
+                "spdx": "LicenseRef-Codex-Habitat-User-Content",
+                "file": "LICENSE",
+            ],
             "minimumRuntimeVersion": runtimeVersion,
             "modes": ["light", "dark"],
             "preview": "preview.png",
@@ -476,28 +501,18 @@ public struct ThemePackageBuilder: Sendable {
         ]
     }
 
+    private static let maximumBridgeArtBytes = 1_048_576
+
     private static let licenseText = """
-    MIT License
+    User-Provided Content Notice
 
-    Copyright (c) 2026 Codex Habitat Contributors
+    Copyright and all other rights remain with the image's applicable rights
+    holder. Creating or exporting this Habitat package does not grant, transfer,
+    or sublicense any rights in the included image. The person using or sharing
+    this package is responsible for obtaining all permissions required for that
+    use and distribution.
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+    License identifier: LicenseRef-Codex-Habitat-User-Content
     """
 }
 

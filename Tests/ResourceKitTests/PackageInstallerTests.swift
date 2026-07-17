@@ -104,6 +104,28 @@ func excessiveImageCanvasIsRejectedBeforePublication() throws {
 }
 
 @Test
+func excessiveImagePixelCountIsRejectedBeforePublication() throws {
+    try withTemporaryLibrary { library in
+        let archiveURL = try makeTestArchive([
+            TestArchiveEntry(path: "habitat.json", data: try minimalManifestData()),
+            TestArchiveEntry(path: "preview.png", data: try testPNG(width: 11, height: 10)),
+            TestArchiveEntry(path: "LICENSE", data: Data("MIT".utf8)),
+        ])
+        defer { try? FileManager.default.removeItem(at: archiveURL) }
+        let installer = PackageInstaller(
+            libraryRoot: library,
+            runtimeVersion: "1.0.0",
+            limits: PackageLimits(maxImagePixels: 100)
+        )
+
+        #expect(throws: PackageInstallationError.imageDimensionsExceeded("preview.png")) {
+            try installer.install(archiveURL)
+        }
+        #expect(try publishedPackageDirectories(in: library).isEmpty)
+    }
+}
+
+@Test
 func malformedFontWithAValidHashIsRejectedBeforePublication() throws {
     try withTemporaryLibrary { library in
         let fontData = Data("not a font".utf8)

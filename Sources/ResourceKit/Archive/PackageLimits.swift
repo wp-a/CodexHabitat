@@ -10,6 +10,7 @@ public struct PackageLimits: Equatable, Sendable {
     public var maxManifestBytes: UInt64
     public var maxImageWidth: Int
     public var maxImageHeight: Int
+    public var maxImagePixels: Int
 
     public init(
         maxArchiveBytes: UInt64 = 50 * 1024 * 1024,
@@ -20,7 +21,8 @@ public struct PackageLimits: Equatable, Sendable {
         maxCompressionRatio: Double = 100,
         maxManifestBytes: UInt64 = 256 * 1024,
         maxImageWidth: Int = 8_192,
-        maxImageHeight: Int = 8_192
+        maxImageHeight: Int = 8_192,
+        maxImagePixels: Int = 32_000_000
     ) {
         self.maxArchiveBytes = maxArchiveBytes
         self.maxFileCount = maxFileCount
@@ -31,5 +33,6 @@ public struct PackageLimits: Equatable, Sendable {
         self.maxManifestBytes = maxManifestBytes
         self.maxImageWidth = maxImageWidth
         self.maxImageHeight = maxImageHeight
+        self.maxImagePixels = maxImagePixels
     }
 }

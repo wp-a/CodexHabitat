@@ -279,7 +279,12 @@ public struct PackageInstaller {
         else {
             throw PackageInstallationError.invalidImage(relativePath)
         }
-        guard width <= limits.maxImageWidth, height <= limits.maxImageHeight else {
+        let pixels = width.multipliedReportingOverflow(by: height)
+        guard width <= limits.maxImageWidth,
+              height <= limits.maxImageHeight,
+              !pixels.overflow,
+              pixels.partialValue <= limits.maxImagePixels
+        else {
             throw PackageInstallationError.imageDimensionsExceeded(relativePath)
         }
     }
