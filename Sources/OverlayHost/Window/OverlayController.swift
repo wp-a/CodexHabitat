@@ -7,10 +7,15 @@ public final class OverlayController: NSObject {
     public private(set) var isInteractive = false
     public private(set) var isMovementLocked = false
     public var onPlacementChange: ((SavedOverlayPlacement) -> Void)?
+    public var onPrimaryClick: (() -> Void)? {
+        didSet { dragRegion.onClick = onPrimaryClick }
+    }
 
     public var isMovementEnabled: Bool {
         isInteractive && !isMovementLocked
     }
+
+    public var dragRegionFrame: CGRect { dragRegion.frame }
 
     private let panelSize: CGSize
     private let snapper: EdgeSnapper
@@ -87,6 +92,11 @@ public final class OverlayController: NSObject {
         updateDragRegion()
     }
 
+    public func setDragFrame(_ frame: CGRect) {
+        let panelBounds = CGRect(origin: .zero, size: panelSize)
+        dragRegion.frame = frame.standardized.intersection(panelBounds)
+    }
+
     public func hide() {
         panel.orderOut(nil)
     }
@@ -112,7 +122,7 @@ public final class OverlayController: NSObject {
 
     private func configureDragRegion() {
         guard let contentView = panel.contentView else { return }
-        dragRegion.translatesAutoresizingMaskIntoConstraints = false
+        dragRegion.frame = contentView.bounds
         dragRegion.onMove = { [weak self] origin in
             self?.move(to: origin)
         }
@@ -120,12 +130,6 @@ public final class OverlayController: NSObject {
             self?.finishMove(at: origin)
         }
         contentView.addSubview(dragRegion)
-        NSLayoutConstraint.activate([
-            dragRegion.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            dragRegion.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            dragRegion.topAnchor.constraint(equalTo: contentView.topAnchor),
-            dragRegion.heightAnchor.constraint(equalToConstant: 28),
-        ])
     }
 
     private func move(to proposedOrigin: CGPoint) {
@@ -215,29 +219,49 @@ private final class OverlayDragRegionView: NSView {
     var isDragEnabled = false
     var onMove: ((CGPoint) -> Void)?
     var onFinish: ((CGPoint) -> Void)?
+    var onClick: (() -> Void)?
 
     private var initialMouseLocation = CGPoint.zero
     private var initialWindowOrigin = CGPoint.zero
+    private var didBeginDragging = false
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        switch NSApp.currentEvent?.type {
+        case .rightMouseDown, .rightMouseUp, .rightMouseDragged:
+            nil
+        default:
+            super.hitTest(point)
+        }
+    }
 
     override func mouseDown(with event: NSEvent) {
         guard isDragEnabled, let window else { return }
         initialMouseLocation = NSEvent.mouseLocation
         initialWindowOrigin = window.frame.origin
+        didBeginDragging = false
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard isDragEnabled else { return }
         let location = NSEvent.mouseLocation
+        let deltaX = location.x - initialMouseLocation.x
+        let deltaY = location.y - initialMouseLocation.y
+        guard didBeginDragging || hypot(deltaX, deltaY) >= 3 else { return }
+        didBeginDragging = true
         onMove?(
             CGPoint(
-                x: initialWindowOrigin.x + location.x - initialMouseLocation.x,
-                y: initialWindowOrigin.y + location.y - initialMouseLocation.y
+                x: initialWindowOrigin.x + deltaX,
+                y: initialWindowOrigin.y + deltaY
             )
         )
     }
 
     override func mouseUp(with event: NSEvent) {
         guard isDragEnabled, let window else { return }
-        onFinish?(window.frame.origin)
+        if didBeginDragging {
+            onFinish?(window.frame.origin)
+        } else {
+            onClick?()
+        }
     }
 }

@@ -20,3 +20,11 @@ func menuConnectionPresentationIsExplicit(
     #expect(presentation.badge == badge)
     #expect(presentation.symbol == symbol)
 }
+
+@Test
+func moveModeMenuPresentationMakesTheTemporaryStateExplicit() {
+    #expect(HabitatMoveModePresentation(isActive: false).title == "Move Habitat")
+    #expect(HabitatMoveModePresentation(isActive: false).symbol == "arrow.up.and.down.and.arrow.left.and.right")
+    #expect(HabitatMoveModePresentation(isActive: true).title == "Finish Moving")
+    #expect(HabitatMoveModePresentation(isActive: true).symbol == "checkmark")
+}

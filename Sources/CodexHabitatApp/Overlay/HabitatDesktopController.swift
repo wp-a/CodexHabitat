@@ -24,6 +24,7 @@ final class HabitatDesktopController: ObservableObject {
     private let presentation = HabitatOverlayPresentation()
     @Published private(set) var widgetModel = WidgetRailModel()
     @Published private(set) var currentSnapshot = HabitatSnapshot()
+    @Published private(set) var isTemporaryMoveMode = false
     private var petModel: HabitatOverlayModel?
     private var cancellable: AnyCancellable?
     private weak var boundModel: HabitatAppModel?
@@ -32,12 +33,15 @@ final class HabitatDesktopController: ObservableObject {
     private var renderedWidgets: [WidgetIdentifier] = []
     private var renderedThemeID: String?
     private var renderedScale: Double?
+    private var storedClickThrough = false
+    private var storedPositionLocked = false
 
     private(set) var isVisible = false
     var currentThemeID: String? { renderedThemeID }
     var onOpenSettings: (() -> Void)?
 
     var isInteractive: Bool { overlay?.isInteractive ?? false }
+    var isMovementEnabled: Bool { overlay?.isMovementEnabled ?? false }
     var currentPetSnapshot: HabitatSnapshot? { petModel?.snapshot }
     var currentPetRenderMode: PetRenderMode? { renderedPetPresentation?.renderMode }
     var currentPetScale: Double? { renderedPetPresentation?.scale }
@@ -72,6 +76,7 @@ final class HabitatDesktopController: ObservableObject {
     ) {
         let shouldShow = settings.onboardingCompleted && requestedVisibility
         guard shouldShow else {
+            endTemporaryMoveMode()
             overlay?.hide()
             isVisible = false
             return
@@ -99,12 +104,17 @@ final class HabitatDesktopController: ObservableObject {
         if needsNewPanel {
             overlay?.hide()
             overlay = OverlayController(panelSize: Self.scaledPanelSize(scale: scale))
+            overlay?.setDragFrame(Self.scaledPetFrame(scale: scale))
+            overlay?.onPrimaryClick = { [weak presentation] in
+                presentation?.isWidgetRailExpanded.toggle()
+            }
             overlay?.onPlacementChange = { [weak self] placement in
                 self?.boundModel?.setOverlayPosition(
                     displayID: placement.displayID,
                     x: placement.relativePosition.x,
                     y: placement.relativePosition.y
                 )
+                self?.endTemporaryMoveMode()
             }
         }
         if needsNewContent, let overlay {
@@ -147,12 +157,25 @@ final class HabitatDesktopController: ObservableObject {
         renderedWidgets = settings.widgetOrder
         renderedThemeID = theme.id
         renderedScale = scale
-        overlay?.setInteractive(!settings.clickThrough)
-        overlay?.setMovementLocked(settings.positionLocked)
+        storedClickThrough = settings.clickThrough
+        storedPositionLocked = settings.positionLocked
+        applyInteractionState()
         if !isVisible || needsNewPanel {
             overlay?.show(savedPlacement: savedPlacement ?? overlay?.currentPlacement())
         }
         isVisible = true
+    }
+
+    func beginTemporaryMoveMode() {
+        guard isVisible, overlay != nil else { return }
+        isTemporaryMoveMode = true
+        applyInteractionState()
+    }
+
+    func endTemporaryMoveMode() {
+        guard isTemporaryMoveMode else { return }
+        isTemporaryMoveMode = false
+        applyInteractionState()
     }
 
     func apply(snapshot: HabitatSnapshot) {
@@ -189,6 +212,22 @@ final class HabitatDesktopController: ObservableObject {
             width: HabitatOverlayLayout.containerSize.width * scale,
             height: HabitatOverlayLayout.containerSize.height * scale
         )
+    }
+
+    private static func scaledPetFrame(scale: Double) -> CGRect {
+        HabitatOverlayLayout(isWidgetRailExpanded: true).petFrame.applying(
+            CGAffineTransform(scaleX: scale, y: scale)
+        )
+    }
+
+    private func applyInteractionState() {
+        if isTemporaryMoveMode {
+            overlay?.setInteractive(true)
+            overlay?.setMovementLocked(false)
+        } else {
+            overlay?.setInteractive(!storedClickThrough)
+            overlay?.setMovementLocked(storedPositionLocked)
+        }
     }
 
     private static func savedPlacement(

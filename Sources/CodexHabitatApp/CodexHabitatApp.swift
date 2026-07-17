@@ -97,6 +97,17 @@ private struct HabitatMenuBarView: View {
                 .toggleStyle(.switch)
                 .accessibilityIdentifier("menu.show-habitat")
 
+            Button(action: toggleMoveMode) {
+                let moveMode = HabitatMoveModePresentation(
+                    isActive: desktopController.isTemporaryMoveMode
+                )
+                Label(moveMode.title, systemImage: moveMode.symbol)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .disabled(!desktopController.isVisible)
+            .accessibilityIdentifier("menu.move-habitat")
+
             if model.settings.widgetOrder.contains(.pomodoro)
                 || model.settings.widgetOrder.contains(.countdown) {
                 Divider()
@@ -143,6 +154,14 @@ private struct HabitatMenuBarView: View {
 
     private func openSettings() {
         HabitatAppEnvironment.settingsWindowController.show(model: model)
+    }
+
+    private func toggleMoveMode() {
+        if desktopController.isTemporaryMoveMode {
+            desktopController.endTemporaryMoveMode()
+        } else {
+            desktopController.beginTemporaryMoveMode()
+        }
     }
 
     private var connectionRow: some View {
@@ -208,6 +227,22 @@ struct HabitatMenuConnectionPresentation: Equatable {
             )
         case .offline:
             (title, badge, symbol) = ("Disconnected", "OFF", "network.slash")
+        }
+    }
+}
+
+struct HabitatMoveModePresentation: Equatable {
+    let title: String
+    let symbol: String
+
+    init(isActive: Bool) {
+        if isActive {
+            (title, symbol) = ("Finish Moving", "checkmark")
+        } else {
+            (title, symbol) = (
+                "Move Habitat",
+                "arrow.up.and.down.and.arrow.left.and.right"
+            )
         }
     }
 }

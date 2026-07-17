@@ -42,3 +42,13 @@ func positionLockDisablesMovementWithoutDisablingOverlayInteraction() {
     controller.setMovementLocked(false)
     #expect(controller.isMovementEnabled)
 }
+
+@Test @MainActor
+func dragRegionCanCoverTheCompletePetFrame() {
+    let controller = OverlayController(panelSize: CGSize(width: 360, height: 180))
+    let petFrame = CGRect(x: 200, y: 0, width: 160, height: 180)
+
+    controller.setDragFrame(petFrame)
+
+    #expect(controller.dragRegionFrame == petFrame)
+}

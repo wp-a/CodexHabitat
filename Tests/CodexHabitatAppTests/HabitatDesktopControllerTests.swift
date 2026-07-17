@@ -104,3 +104,30 @@ func desktopConsumesResourcePetRenderingAndScale() throws {
     #expect(controller.currentPetRenderMode == .smooth)
     #expect(controller.currentPetScale == 1.5)
 }
+
+@Test @MainActor
+func temporaryMoveModeOverridesClickThroughAndLockWithoutChangingSettings() {
+    let controller = HabitatDesktopController()
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.clickThrough = true
+    settings.positionLocked = true
+    controller.apply(settings: settings, pets: [], isVisible: true)
+
+    #expect(!controller.isInteractive)
+    #expect(!controller.isMovementEnabled)
+
+    controller.beginTemporaryMoveMode()
+
+    #expect(controller.isTemporaryMoveMode)
+    #expect(controller.isInteractive)
+    #expect(controller.isMovementEnabled)
+    #expect(settings.clickThrough)
+    #expect(settings.positionLocked)
+
+    controller.endTemporaryMoveMode()
+
+    #expect(!controller.isTemporaryMoveMode)
+    #expect(!controller.isInteractive)
+    #expect(!controller.isMovementEnabled)
+}
