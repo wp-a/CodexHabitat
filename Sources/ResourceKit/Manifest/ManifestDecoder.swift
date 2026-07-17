@@ -36,7 +36,10 @@ private enum ManifestShapeValidator {
         try validateObject(root["license"], allowed: ["spdx", "file"], path: "$.license")
         try validateObject(
             root["colors"],
-            allowed: ["surface", "text", "accent", "attention", "error"],
+            allowed: [
+                "surface", "panel", "panelAlt", "text", "mutedText", "accent",
+                "secondary", "highlight", "attention", "error",
+            ],
             path: "$.colors"
         )
 

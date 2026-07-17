@@ -106,8 +106,13 @@
       "required": ["surface", "text", "accent", "attention", "error"],
       "properties": {
         "surface": {"$ref": "#/$defs/color"},
+        "panel": {"$ref": "#/$defs/color"},
+        "panelAlt": {"$ref": "#/$defs/color"},
         "text": {"$ref": "#/$defs/color"},
+        "mutedText": {"$ref": "#/$defs/color"},
         "accent": {"$ref": "#/$defs/color"},
+        "secondary": {"$ref": "#/$defs/color"},
+        "highlight": {"$ref": "#/$defs/color"},
         "attention": {"$ref": "#/$defs/color"},
         "error": {"$ref": "#/$defs/color"}
       }

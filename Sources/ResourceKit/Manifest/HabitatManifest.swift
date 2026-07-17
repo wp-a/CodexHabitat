@@ -29,8 +29,13 @@ public enum HabitatMode: String, Decodable, Equatable, Sendable {
 
 public struct HabitatColorTokens: Decodable, Equatable, Sendable {
     public let surface: String
+    public let panel: String?
+    public let panelAlt: String?
     public let text: String
+    public let mutedText: String?
     public let accent: String
+    public let secondary: String?
+    public let highlight: String?
     public let attention: String
     public let error: String
 
@@ -41,7 +46,13 @@ public struct HabitatColorTokens: Decodable, Equatable, Sendable {
             ("accent", accent),
             ("attention", attention),
             ("error", error),
-        ]
+        ] + [
+            ("panel", panel),
+            ("panelAlt", panelAlt),
+            ("mutedText", mutedText),
+            ("secondary", secondary),
+            ("highlight", highlight),
+        ].compactMap { name, value in value.map { (name, $0) } }
     }
 }
 

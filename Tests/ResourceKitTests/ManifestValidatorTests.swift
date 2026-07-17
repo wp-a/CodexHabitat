@@ -15,6 +15,39 @@ func validV1ManifestDecodesIntoTypedResourcesAndWidgets() throws {
 }
 
 @Test
+func optionalRichColorsRemainBackwardCompatible() throws {
+    let legacy = try ManifestDecoder(runtimeVersion: "1.0.0").decode(validManifestData())
+    #expect(legacy.colors.panel == nil)
+
+    let rich = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+        try mutatedValidManifest {
+            var colors = $0["colors"] as? [String: Any] ?? [:]
+            colors["panel"] = "#15102B"
+            colors["panelAlt"] = "#241A44"
+            colors["mutedText"] = "#B9A8D8"
+            colors["secondary"] = "#FF2D95"
+            colors["highlight"] = "#FFE14D"
+            $0["colors"] = colors
+        }
+    )
+    #expect(rich.colors.panel == "#15102B")
+    #expect(rich.colors.panelAlt == "#241A44")
+    #expect(rich.colors.mutedText == "#B9A8D8")
+    #expect(rich.colors.secondary == "#FF2D95")
+    #expect(rich.colors.highlight == "#FFE14D")
+
+    #expect(throws: ManifestValidationError.invalidColorToken("secondary")) {
+        try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+            try mutatedValidManifest {
+                var colors = $0["colors"] as? [String: Any] ?? [:]
+                colors["secondary"] = "var(--accent)"
+                $0["colors"] = colors
+            }
+        )
+    }
+}
+
+@Test
 func metricWidgetConfigurationsDecodeAndValidateAsStaticData() throws {
     for (id, type) in [
         ("codex.tokens", "tokens"),
