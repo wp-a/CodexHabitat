@@ -33,3 +33,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Sparkle 2.9.4
+
+- Source: https://github.com/sparkle-project/Sparkle
+- Release: https://github.com/sparkle-project/Sparkle/releases/tag/2.9.4
+- Copyright: Sparkle contributors and bundled upstream components
+- License: permissive licenses documented in the upstream `LICENSE` file
+
+Sparkle provides opt-in, EdDSA-verified application updates in signed release
+builds. Codex Habitat pins the reviewed `2.9.4` Swift package release. The full
+Sparkle license, including bundled third-party notices, is copied into every
+binary distribution at `Contents/Resources/Licenses/Sparkle-LICENSE.txt`.

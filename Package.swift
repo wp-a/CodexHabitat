@@ -22,6 +22,10 @@ let package = Package(
             url: "https://github.com/weichsel/ZIPFoundation.git",
             exact: "0.9.20"
         ),
+        .package(
+            url: "https://github.com/sparkle-project/Sparkle.git",
+            exact: "2.9.4"
+        ),
     ],
     targets: [
         .target(name: "HabitatCore"),
@@ -45,8 +49,15 @@ let package = Package(
                 "WidgetRuntime",
                 "ResourceKit",
                 "OverlayHost",
+                .product(name: "Sparkle", package: "Sparkle"),
             ],
-            resources: [.copy("Resources")]
+            resources: [.copy("Resources")],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-rpath",
+                    "-Xlinker", "@executable_path/../Frameworks",
+                ]),
+            ]
         ),
         .executableTarget(
             name: "CodexHabitatThemeBridge",

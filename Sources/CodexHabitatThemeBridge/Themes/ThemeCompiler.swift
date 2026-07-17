@@ -1,4 +1,5 @@
 import Foundation
+import HabitatCore
 
 struct BridgeThemeTokens: Codable, Equatable, Sendable {
     let surface: String
@@ -108,7 +109,11 @@ struct ThemeCompiler {
     }
 
     static func bundled() throws -> ThemeCompiler {
-        guard let url = Bundle.module.url(
+        guard let url = PackagedResourceLocator.url(
+            forResource: "codex-theme-template",
+            withExtension: "css",
+            subdirectory: "Resources"
+        ) ?? Bundle.module.url(
             forResource: "codex-theme-template",
             withExtension: "css",
             subdirectory: "Resources"

@@ -1,4 +1,5 @@
 import AppKit
+import HabitatCore
 import SwiftUI
 
 @MainActor
@@ -6,6 +7,7 @@ private enum HabitatAppEnvironment {
     static let model = HabitatAppModel.live()
     static let settingsWindowController = HabitatSettingsWindowController()
     static let desktopController = HabitatDesktopController()
+    static let updaterController = HabitatUpdaterController()
 }
 
 @MainActor
@@ -81,6 +83,15 @@ private struct HabitatMenuBarView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("menu.settings")
 
+            if HabitatAppEnvironment.updaterController.isAvailable {
+                Button(action: HabitatAppEnvironment.updaterController.checkForUpdates) {
+                    Label("Check for Updates…", systemImage: "arrow.down.circle")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("menu.check-for-updates")
+            }
+
             Divider()
 
             Button(action: { NSApp.terminate(nil) }) {
@@ -107,6 +118,13 @@ private struct HabitatMenuBarView: View {
 enum CodexHabitatEntryPoint {
     @MainActor
     static func main() async {
+        if CommandLine.arguments.dropFirst() == ["--version"] {
+            let version = Bundle.main.object(
+                forInfoDictionaryKey: "CFBundleShortVersionString"
+            ) as? String ?? HabitatCore.version
+            print("Codex Habitat \(version)")
+            return
+        }
         if CommandLine.arguments.contains("--doctor-codex") {
             let status = await CodexDoctor.run()
             exit(status)

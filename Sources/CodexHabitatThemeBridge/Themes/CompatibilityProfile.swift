@@ -1,4 +1,5 @@
 import Foundation
+import HabitatCore
 
 struct CompatibilitySelectors: Codable, Equatable, Sendable {
     let sidebar: String
@@ -54,7 +55,11 @@ struct CompatibilityProfileStore {
     }
 
     static func bundled() throws -> CompatibilityProfileStore {
-        guard let url = Bundle.module.url(
+        guard let url = PackagedResourceLocator.url(
+            forResource: "compatibility",
+            withExtension: "json",
+            subdirectory: "Resources"
+        ) ?? Bundle.module.url(
             forResource: "compatibility",
             withExtension: "json",
             subdirectory: "Resources"

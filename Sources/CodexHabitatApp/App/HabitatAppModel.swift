@@ -94,7 +94,11 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
         fallbackColors: (String, String, String, String, String)
     ) -> HabitatThemeDescriptor {
         let directory = "Resources/Themes/\(id)"
-        let manifestURL = Bundle.module.url(
+        let manifestURL = PackagedResourceLocator.url(
+            forResource: "habitat",
+            withExtension: "json",
+            subdirectory: directory
+        ) ?? Bundle.module.url(
             forResource: "habitat",
             withExtension: "json",
             subdirectory: directory
@@ -112,7 +116,11 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
             accentHex: manifest?.colors.accent ?? fallbackColors.2,
             attentionHex: manifest?.colors.attention ?? fallbackColors.3,
             errorHex: manifest?.colors.error ?? fallbackColors.4,
-            previewURL: Bundle.module.url(
+            previewURL: PackagedResourceLocator.url(
+                forResource: "preview",
+                withExtension: "png",
+                subdirectory: directory
+            ) ?? Bundle.module.url(
                 forResource: "preview",
                 withExtension: "png",
                 subdirectory: directory
