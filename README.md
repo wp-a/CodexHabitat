@@ -19,10 +19,16 @@ timers work offline and do not require an account.
   animation state mapping.
 - Exact sanitized Codex activity when the local control socket is available,
   with an explicitly labelled metadata-only estimate when it is not.
-- Clock, status, usage, Pomodoro, and countdown widgets in a compact rail.
+- Status, current-session Token count, context utilization, output speed, and
+  account quota widgets in the default compact rail. Clock, Pomodoro, and
+  countdown remain optional.
+- Reliable whole-pet dragging, temporary move mode for click-through layouts,
+  and per-display placement persistence.
+- English and Simplified Chinese UI that follows the macOS language.
 - Shared menu-bar timer controls, explicit connection health, pet context
-  actions, position locking, and per-display placement persistence.
-- Four built-in native themes with light and dark visual directions.
+  actions, and position locking.
+- Four built-in native themes with light and dark visual directions, local
+  preview art, and matching optional Codex deep-theme compositions.
 - Clipboard export to the native `codex-theme-v1` import shape verified in the
   locally installed Codex build, without writing Codex preferences.
 - Explicit opt-in Petdex browsing; only license-declared, hash-verified Habitat
@@ -31,8 +37,8 @@ timers work offline and do not require an account.
   widget configuration, with native import, explicit replacement, export, and
   uninstall workflows.
 - An optional CDP appearance bridge that verifies the official Codex signature,
-  binds to loopback only, checks layout health, and restores normal Codex on
-  failure.
+  binds to loopback only, checks layout health, re-applies after renderer
+  replacement, and restores normal Codex on failure or Habitat exit.
 - Seven-day structured diagnostics with deterministic redacted export and local
   cache recovery.
 - Hardened app/DMG packaging, Sparkle 2.9.4 signed-feed support, Developer ID
@@ -72,10 +78,14 @@ Codex Habitat does not read prompts, responses, command text, project files,
 authentication tokens, or raw thread identifiers. When Codex exposes its local
 control socket, payloads are reduced at the connector boundary to activity,
 timestamps, rate-limit percentages, and salted thread hashes. Otherwise,
-Habitat opens no session file: it inspects only the size and modification date
-of today's and yesterday's local session files and labels the result **Local
-activity estimate**. Petdex network access is disabled until the user opts in.
-Update checks are disabled in debug and ad-hoc builds.
+Habitat's activity fallback inspects only session-file size and modification
+time. A separate bounded incremental reader binds the salted active-thread ID
+to its session filename and accepts only `event_msg` records whose payload type
+is `token_count`; prompt, response, command, tool, and unknown records are
+discarded before their content enters the app model. Local polling and pet
+animation pause while Habitat is hidden.
+Petdex network access is disabled until the user opts in. Update checks are
+disabled in debug and ad-hoc builds.
 
 Local files live under:
 
@@ -91,7 +101,12 @@ and timestamps. Export drops unknown fields and refuses symbolic-link targets.
 The bridge is disabled by default. Enabling it shows a restart confirmation,
 verifies bundle ID `com.openai.codex`, Team ID `2DC432GLL2`, code signature,
 architecture, process ancestry, and loopback listener ownership before any
-style is installed.
+style is installed. Built-in background art is local, bounded, and host-owned;
+resource packs still cannot provide CSS, JavaScript, selectors, or commands.
+
+After a successful apply, the helper watches for new verified `app://` page
+targets while Habitat is running. Quitting Habitat restores the official
+appearance and closes the recorded debugging session.
 
 The current compatibility profile supports Codex versions from `26.707.0`
 through, but not including, `26.708.0`. Unknown versions fail closed. See the
