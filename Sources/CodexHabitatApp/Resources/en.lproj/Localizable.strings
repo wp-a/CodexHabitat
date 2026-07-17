@@ -31,7 +31,8 @@
 "Countdown" = "Countdown";
 "Current Codex activity and connection" = "Current Codex activity and connection";
 "Current context-window utilization" = "Current context-window utilization";
-"Current session Token total" = "Current session Token total";
+"Latest request input plus output Tokens" = "Latest request input plus output Tokens";
+"Output Token delta in the last 60 seconds" = "Output Token delta in the last 60 seconds";
 "Dark" = "Dark";
 "Data access" = "Data access";
 "Deep appearance bridge" = "Deep appearance bridge";
@@ -83,7 +84,11 @@
 "Offline" = "Offline";
 "Open Codex Habitat at login" = "Open Codex Habitat at login";
 "Open Settings" = "Open Settings";
-"Output speed" = "Output speed";
+"Latest request" = "Latest request";
+"Recent 60s output" = "Recent 60s output";
+"Task cumulative" = "Task cumulative";
+"Task cumulative unavailable" = "Task cumulative unavailable";
+"Task cumulative: %@ Tokens" = "Task cumulative: %@ Tokens";
 "Pet" = "Pet";
 "Pet source" = "Pet source";
 "Petdex" = "Petdex";
@@ -93,7 +98,6 @@
 "Quota" = "Quota";
 "Read only" = "Read only";
 "Ready" = "Ready";
-"Recent output Tokens per minute" = "Recent output Tokens per minute";
 "Reconnecting" = "Reconnecting";
 "Reduced" = "Reduced";
 "Refresh pets" = "Refresh pets";
@@ -138,7 +142,7 @@
 "Start %@" = "Start %@";
 "Reset %@" = "Reset %@";
 "API Key" = "API Key";
-"%@/min" = "%@/min";
+"%@ / 60s" = "%@ / 60s";
 "%d diagnostic event" = "%d diagnostic event";
 "%d diagnostic events" = "%d diagnostic events";
 "%d pets, %d packs valid" = "%d pets, %d packs valid";
@@ -258,7 +262,6 @@
 "Remove %@" = "Remove %@";
 "Status" = "Status";
 "Context" = "Context";
-"Speed" = "Speed";
 "Clock" = "Clock";
 "Pomodoro" = "Pomodoro";
 "All" = "All";

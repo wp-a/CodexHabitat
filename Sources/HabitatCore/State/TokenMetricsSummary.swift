@@ -6,10 +6,10 @@ public struct TokenMetricsSummary: Codable, Equatable, Sendable {
     public let outputTokens: Int
     public let reasoningOutputTokens: Int
     public let totalTokens: Int
-    public let lastInputTokens: Int
-    public let lastOutputTokens: Int
+    public let lastInputTokens: Int?
+    public let lastOutputTokens: Int?
     public let modelContextWindow: Int?
-    public let outputTokensPerMinute: Double?
+    public let recentOutputTokens: Int?
     public let updatedAt: Date
 
     public init(
@@ -18,10 +18,10 @@ public struct TokenMetricsSummary: Codable, Equatable, Sendable {
         outputTokens: Int,
         reasoningOutputTokens: Int,
         totalTokens: Int,
-        lastInputTokens: Int,
-        lastOutputTokens: Int,
+        lastInputTokens: Int?,
+        lastOutputTokens: Int?,
         modelContextWindow: Int?,
-        outputTokensPerMinute: Double?,
+        recentOutputTokens: Int?,
         updatedAt: Date
     ) {
         self.inputTokens = inputTokens
@@ -32,16 +32,28 @@ public struct TokenMetricsSummary: Codable, Equatable, Sendable {
         self.lastInputTokens = lastInputTokens
         self.lastOutputTokens = lastOutputTokens
         self.modelContextWindow = modelContextWindow
-        self.outputTokensPerMinute = outputTokensPerMinute
+        self.recentOutputTokens = recentOutputTokens
         self.updatedAt = updatedAt
     }
 
+    public var latestRequestTokens: Int? {
+        guard let lastInputTokens, let lastOutputTokens else { return nil }
+        let (value, overflow) = lastInputTokens.addingReportingOverflow(lastOutputTokens)
+        return overflow ? nil : value
+    }
+
+    public var taskCumulativeTokens: Int {
+        totalTokens
+    }
+
     public var contextUsedPercent: Double? {
-        guard let modelContextWindow, modelContextWindow > 0 else { return nil }
+        guard let lastInputTokens, let modelContextWindow, modelContextWindow > 0 else {
+            return nil
+        }
         return min(max(Double(lastInputTokens) / Double(modelContextWindow) * 100, 0), 100)
     }
 
-    public func withOutputTokensPerMinute(_ value: Double?) -> TokenMetricsSummary {
+    public func withRecentOutputTokens(_ value: Int?) -> TokenMetricsSummary {
         TokenMetricsSummary(
             inputTokens: inputTokens,
             cachedInputTokens: cachedInputTokens,
@@ -51,7 +63,7 @@ public struct TokenMetricsSummary: Codable, Equatable, Sendable {
             lastInputTokens: lastInputTokens,
             lastOutputTokens: lastOutputTokens,
             modelContextWindow: modelContextWindow,
-            outputTokensPerMinute: value,
+            recentOutputTokens: value,
             updatedAt: updatedAt
         )
     }

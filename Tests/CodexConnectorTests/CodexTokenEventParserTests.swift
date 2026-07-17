@@ -27,8 +27,21 @@ func tokenParserAcceptsOnlyTokenCountEvents() throws {
     #expect(event.metrics.lastInputTokens == 500)
     #expect(event.metrics.lastOutputTokens == 40)
     #expect(event.metrics.modelContextWindow == 1_000)
+    #expect(event.metrics.latestRequestTokens == 540)
+    #expect(event.metrics.taskCumulativeTokens == 1_100)
     #expect(event.metrics.contextUsedPercent == 50)
-    #expect(event.metrics.outputTokensPerMinute == nil)
+    #expect(event.metrics.recentOutputTokens == nil)
+}
+
+@Test
+func tokenParserKeepsMissingLastRequestMetricsUnavailable() throws {
+    let line = Data(#"{"timestamp":"2026-07-17T04:00:02.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":600,"output_tokens":100,"reasoning_output_tokens":20,"total_tokens":1100},"model_context_window":1000}}}"#.utf8)
+    let metrics = try #require(CodexTokenEventParser().parse(line)?.metrics)
+
+    #expect(metrics.lastInputTokens == nil)
+    #expect(metrics.lastOutputTokens == nil)
+    #expect(metrics.latestRequestTokens == nil)
+    #expect(metrics.contextUsedPercent == nil)
 }
 
 @Test

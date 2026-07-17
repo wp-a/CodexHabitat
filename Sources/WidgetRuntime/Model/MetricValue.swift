@@ -7,6 +7,6 @@ public enum MetricValue: Equatable, Sendable {
     case date(Date)
     case durationSeconds(Int)
     case tokenCount(Int)
-    case tokensPerMinute(Double)
+    case recentTokenCount(Int, windowSeconds: Int)
     case unavailable
 }

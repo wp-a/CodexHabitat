@@ -6,12 +6,11 @@ public struct SpeedWidgetConfiguration: Equatable, Sendable {
 
 public enum SpeedWidget {
     public static func metric(snapshot: HabitatSnapshot?) -> MetricValue {
-        guard let value = snapshot?.tokenMetrics?.outputTokensPerMinute,
-              value.isFinite,
+        guard let value = snapshot?.tokenMetrics?.recentOutputTokens,
               value >= 0
         else {
             return .unavailable
         }
-        return .tokensPerMinute(value)
+        return .recentTokenCount(value, windowSeconds: 60)
     }
 }

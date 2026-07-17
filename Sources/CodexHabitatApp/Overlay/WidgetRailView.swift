@@ -302,7 +302,7 @@ struct WidgetRailView: View {
 
     private var tokenRow: some View {
         WidgetRow(systemImage: "number.square.fill", tint: accentColor) {
-            Text(L10n.text("Tokens"))
+            Text(L10n.text("Latest request"))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(textColor.opacity(0.62))
             Spacer(minLength: 2)
@@ -310,6 +310,8 @@ struct WidgetRailView: View {
                 .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
                 .lineLimit(1)
         }
+        .help(taskCumulativeDetail)
+        .accessibilityHint(taskCumulativeDetail)
     }
 
     private var contextRow: some View {
@@ -330,8 +332,8 @@ struct WidgetRailView: View {
     }
 
     private var speedRow: some View {
-        WidgetRow(systemImage: "speedometer", tint: .green) {
-            Text(L10n.text("Output speed"))
+        WidgetRow(systemImage: "clock.arrow.circlepath", tint: .green) {
+            Text(L10n.text("Recent 60s output"))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(textColor.opacity(0.62))
             Spacer(minLength: 2)
@@ -436,8 +438,15 @@ struct WidgetRailView: View {
     }
 
     private var tokenValue: String {
-        guard let tokens = model.snapshot.tokenMetrics?.totalTokens else { return "--" }
+        guard let tokens = model.snapshot.tokenMetrics?.latestRequestTokens else { return "--" }
         return Self.compactCount(tokens)
+    }
+
+    private var taskCumulativeDetail: String {
+        guard let tokens = model.snapshot.tokenMetrics?.taskCumulativeTokens else {
+            return L10n.text("Task cumulative unavailable")
+        }
+        return L10n.format("Task cumulative: %@ Tokens", Self.compactCount(tokens))
     }
 
     private var contextPercent: Double {
@@ -450,8 +459,8 @@ struct WidgetRailView: View {
     }
 
     private var speedValue: String {
-        guard let speed = model.snapshot.tokenMetrics?.outputTokensPerMinute else { return "--" }
-        return L10n.format("%@/min", Self.compactCount(Int(speed.rounded())))
+        guard let tokens = model.snapshot.tokenMetrics?.recentOutputTokens else { return "--" }
+        return L10n.format("%@ / 60s", Self.compactCount(tokens))
     }
 
     private static func compactCount(_ value: Int) -> String {

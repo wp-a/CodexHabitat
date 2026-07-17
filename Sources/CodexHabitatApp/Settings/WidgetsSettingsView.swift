@@ -50,9 +50,9 @@ struct WidgetsSettingsView: View {
     private func detail(for id: WidgetIdentifier) -> String {
         switch id {
         case .status: "Current Codex activity and connection"
-        case .tokens: "Current session Token total"
+        case .tokens: "Latest request input plus output Tokens"
         case .context: "Current context-window utilization"
-        case .speed: "Recent output Tokens per minute"
+        case .speed: "Output Token delta in the last 60 seconds"
         case .usage: "Five-hour or weekly account quota when available"
         case .clock: "Local system time"
         case .pomodoro: "Focus and rest timer"

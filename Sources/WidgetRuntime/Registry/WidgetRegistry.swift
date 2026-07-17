@@ -16,7 +16,7 @@ public struct WidgetRegistry: Sendable {
         ),
         WidgetDescriptor(
             id: .tokens,
-            displayName: "Tokens",
+            displayName: "Latest request",
             systemImage: "number.square.fill",
             defaultConfiguration: .tokens(TokenWidgetConfiguration())
         ),
@@ -28,8 +28,8 @@ public struct WidgetRegistry: Sendable {
         ),
         WidgetDescriptor(
             id: .speed,
-            displayName: "Speed",
-            systemImage: "speedometer",
+            displayName: "Recent 60s output",
+            systemImage: "clock.arrow.circlepath",
             defaultConfiguration: .speed(SpeedWidgetConfiguration())
         ),
         WidgetDescriptor(

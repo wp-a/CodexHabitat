@@ -6,7 +6,7 @@ public struct TokenWidgetConfiguration: Equatable, Sendable {
 
 public enum TokenWidget {
     public static func metric(snapshot: HabitatSnapshot?) -> MetricValue {
-        guard let value = snapshot?.tokenMetrics?.totalTokens else { return .unavailable }
+        guard let value = snapshot?.tokenMetrics?.latestRequestTokens else { return .unavailable }
         return .tokenCount(max(0, value))
     }
 }

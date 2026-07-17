@@ -4,7 +4,7 @@ import Testing
 @testable import CodexConnector
 
 @Test
-func sessionTokenMonitorReadsAppendsCalculatesSpeedAndIgnoresPartialTails() async throws {
+func sessionTokenMonitorReadsAppendsCalculatesRecentOutputAndIgnoresPartialTails() async throws {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "HabitatTokenMetrics-\(UUID().uuidString)",
         directoryHint: .isDirectory
@@ -21,7 +21,7 @@ func sessionTokenMonitorReadsAppendsCalculatesSpeedAndIgnoresPartialTails() asyn
 
     let first = try #require(await monitor.sample(at: start))
     #expect(first.outputTokens == 100)
-    #expect(first.outputTokensPerMinute == nil)
+    #expect(first.recentOutputTokens == nil)
 
     try append("{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\"}}\n", to: session)
     let secondLine = tokenLine(timestamp: "2026-07-17T04:00:20.000Z", output: 140)
@@ -32,12 +32,12 @@ func sessionTokenMonitorReadsAppendsCalculatesSpeedAndIgnoresPartialTails() asyn
     try append(String(secondLine[split...]) + "\n", to: session)
     let second = try #require(await monitor.sample(at: start.addingTimeInterval(20)))
     #expect(second.outputTokens == 140)
-    #expect(second.outputTokensPerMinute == 120)
+    #expect(second.recentOutputTokens == 40)
     #expect(second.contextUsedPercent == 50)
 }
 
 @Test
-func sessionTokenMonitorResetsSpeedWhenTheLatestSessionChanges() async throws {
+func sessionTokenMonitorResetsRecentOutputWhenTheLatestSessionChanges() async throws {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "HabitatTokenMetricsSwitch-\(UUID().uuidString)",
         directoryHint: .isDirectory
@@ -66,11 +66,11 @@ func sessionTokenMonitorResetsSpeedWhenTheLatestSessionChanges() async throws {
     let switched = try #require(await monitor.sample(at: start.addingTimeInterval(60)))
 
     #expect(switched.outputTokens == 12)
-    #expect(switched.outputTokensPerMinute == nil)
+    #expect(switched.recentOutputTokens == nil)
 }
 
 @Test
-func sessionTokenSpeedExpiresWithoutANewTokenEvent() async throws {
+func sessionTokenRecentOutputExpiresWithoutANewTokenEvent() async throws {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "HabitatTokenMetricsExpiry-\(UUID().uuidString)",
         directoryHint: .isDirectory
@@ -86,8 +86,32 @@ func sessionTokenSpeedExpiresWithoutANewTokenEvent() async throws {
     let monitor = SessionTokenMetricsMonitor(sessionsRoot: root, calendar: utcCalendar)
     let start = Date(timeIntervalSince1970: 1_784_260_800)
 
-    #expect(await monitor.sample(at: start.addingTimeInterval(20))?.outputTokensPerMinute == 120)
-    #expect(await monitor.sample(at: start.addingTimeInterval(81))?.outputTokensPerMinute == nil)
+    #expect(await monitor.sample(at: start.addingTimeInterval(20))?.recentOutputTokens == 40)
+    #expect(await monitor.sample(at: start.addingTimeInterval(81))?.recentOutputTokens == nil)
+}
+
+@Test
+func sessionTokenRecentOutputResetsWhenTheCumulativeCounterDecreases() async throws {
+    let root = FileManager.default.temporaryDirectory.appending(
+        path: "HabitatTokenMetricsCounterReset-\(UUID().uuidString)",
+        directoryHint: .isDirectory
+    )
+    let day = root.appending(path: "2026/07/17", directoryHint: .isDirectory)
+    let session = day.appending(path: "rollout-first.jsonl")
+    try FileManager.default.createDirectory(at: day, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data((
+        tokenLine(timestamp: "2026-07-17T04:00:00.000Z", output: 100) + "\n"
+            + tokenLine(timestamp: "2026-07-17T04:00:20.000Z", output: 140) + "\n"
+            + tokenLine(timestamp: "2026-07-17T04:00:30.000Z", output: 12) + "\n"
+    ).utf8).write(to: session)
+    let monitor = SessionTokenMetricsMonitor(sessionsRoot: root, calendar: utcCalendar)
+
+    let metrics = try #require(await monitor.sample(
+        at: Date(timeIntervalSince1970: 1_784_260_830)
+    ))
+    #expect(metrics.outputTokens == 12)
+    #expect(metrics.recentOutputTokens == nil)
 }
 
 @Test

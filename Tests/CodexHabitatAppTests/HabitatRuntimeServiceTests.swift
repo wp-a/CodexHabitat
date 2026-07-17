@@ -86,7 +86,7 @@ func runtimePublishesLocalTokenMetricsWhenTheControlPlaneIsUnavailable() async {
         lastInputTokens: 500,
         lastOutputTokens: 40,
         modelContextWindow: 1_000,
-        outputTokensPerMinute: 120,
+        recentOutputTokens: 40,
         updatedAt: Date(timeIntervalSince1970: 400)
     )
     let monitor = FakeTokenMetricsMonitor(metrics: metrics)
@@ -195,7 +195,7 @@ private actor CountingTokenMetricsMonitor: CodexTokenMetricsMonitoring {
             lastInputTokens: 1,
             lastOutputTokens: 1,
             modelContextWindow: 100,
-            outputTokensPerMinute: nil,
+            recentOutputTokens: nil,
             updatedAt: date
         )
     }

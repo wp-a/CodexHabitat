@@ -83,7 +83,7 @@ func tokenMetricUpdatesPreserveTheRestOfTheSnapshot() async {
         lastInputTokens: 500,
         lastOutputTokens: 40,
         modelContextWindow: 1_000,
-        outputTokensPerMinute: 120,
+        recentOutputTokens: 40,
         updatedAt: Date(timeIntervalSince1970: 200)
     )
     let state = HabitatState(initialSnapshot: HabitatSnapshot(

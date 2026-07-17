@@ -31,7 +31,8 @@
 "Countdown" = "倒计时";
 "Current Codex activity and connection" = "当前 Codex 活动与连接状态";
 "Current context-window utilization" = "当前上下文窗口使用率";
-"Current session Token total" = "当前会话 Token 总量";
+"Latest request input plus output Tokens" = "最近请求的输入与输出 Token 总量";
+"Output Token delta in the last 60 seconds" = "最近 60 秒的输出 Token 增量";
 "Dark" = "深色";
 "Data access" = "数据访问";
 "Deep appearance bridge" = "深度外观桥";
@@ -83,7 +84,11 @@
 "Offline" = "离线";
 "Open Codex Habitat at login" = "登录时打开 Codex Habitat";
 "Open Settings" = "打开设置";
-"Output speed" = "输出速度";
+"Latest request" = "最近请求";
+"Recent 60s output" = "近 60 秒输出";
+"Task cumulative" = "任务累计";
+"Task cumulative unavailable" = "任务累计不可用";
+"Task cumulative: %@ Tokens" = "任务累计：%@ Token";
 "Pet" = "宠物";
 "Pet source" = "宠物来源";
 "Petdex" = "Petdex";
@@ -93,7 +98,6 @@
 "Quota" = "配额";
 "Read only" = "只读";
 "Ready" = "就绪";
-"Recent output Tokens per minute" = "最近每分钟输出 Token 数";
 "Reconnecting" = "正在重连";
 "Reduced" = "减少动画";
 "Refresh pets" = "刷新宠物";
@@ -138,7 +142,7 @@
 "Start %@" = "开始%@";
 "Reset %@" = "重置%@";
 "API Key" = "API Key";
-"%@/min" = "%@/分钟";
+"%@ / 60s" = "%@ / 60 秒";
 "%d diagnostic event" = "%d 条诊断事件";
 "%d diagnostic events" = "%d 条诊断事件";
 "%d pets, %d packs valid" = "%d 个宠物、%d 个资源包有效";
@@ -258,7 +262,6 @@
 "Remove %@" = "移除 %@";
 "Status" = "状态";
 "Context" = "上下文";
-"Speed" = "速度";
 "Clock" = "时钟";
 "Pomodoro" = "番茄钟";
 "All" = "全部";

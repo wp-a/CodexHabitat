@@ -23,16 +23,23 @@ public struct CodexTokenEventParser: Sendable {
 
         let total = event.payload.info.totalTokenUsage
         let last = event.payload.info.lastTokenUsage
-        let values = [
+        let totalValues = [
             total.inputTokens,
             total.cachedInputTokens,
             total.outputTokens,
             total.reasoningOutputTokens,
             total.totalTokens,
-            last?.inputTokens ?? 0,
-            last?.outputTokens ?? 0,
         ]
-        guard values.allSatisfy({ $0 >= 0 }),
+        let lastValues = last.map {
+            [
+                $0.inputTokens,
+                $0.cachedInputTokens,
+                $0.outputTokens,
+                $0.reasoningOutputTokens,
+                $0.totalTokens,
+            ]
+        } ?? []
+        guard (totalValues + lastValues).allSatisfy({ $0 >= 0 }),
               event.payload.info.modelContextWindow.map({ $0 > 0 }) ?? true
         else {
             return nil
@@ -46,10 +53,10 @@ public struct CodexTokenEventParser: Sendable {
                 outputTokens: total.outputTokens,
                 reasoningOutputTokens: total.reasoningOutputTokens,
                 totalTokens: total.totalTokens,
-                lastInputTokens: last?.inputTokens ?? 0,
-                lastOutputTokens: last?.outputTokens ?? 0,
+                lastInputTokens: last?.inputTokens,
+                lastOutputTokens: last?.outputTokens,
                 modelContextWindow: event.payload.info.modelContextWindow,
-                outputTokensPerMinute: nil,
+                recentOutputTokens: nil,
                 updatedAt: timestamp
             )
         )

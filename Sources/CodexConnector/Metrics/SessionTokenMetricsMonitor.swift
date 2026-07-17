@@ -13,7 +13,7 @@ public actor SessionTokenMetricsMonitor {
     private let parser = CodexTokenEventParser()
     private let initialTailByteLimit: UInt64
     private let maximumReadBytes: Int
-    private let speedWindow: TimeInterval
+    private let recentOutputWindow: TimeInterval
     private let threadIDHasher: (@Sendable (String) -> String)?
 
     private var currentFile: URL?
@@ -31,7 +31,7 @@ public actor SessionTokenMetricsMonitor {
         fileManager: FileManager = .default,
         initialTailByteLimit: UInt64 = 1_048_576,
         maximumReadBytes: Int = 1_048_576,
-        speedWindow: TimeInterval = 60,
+        recentOutputWindow: TimeInterval = 60,
         threadIDHasher: (@Sendable (String) -> String)? = nil
     ) {
         self.sessionsRoot = sessionsRoot
@@ -39,7 +39,7 @@ public actor SessionTokenMetricsMonitor {
         self.fileManager = fileManager
         self.initialTailByteLimit = initialTailByteLimit
         self.maximumReadBytes = maximumReadBytes
-        self.speedWindow = speedWindow
+        self.recentOutputWindow = recentOutputWindow
         self.threadIDHasher = threadIDHasher
     }
 
@@ -84,7 +84,7 @@ public actor SessionTokenMetricsMonitor {
         }
 
         readAvailableBytes(from: latestFile, fileSize: fileSize)
-        expireOutputSpeed(at: now)
+        expireRecentOutput(at: now)
         return latestMetrics
     }
 
@@ -185,35 +185,47 @@ public actor SessionTokenMetricsMonitor {
     }
 
     private func accept(_ event: CodexTokenEvent) {
+        if let last = outputPoints.last, event.metrics.outputTokens < last.outputTokens {
+            outputPoints.removeAll(keepingCapacity: true)
+        }
         outputPoints.append(OutputPoint(
             timestamp: event.timestamp,
             outputTokens: event.metrics.outputTokens
         ))
-        let cutoff = event.timestamp.addingTimeInterval(-speedWindow)
-        outputPoints.removeAll { $0.timestamp < cutoff }
+        pruneOutputPoints(before: event.timestamp.addingTimeInterval(-recentOutputWindow))
         if outputPoints.count > 64 {
             outputPoints.removeFirst(outputPoints.count - 64)
         }
-        latestMetrics = event.metrics.withOutputTokensPerMinute(outputSpeed())
+        latestMetrics = event.metrics.withRecentOutputTokens(recentOutput(at: event.timestamp))
     }
 
-    private func outputSpeed() -> Double? {
+    private func recentOutput(at now: Date) -> Int? {
         guard let first = outputPoints.first,
               let last = outputPoints.last,
-              last.timestamp > first.timestamp,
+              outputPoints.count > 1,
+              last.timestamp >= now.addingTimeInterval(-recentOutputWindow),
               last.outputTokens >= first.outputTokens
         else {
             return nil
         }
-        let seconds = last.timestamp.timeIntervalSince(first.timestamp)
-        return Double(last.outputTokens - first.outputTokens) / seconds * 60
+        return last.outputTokens - first.outputTokens
     }
 
-    private func expireOutputSpeed(at now: Date) {
-        let cutoff = now.addingTimeInterval(-speedWindow)
-        outputPoints.removeAll { $0.timestamp < cutoff }
+    private func expireRecentOutput(at now: Date) {
+        pruneOutputPoints(before: now.addingTimeInterval(-recentOutputWindow))
         guard let latestMetrics else { return }
-        self.latestMetrics = latestMetrics.withOutputTokensPerMinute(outputSpeed())
+        self.latestMetrics = latestMetrics.withRecentOutputTokens(recentOutput(at: now))
+    }
+
+    private func pruneOutputPoints(before cutoff: Date) {
+        guard let firstInsideWindow = outputPoints.firstIndex(where: { $0.timestamp >= cutoff }) else {
+            if let last = outputPoints.last {
+                outputPoints = [last]
+            }
+            return
+        }
+        guard firstInsideWindow > 1 else { return }
+        outputPoints.removeFirst(firstInsideWindow - 1)
     }
 
     private func latestSessionFile(at date: Date) -> URL? {
