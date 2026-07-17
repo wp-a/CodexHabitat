@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "walled-vanguard",
+  "name": "Walled Vanguard",
+  "version": "1.0.0",
+  "author": "Codex Habitat Contributors",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "preview": "preview.png",
+  "colors": {
+    "accent": "#D65A42",
+    "attention": "#E69A38",
+    "error": "#D83B48",
+    "highlight": "#F2D06B",
+    "mutedText": "#BFC3C1",
+    "panel": "#343B41",
+    "panelAlt": "#4D555B",
+    "secondary": "#4D8A91",
+    "surface": "#20252A",
+    "text": "#F7F4EB"
+  },
+  "theme": {
+    "artFocus": {
+      "x": 0.80000000000000004,
+      "y": 0.42999999999999999
+    },
+    "background": "background.jpg",
+    "backgroundStrength": 0.41999999999999998,
+    "blurRadius": 10,
+    "category": "cinematic",
+    "density": "comfortable",
+    "panelOpacity": 0.88,
+    "safeSide": "leading",
+    "styleFamily": "gameCinematic"
+  },
+  "assets": [
+    {
+      "type": "image",
+      "id": "theme-background",
+      "path": "background.jpg",
+      "sha256": "86f8e13d206a9df6193e543ef161431ab5fea7f80a07c9345d59e884d0fa0d35",
+      "rendering": "smooth"
+    }
+  ],
+  "pets": [],
+  "widgets": [
+    {
+      "id": "codex.status",
+      "anchor": "topLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.06
+      },
+      "configuration": {
+        "type": "status",
+        "showsConnectionHealth": true
+      }
+    },
+    {
+      "id": "codex.tokens",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.24
+      },
+      "configuration": {
+        "type": "tokens"
+      }
+    },
+    {
+      "id": "codex.context",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.42
+      },
+      "configuration": {
+        "type": "context"
+      }
+    },
+    {
+      "id": "codex.speed",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.60
+      },
+      "configuration": {
+        "type": "speed"
+      }
+    },
+    {
+      "id": "codex.usage",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.78
+      },
+      "configuration": {
+        "type": "usage",
+        "bucket": "primary"
+      }
+    },
+    {
+      "id": "system.clock",
+      "anchor": "bottomLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "clock",
+        "uses24HourClock": true
+      }
+    },
+    {
+      "id": "timer.pomodoro",
+      "anchor": "bottomTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "pomodoro",
+        "focusSeconds": 1500,
+        "restSeconds": 300
+      }
+    }
+  ]
+}

@@ -15,9 +15,7 @@ func settingsChangesUseKnownThemesWidgetsAndSafeScaleBounds() async throws {
     )
     await model.load()
 
-    #expect(HabitatThemeDescriptor.builtIn.map(\.id) == [
-        "workbench", "night-shift", "arcade-signal", "quiet-garden",
-    ])
+    #expect(HabitatThemeDescriptor.builtIn.map(\.id) == BuiltInThemeCatalog.all.map(\.id))
     model.selectTheme("unknown-theme")
     #expect(model.settings.selectedThemeID == "workbench")
     model.selectTheme("arcade-signal")

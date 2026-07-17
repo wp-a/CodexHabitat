@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "crimson-mecha",
+  "name": "Crimson Mecha",
+  "version": "1.0.0",
+  "author": "Codex Habitat Contributors",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "preview": "preview.png",
+  "colors": {
+    "accent": "#F33E4D",
+    "attention": "#FF8A24",
+    "error": "#FF3045",
+    "highlight": "#FFD34D",
+    "mutedText": "#C9AAA7",
+    "panel": "#32181D",
+    "panelAlt": "#4A2025",
+    "secondary": "#4CC9C0",
+    "surface": "#1D1114",
+    "text": "#FFF6F2"
+  },
+  "theme": {
+    "artFocus": {
+      "x": 0.79000000000000004,
+      "y": 0.47999999999999998
+    },
+    "background": "background.jpg",
+    "backgroundStrength": 0.41999999999999998,
+    "blurRadius": 10,
+    "category": "game",
+    "density": "comfortable",
+    "panelOpacity": 0.88,
+    "safeSide": "leading",
+    "styleFamily": "gameCinematic"
+  },
+  "assets": [
+    {
+      "type": "image",
+      "id": "theme-background",
+      "path": "background.jpg",
+      "sha256": "e88bd3a78229169b427f33c86d3de39025da6ed899c1d7a81d8eb0f3ea0621d3",
+      "rendering": "smooth"
+    }
+  ],
+  "pets": [],
+  "widgets": [
+    {
+      "id": "codex.status",
+      "anchor": "topLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.06
+      },
+      "configuration": {
+        "type": "status",
+        "showsConnectionHealth": true
+      }
+    },
+    {
+      "id": "codex.tokens",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.24
+      },
+      "configuration": {
+        "type": "tokens"
+      }
+    },
+    {
+      "id": "codex.context",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.42
+      },
+      "configuration": {
+        "type": "context"
+      }
+    },
+    {
+      "id": "codex.speed",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.60
+      },
+      "configuration": {
+        "type": "speed"
+      }
+    },
+    {
+      "id": "codex.usage",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.78
+      },
+      "configuration": {
+        "type": "usage",
+        "bucket": "primary"
+      }
+    },
+    {
+      "id": "system.clock",
+      "anchor": "bottomLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "clock",
+        "uses24HourClock": true
+      }
+    },
+    {
+      "id": "timer.pomodoro",
+      "anchor": "bottomTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "pomodoro",
+        "focusSeconds": 1500,
+        "restSeconds": 300
+      }
+    }
+  ]
+}

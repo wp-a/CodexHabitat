@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "green-chat-desk",
+  "name": "Green Chat Desktop",
+  "version": "1.0.0",
+  "author": "Codex Habitat Contributors",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "preview": "preview.png",
+  "colors": {
+    "accent": "#20A45B",
+    "attention": "#F5A623",
+    "error": "#D83A4E",
+    "highlight": "#E8F65B",
+    "mutedText": "#4A7059",
+    "panel": "#F8FFF9",
+    "panelAlt": "#BDE9C9",
+    "secondary": "#79D98C",
+    "surface": "#E7F8EC",
+    "text": "#113B25"
+  },
+  "theme": {
+    "artFocus": {
+      "x": 0.77000000000000002,
+      "y": 0.47999999999999998
+    },
+    "background": "background.jpg",
+    "backgroundStrength": 0.41999999999999998,
+    "blurRadius": 10,
+    "category": "chat",
+    "density": "comfortable",
+    "panelOpacity": 0.88,
+    "safeSide": "leading",
+    "styleFamily": "greenChat"
+  },
+  "assets": [
+    {
+      "type": "image",
+      "id": "theme-background",
+      "path": "background.jpg",
+      "sha256": "f00435a52f802992ecf1af1af660a778cf43cf170ca8a17d04a06dba1d0987db",
+      "rendering": "smooth"
+    }
+  ],
+  "pets": [],
+  "widgets": [
+    {
+      "id": "codex.status",
+      "anchor": "topLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.06
+      },
+      "configuration": {
+        "type": "status",
+        "showsConnectionHealth": true
+      }
+    },
+    {
+      "id": "codex.tokens",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.24
+      },
+      "configuration": {
+        "type": "tokens"
+      }
+    },
+    {
+      "id": "codex.context",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.42
+      },
+      "configuration": {
+        "type": "context"
+      }
+    },
+    {
+      "id": "codex.speed",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.60
+      },
+      "configuration": {
+        "type": "speed"
+      }
+    },
+    {
+      "id": "codex.usage",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.78
+      },
+      "configuration": {
+        "type": "usage",
+        "bucket": "primary"
+      }
+    },
+    {
+      "id": "system.clock",
+      "anchor": "bottomLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "clock",
+        "uses24HourClock": true
+      }
+    },
+    {
+      "id": "timer.pomodoro",
+      "anchor": "bottomTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "pomodoro",
+        "focusSeconds": 1500,
+        "restSeconds": 300
+      }
+    }
+  ]
+}

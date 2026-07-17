@@ -49,11 +49,20 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
     let detail: String
     let symbol: String
     let surfaceHex: String
+    let panelHex: String
+    let panelAltHex: String
     let textHex: String
+    let mutedTextHex: String
     let accentHex: String
+    let secondaryHex: String
+    let highlightHex: String
     let attentionHex: String
     let errorHex: String
     let previewURL: URL?
+    let backgroundURL: URL?
+    let category: HabitatThemeCategory
+    let styleFamily: HabitatThemeStyleFamily
+    let appearance: HabitatThemeAppearance
     let widgets: [HabitatWidget]
 
     init(
@@ -62,11 +71,20 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
         detail: String,
         symbol: String,
         surfaceHex: String,
+        panelHex: String? = nil,
+        panelAltHex: String? = nil,
         textHex: String,
+        mutedTextHex: String? = nil,
         accentHex: String,
+        secondaryHex: String? = nil,
+        highlightHex: String? = nil,
         attentionHex: String,
         errorHex: String,
         previewURL: URL?,
+        backgroundURL: URL? = nil,
+        category: HabitatThemeCategory = .custom,
+        styleFamily: HabitatThemeStyleFamily = .gameCinematic,
+        appearance: HabitatThemeAppearance? = nil,
         widgets: [HabitatWidget] = []
     ) {
         self.id = id
@@ -74,44 +92,34 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
         self.detail = detail
         self.symbol = symbol
         self.surfaceHex = surfaceHex
+        self.panelHex = panelHex ?? surfaceHex
+        self.panelAltHex = panelAltHex ?? accentHex
         self.textHex = textHex
+        self.mutedTextHex = mutedTextHex ?? textHex
         self.accentHex = accentHex
+        self.secondaryHex = secondaryHex ?? attentionHex
+        self.highlightHex = highlightHex ?? accentHex
         self.attentionHex = attentionHex
         self.errorHex = errorHex
         self.previewURL = previewURL
+        self.backgroundURL = backgroundURL
+        self.category = category
+        self.styleFamily = styleFamily
+        self.appearance = appearance ?? HabitatThemeAppearance(
+            category: category,
+            styleFamily: styleFamily,
+            background: "background.jpg",
+            artFocus: HabitatThemeFocalPoint(x: 0.75, y: 0.5),
+            safeSide: .leading,
+            backgroundStrength: 0.42,
+            panelOpacity: 0.88,
+            blurRadius: 10,
+            density: .comfortable
+        )
         self.widgets = widgets
     }
 
-    static let builtIn = [
-        bundled(
-            id: "workbench",
-            name: "Workbench",
-            detail: "Bright and tool-oriented",
-            symbol: "hammer.fill",
-            fallbackColors: ("#F4F7F8", "#172126", "#0F8B8D", "#D97706", "#D64545")
-        ),
-        bundled(
-            id: "night-shift",
-            name: "Night Shift",
-            detail: "Dark with teal and amber signals",
-            symbol: "moon.stars.fill",
-            fallbackColors: ("#171A1D", "#F1F5F6", "#2DD4BF", "#F59E0B", "#FB7185")
-        ),
-        bundled(
-            id: "arcade-signal",
-            name: "Arcade Signal",
-            detail: "Crisp primary accents for pixel pets",
-            symbol: "arcade.stick.console.fill",
-            fallbackColors: ("#14151A", "#F7F7F2", "#2D8CFF", "#FFD23F", "#FF4D5A")
-        ),
-        bundled(
-            id: "quiet-garden",
-            name: "Quiet Garden",
-            detail: "Soft green with cherry accents",
-            symbol: "leaf.fill",
-            fallbackColors: ("#F5F8F4", "#203127", "#3D8B63", "#C86A45", "#C4455D")
-        ),
-    ]
+    static let builtIn = BuiltInThemeCatalog.all.map(bundled)
 
     static func installed(_ package: InstalledPackage) -> HabitatThemeDescriptor {
         HabitatThemeDescriptor(
@@ -120,23 +128,28 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
             detail: "\(package.manifest.author) · \(package.version)",
             symbol: "shippingbox.fill",
             surfaceHex: package.manifest.colors.surface,
+            panelHex: package.manifest.colors.panel,
+            panelAltHex: package.manifest.colors.panelAlt,
             textHex: package.manifest.colors.text,
+            mutedTextHex: package.manifest.colors.mutedText,
             accentHex: package.manifest.colors.accent,
+            secondaryHex: package.manifest.colors.secondary,
+            highlightHex: package.manifest.colors.highlight,
             attentionHex: package.manifest.colors.attention,
             errorHex: package.manifest.colors.error,
             previewURL: package.url.appending(path: package.manifest.preview),
+            backgroundURL: package.manifest.theme.map {
+                package.url.appending(path: $0.background)
+            },
+            category: package.manifest.theme?.category ?? .custom,
+            styleFamily: package.manifest.theme?.styleFamily ?? .gameCinematic,
+            appearance: package.manifest.theme,
             widgets: package.manifest.widgets
         )
     }
 
-    private static func bundled(
-        id: String,
-        name: String,
-        detail: String,
-        symbol: String,
-        fallbackColors: (String, String, String, String, String)
-    ) -> HabitatThemeDescriptor {
-        let directory = "Resources/Themes/\(id)"
+    private static func bundled(_ definition: BuiltInThemeDefinition) -> HabitatThemeDescriptor {
+        let directory = "Resources/Themes/\(definition.id)"
         let manifestURL = PackagedResourceLocator.url(
             forResource: "habitat",
             withExtension: "json",
@@ -147,21 +160,35 @@ struct HabitatThemeDescriptor: Identifiable, Equatable, Sendable {
             try? ManifestDecoder(runtimeVersion: "1.0.0").decode(Data(contentsOf: url))
         }
         return HabitatThemeDescriptor(
-            id: id,
-            name: manifest?.name ?? name,
-            detail: detail,
-            symbol: symbol,
-            surfaceHex: manifest?.colors.surface ?? fallbackColors.0,
-            textHex: manifest?.colors.text ?? fallbackColors.1,
-            accentHex: manifest?.colors.accent ?? fallbackColors.2,
-            attentionHex: manifest?.colors.attention ?? fallbackColors.3,
-            errorHex: manifest?.colors.error ?? fallbackColors.4,
+            id: definition.id,
+            name: manifest?.name ?? definition.name,
+            detail: definition.detail,
+            symbol: definition.symbol,
+            surfaceHex: manifest?.colors.surface ?? definition.palette.surface,
+            panelHex: manifest?.colors.panel ?? definition.palette.panel,
+            panelAltHex: manifest?.colors.panelAlt ?? definition.palette.panelAlt,
+            textHex: manifest?.colors.text ?? definition.palette.text,
+            mutedTextHex: manifest?.colors.mutedText ?? definition.palette.mutedText,
+            accentHex: manifest?.colors.accent ?? definition.palette.accent,
+            secondaryHex: manifest?.colors.secondary ?? definition.palette.secondary,
+            highlightHex: manifest?.colors.highlight ?? definition.palette.highlight,
+            attentionHex: manifest?.colors.attention ?? definition.palette.attention,
+            errorHex: manifest?.colors.error ?? definition.palette.error,
             previewURL: PackagedResourceLocator.url(
                 forResource: "preview",
                 withExtension: "png",
                 subdirectory: directory,
                 packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
             ),
+            backgroundURL: PackagedResourceLocator.url(
+                forResource: "background",
+                withExtension: "jpg",
+                subdirectory: directory,
+                packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
+            ),
+            category: manifest?.theme?.category ?? definition.category,
+            styleFamily: manifest?.theme?.styleFamily ?? definition.styleFamily,
+            appearance: manifest?.theme ?? definition.appearance(background: "background.jpg"),
             widgets: manifest?.widgets ?? []
         )
     }

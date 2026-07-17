@@ -1,64 +1,137 @@
 {
   "schemaVersion": 1,
   "id": "night-shift",
-  "name": "Night Shift",
+  "name": "Neon Night Shift",
   "version": "1.0.0",
   "author": "Codex Habitat Contributors",
-  "license": {"spdx": "MIT", "file": "LICENSE"},
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
   "minimumRuntimeVersion": "1.0.0",
-  "modes": ["light", "dark"],
+  "modes": [
+    "light",
+    "dark"
+  ],
   "preview": "preview.png",
   "colors": {
-    "surface": "#171A1D",
-    "text": "#F1F5F6",
-    "accent": "#2DD4BF",
-    "attention": "#F59E0B",
-    "error": "#FB7185"
+    "accent": "#B94DFF",
+    "attention": "#FFD34E",
+    "error": "#FF496C",
+    "highlight": "#FF4FCB",
+    "mutedText": "#C9B7DB",
+    "panel": "#21173A",
+    "panelAlt": "#302052",
+    "secondary": "#00E7F2",
+    "surface": "#100D1E",
+    "text": "#FFF7FF"
   },
-  "assets": [],
+  "theme": {
+    "artFocus": {
+      "x": 0.76000000000000001,
+      "y": 0.41999999999999998
+    },
+    "background": "background.jpg",
+    "backgroundStrength": 0.41999999999999998,
+    "blurRadius": 10,
+    "category": "dark",
+    "density": "comfortable",
+    "panelOpacity": 0.88,
+    "safeSide": "leading",
+    "styleFamily": "gameCinematic"
+  },
+  "assets": [
+    {
+      "type": "image",
+      "id": "theme-background",
+      "path": "background.jpg",
+      "sha256": "da033301de3b8158d1d967625ecf0869dae39368ef42e8df72a1bea1b31b4133",
+      "rendering": "smooth"
+    }
+  ],
   "pets": [],
   "widgets": [
     {
       "id": "codex.status",
       "anchor": "topLeading",
-      "position": {"x": 0.04, "y": 0.06},
-      "configuration": {"type": "status", "showsConnectionHealth": true}
+      "position": {
+        "x": 0.04,
+        "y": 0.06
+      },
+      "configuration": {
+        "type": "status",
+        "showsConnectionHealth": true
+      }
     },
     {
       "id": "codex.tokens",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.24},
-      "configuration": {"type": "tokens"}
+      "position": {
+        "x": 0.96,
+        "y": 0.24
+      },
+      "configuration": {
+        "type": "tokens"
+      }
     },
     {
       "id": "codex.context",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.42},
-      "configuration": {"type": "context"}
+      "position": {
+        "x": 0.96,
+        "y": 0.42
+      },
+      "configuration": {
+        "type": "context"
+      }
     },
     {
       "id": "codex.speed",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.60},
-      "configuration": {"type": "speed"}
+      "position": {
+        "x": 0.96,
+        "y": 0.60
+      },
+      "configuration": {
+        "type": "speed"
+      }
     },
     {
       "id": "codex.usage",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.78},
-      "configuration": {"type": "usage", "bucket": "primary"}
+      "position": {
+        "x": 0.96,
+        "y": 0.78
+      },
+      "configuration": {
+        "type": "usage",
+        "bucket": "primary"
+      }
     },
     {
       "id": "system.clock",
       "anchor": "bottomLeading",
-      "position": {"x": 0.04, "y": 0.94},
-      "configuration": {"type": "clock", "uses24HourClock": true}
+      "position": {
+        "x": 0.04,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "clock",
+        "uses24HourClock": true
+      }
     },
     {
       "id": "timer.pomodoro",
       "anchor": "bottomTrailing",
-      "position": {"x": 0.96, "y": 0.94},
-      "configuration": {"type": "pomodoro", "focusSeconds": 1500, "restSeconds": 300}
+      "position": {
+        "x": 0.96,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "pomodoro",
+        "focusSeconds": 1500,
+        "restSeconds": 300
+      }
     }
   ]
 }

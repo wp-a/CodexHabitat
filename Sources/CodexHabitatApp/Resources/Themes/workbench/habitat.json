@@ -1,64 +1,137 @@
 {
   "schemaVersion": 1,
   "id": "workbench",
-  "name": "Workbench",
+  "name": "Workbench Turbo",
   "version": "1.0.0",
   "author": "Codex Habitat Contributors",
-  "license": {"spdx": "MIT", "file": "LICENSE"},
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
   "minimumRuntimeVersion": "1.0.0",
-  "modes": ["light", "dark"],
+  "modes": [
+    "light",
+    "dark"
+  ],
   "preview": "preview.png",
   "colors": {
-    "surface": "#F4F7F8",
-    "text": "#172126",
-    "accent": "#0F8B8D",
-    "attention": "#D97706",
-    "error": "#D64545"
+    "accent": "#FF7A18",
+    "attention": "#FFB020",
+    "error": "#FF4058",
+    "highlight": "#FFE04B",
+    "mutedText": "#AEB9C9",
+    "panel": "#242936",
+    "panelAlt": "#30384A",
+    "secondary": "#18D6C8",
+    "surface": "#171A21",
+    "text": "#F7FBFF"
   },
-  "assets": [],
+  "theme": {
+    "artFocus": {
+      "x": 0.78000000000000003,
+      "y": 0.47999999999999998
+    },
+    "background": "background.jpg",
+    "backgroundStrength": 0.41999999999999998,
+    "blurRadius": 10,
+    "category": "utility",
+    "density": "comfortable",
+    "panelOpacity": 0.88,
+    "safeSide": "leading",
+    "styleFamily": "gameCinematic"
+  },
+  "assets": [
+    {
+      "type": "image",
+      "id": "theme-background",
+      "path": "background.jpg",
+      "sha256": "ba6a94d47c10713391c684fd7732beb03a4d8809a2e45a3b96e5a26e5a330190",
+      "rendering": "smooth"
+    }
+  ],
   "pets": [],
   "widgets": [
     {
       "id": "codex.status",
       "anchor": "topLeading",
-      "position": {"x": 0.04, "y": 0.06},
-      "configuration": {"type": "status", "showsConnectionHealth": true}
+      "position": {
+        "x": 0.04,
+        "y": 0.06
+      },
+      "configuration": {
+        "type": "status",
+        "showsConnectionHealth": true
+      }
     },
     {
       "id": "codex.tokens",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.24},
-      "configuration": {"type": "tokens"}
+      "position": {
+        "x": 0.96,
+        "y": 0.24
+      },
+      "configuration": {
+        "type": "tokens"
+      }
     },
     {
       "id": "codex.context",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.42},
-      "configuration": {"type": "context"}
+      "position": {
+        "x": 0.96,
+        "y": 0.42
+      },
+      "configuration": {
+        "type": "context"
+      }
     },
     {
       "id": "codex.speed",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.60},
-      "configuration": {"type": "speed"}
+      "position": {
+        "x": 0.96,
+        "y": 0.60
+      },
+      "configuration": {
+        "type": "speed"
+      }
     },
     {
       "id": "codex.usage",
       "anchor": "topTrailing",
-      "position": {"x": 0.96, "y": 0.78},
-      "configuration": {"type": "usage", "bucket": "primary"}
+      "position": {
+        "x": 0.96,
+        "y": 0.78
+      },
+      "configuration": {
+        "type": "usage",
+        "bucket": "primary"
+      }
     },
     {
       "id": "system.clock",
       "anchor": "bottomLeading",
-      "position": {"x": 0.04, "y": 0.94},
-      "configuration": {"type": "clock", "uses24HourClock": false}
+      "position": {
+        "x": 0.04,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "clock",
+        "uses24HourClock": true
+      }
     },
     {
       "id": "timer.pomodoro",
       "anchor": "bottomTrailing",
-      "position": {"x": 0.96, "y": 0.94},
-      "configuration": {"type": "pomodoro", "focusSeconds": 1500, "restSeconds": 300}
+      "position": {
+        "x": 0.96,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "pomodoro",
+        "focusSeconds": 1500,
+        "restSeconds": 300
+      }
     }
   ]
 }

@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "elemental-companions",
+  "name": "Elemental Companions",
+  "version": "1.0.0",
+  "author": "Codex Habitat Contributors",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "minimumRuntimeVersion": "1.0.0",
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "preview": "preview.png",
+  "colors": {
+    "accent": "#48C887",
+    "attention": "#F2A13A",
+    "error": "#E74D5B",
+    "highlight": "#FFD85A",
+    "mutedText": "#B7D4C5",
+    "panel": "#28514A",
+    "panelAlt": "#3E6A59",
+    "secondary": "#5AA9FF",
+    "surface": "#18302E",
+    "text": "#F5FFF1"
+  },
+  "theme": {
+    "artFocus": {
+      "x": 0.79000000000000004,
+      "y": 0.46999999999999997
+    },
+    "background": "background.jpg",
+    "backgroundStrength": 0.41999999999999998,
+    "blurRadius": 10,
+    "category": "cozyAdventure",
+    "density": "comfortable",
+    "panelOpacity": 0.88,
+    "safeSide": "leading",
+    "styleFamily": "cozyWorld"
+  },
+  "assets": [
+    {
+      "type": "image",
+      "id": "theme-background",
+      "path": "background.jpg",
+      "sha256": "6f159eacafd6eeddcf402369e09eac829d2923e0e7b6dbc71910985fe41bd59f",
+      "rendering": "smooth"
+    }
+  ],
+  "pets": [],
+  "widgets": [
+    {
+      "id": "codex.status",
+      "anchor": "topLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.06
+      },
+      "configuration": {
+        "type": "status",
+        "showsConnectionHealth": true
+      }
+    },
+    {
+      "id": "codex.tokens",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.24
+      },
+      "configuration": {
+        "type": "tokens"
+      }
+    },
+    {
+      "id": "codex.context",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.42
+      },
+      "configuration": {
+        "type": "context"
+      }
+    },
+    {
+      "id": "codex.speed",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.60
+      },
+      "configuration": {
+        "type": "speed"
+      }
+    },
+    {
+      "id": "codex.usage",
+      "anchor": "topTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.78
+      },
+      "configuration": {
+        "type": "usage",
+        "bucket": "primary"
+      }
+    },
+    {
+      "id": "system.clock",
+      "anchor": "bottomLeading",
+      "position": {
+        "x": 0.04,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "clock",
+        "uses24HourClock": true
+      }
+    },
+    {
+      "id": "timer.pomodoro",
+      "anchor": "bottomTrailing",
+      "position": {
+        "x": 0.96,
+        "y": 0.94
+      },
+      "configuration": {
+        "type": "pomodoro",
+        "focusSeconds": 1500,
+        "restSeconds": 300
+      }
+    }
+  ]
+}
