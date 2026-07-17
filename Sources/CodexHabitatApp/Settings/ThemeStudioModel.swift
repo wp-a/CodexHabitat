@@ -29,7 +29,8 @@ struct ThemeStudioPetOption: Identifiable, Equatable, Sendable {
 }
 
 @MainActor
-final class ThemeStudioModel: ObservableObject {
+final class ThemeStudioModel: ObservableObject, Identifiable {
+    let id = UUID()
     @Published var name = "" { didSet { markDirty() } }
     @Published var author = "" { didSet { markDirty() } }
     @Published private(set) var sourceImageURL: URL?

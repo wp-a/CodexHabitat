@@ -14,6 +14,7 @@ func themeStudioTracksDirtyDraftClampsAppearanceAndRequiresDiscardConfirmation()
         workingRoot: root.appending(path: "Work")
     )
 
+    #expect(model.id == model.id)
     #expect(model.state == .editing)
     #expect(!model.isDirty)
     model.name = "My Local Theme"

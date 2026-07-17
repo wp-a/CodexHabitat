@@ -6,7 +6,6 @@ struct ThemesSettingsView: View {
     @ObservedObject var model: HabitatAppModel
     @State private var packageIDToRemove: String?
     @State private var themeStudioModel: ThemeStudioModel?
-    @State private var isThemeStudioPresented = false
     @State private var selectedFilter: ThemeGalleryFilter
     @State private var searchText = ""
     private let opensThemeStudioForVisualQA: Bool
@@ -114,18 +113,13 @@ struct ThemesSettingsView: View {
         }
         .onAppear(perform: model.refreshResources)
         .task {
-            guard opensThemeStudioForVisualQA, !isThemeStudioPresented else { return }
+            guard opensThemeStudioForVisualQA, themeStudioModel == nil else { return }
             await Task.yield()
             openThemeStudio()
         }
         .resourceReplacementConfirmation(model: model)
-        .sheet(
-            isPresented: $isThemeStudioPresented,
-            onDismiss: { themeStudioModel = nil }
-        ) {
-            if let themeStudioModel {
-                ThemeStudioView(model: themeStudioModel, onSaved: themeSaved)
-            }
+        .sheet(item: $themeStudioModel) { studio in
+            ThemeStudioView(model: studio, onSaved: themeSaved)
         }
         .confirmationDialog(
             "Remove this Habitat pack?",
@@ -215,7 +209,6 @@ struct ThemesSettingsView: View {
     private func openThemeStudio() {
         guard let studio = model.makeThemeStudioModel() else { return }
         themeStudioModel = studio
-        isThemeStudioPresented = true
     }
 
     private func themeSaved(id: String, pairedPetID: String?) {
@@ -224,7 +217,7 @@ struct ThemesSettingsView: View {
         if let pairedPetID {
             model.selectPet(pairedPetID)
         }
-        isThemeStudioPresented = false
+        themeStudioModel = nil
     }
 
     private func export(_ package: InstalledPackage) {
