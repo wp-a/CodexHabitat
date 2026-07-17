@@ -142,7 +142,6 @@
 "Start %@" = "Start %@";
 "Reset %@" = "Reset %@";
 "API Key" = "API Key";
-"%@ / 60s" = "%@ / 60s";
 "%d diagnostic event" = "%d diagnostic event";
 "%d diagnostic events" = "%d diagnostic events";
 "%d pets, %d packs valid" = "%d pets, %d packs valid";

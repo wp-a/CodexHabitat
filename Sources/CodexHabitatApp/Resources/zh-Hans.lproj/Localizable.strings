@@ -142,7 +142,6 @@
 "Start %@" = "开始%@";
 "Reset %@" = "重置%@";
 "API Key" = "API Key";
-"%@ / 60s" = "%@ / 60 秒";
 "%d diagnostic event" = "%d 条诊断事件";
 "%d diagnostic events" = "%d 条诊断事件";
 "%d pets, %d packs valid" = "%d 个宠物、%d 个资源包有效";

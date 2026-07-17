@@ -23,7 +23,6 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     #expect(localization.text("Task cumulative") == "任务累计")
     #expect(localization.format("%d diagnostic events", 3) == "3 条诊断事件")
     #expect(localization.format("%d pets, %d packs valid", 2, 4) == "2 个宠物、4 个资源包有效")
-    #expect(localization.format("%@ / 60s", "120") == "120 / 60 秒")
     #expect(localization.text("LIVE") == "实时")
 
     for definition in BuiltInThemeCatalog.all {

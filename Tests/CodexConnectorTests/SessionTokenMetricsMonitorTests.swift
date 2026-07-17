@@ -91,6 +91,29 @@ func sessionTokenRecentOutputExpiresWithoutANewTokenEvent() async throws {
 }
 
 @Test
+func sessionTokenMetricsBecomeUnavailableAfterFiveMinutesWithoutAnEvent() async throws {
+    let root = FileManager.default.temporaryDirectory.appending(
+        path: "HabitatTokenMetricsFreshness-\(UUID().uuidString)",
+        directoryHint: .isDirectory
+    )
+    let day = root.appending(path: "2026/07/17", directoryHint: .isDirectory)
+    let session = day.appending(path: "rollout-first.jsonl")
+    try FileManager.default.createDirectory(at: day, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data((tokenLine(timestamp: "2026-07-17T04:00:00.000Z", output: 100) + "\n").utf8)
+        .write(to: session)
+    let monitor = SessionTokenMetricsMonitor(
+        sessionsRoot: root,
+        calendar: utcCalendar,
+        metricsFreshnessWindow: 300
+    )
+    let start = Date(timeIntervalSince1970: 1_784_260_800)
+
+    #expect(await monitor.sample(at: start.addingTimeInterval(300)) != nil)
+    #expect(await monitor.sample(at: start.addingTimeInterval(301)) == nil)
+}
+
+@Test
 func sessionTokenRecentOutputResetsWhenTheCumulativeCounterDecreases() async throws {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "HabitatTokenMetricsCounterReset-\(UUID().uuidString)",

@@ -38,6 +38,8 @@ func usefulCodexMetricsFitTheDefaultCompactRail() {
 
     #expect(enabled == [.status, .tokens, .context, .speed, .usage])
     #expect(WidgetRailView.contentHeight(for: enabled) <= HabitatOverlayLayout.widgetRailSize.height)
+    #expect(WidgetRailView.recentOutputText(1_200) == "1.2K")
+    #expect(WidgetRailView.recentOutputText(nil) == "--")
 }
 
 @Test @MainActor

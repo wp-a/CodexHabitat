@@ -14,6 +14,7 @@ public actor SessionTokenMetricsMonitor {
     private let initialTailByteLimit: UInt64
     private let maximumReadBytes: Int
     private let recentOutputWindow: TimeInterval
+    private let metricsFreshnessWindow: TimeInterval
     private let threadIDHasher: (@Sendable (String) -> String)?
 
     private var currentFile: URL?
@@ -32,6 +33,7 @@ public actor SessionTokenMetricsMonitor {
         initialTailByteLimit: UInt64 = 1_048_576,
         maximumReadBytes: Int = 1_048_576,
         recentOutputWindow: TimeInterval = 60,
+        metricsFreshnessWindow: TimeInterval = 300,
         threadIDHasher: (@Sendable (String) -> String)? = nil
     ) {
         self.sessionsRoot = sessionsRoot
@@ -40,6 +42,9 @@ public actor SessionTokenMetricsMonitor {
         self.initialTailByteLimit = initialTailByteLimit
         self.maximumReadBytes = maximumReadBytes
         self.recentOutputWindow = recentOutputWindow
+        self.metricsFreshnessWindow = metricsFreshnessWindow.isFinite
+            ? max(0, metricsFreshnessWindow)
+            : 300
         self.threadIDHasher = threadIDHasher
     }
 
@@ -85,6 +90,7 @@ public actor SessionTokenMetricsMonitor {
 
         readAvailableBytes(from: latestFile, fileSize: fileSize)
         expireRecentOutput(at: now)
+        expireMetrics(at: now)
         return latestMetrics
     }
 
@@ -215,6 +221,16 @@ public actor SessionTokenMetricsMonitor {
         pruneOutputPoints(before: now.addingTimeInterval(-recentOutputWindow))
         guard let latestMetrics else { return }
         self.latestMetrics = latestMetrics.withRecentOutputTokens(recentOutput(at: now))
+    }
+
+    private func expireMetrics(at now: Date) {
+        guard let latestMetrics else { return }
+        let age = now.timeIntervalSince(latestMetrics.updatedAt)
+        guard age < 0 || age <= metricsFreshnessWindow else {
+            self.latestMetrics = nil
+            outputPoints.removeAll(keepingCapacity: true)
+            return
+        }
     }
 
     private func pruneOutputPoints(before cutoff: Date) {

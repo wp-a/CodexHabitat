@@ -225,6 +225,11 @@ struct WidgetRailView: View {
         return rows + CGFloat(widgets.count - 1) + 12
     }
 
+    static func recentOutputText(_ tokens: Int?) -> String {
+        guard let tokens else { return "--" }
+        return compactCount(tokens)
+    }
+
     fileprivate static let compactRowHeight: CGFloat = 23
 
     private var resolvedWidgets: [WidgetIdentifier] {
@@ -311,6 +316,9 @@ struct WidgetRailView: View {
                 .lineLimit(1)
         }
         .help(taskCumulativeDetail)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n.text("Latest request"))
+        .accessibilityValue(metricAccessibilityValue(tokenValue))
         .accessibilityHint(taskCumulativeDetail)
     }
 
@@ -341,6 +349,9 @@ struct WidgetRailView: View {
                 .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
                 .lineLimit(1)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n.text("Recent 60s output"))
+        .accessibilityValue(metricAccessibilityValue(speedValue))
     }
 
     private var clockRow: some View {
@@ -459,8 +470,11 @@ struct WidgetRailView: View {
     }
 
     private var speedValue: String {
-        guard let tokens = model.snapshot.tokenMetrics?.recentOutputTokens else { return "--" }
-        return L10n.format("%@ / 60s", Self.compactCount(tokens))
+        Self.recentOutputText(model.snapshot.tokenMetrics?.recentOutputTokens)
+    }
+
+    private func metricAccessibilityValue(_ value: String) -> String {
+        value == "--" ? L10n.text("Unavailable") : value
     }
 
     private static func compactCount(_ value: Int) -> String {
