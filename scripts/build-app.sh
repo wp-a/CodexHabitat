@@ -81,6 +81,10 @@ ditto \
 ditto \
     "$ROOT/Sources/CodexHabitatThemeBridge/Resources" \
     "$APP/Contents/Resources/Resources"
+for localization in "$ROOT/Sources/CodexHabitatApp/Resources"/*.lproj; do
+    [[ -d "$localization" ]] || continue
+    ditto "$localization" "$APP/Contents/Resources/$(basename "$localization")"
+done
 if [[ -d "$BIN_DIR/ZIPFoundation_ZIPFoundation.bundle" ]]; then
     ditto \
         "$BIN_DIR/ZIPFoundation_ZIPFoundation.bundle" \

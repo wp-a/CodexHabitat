@@ -63,26 +63,26 @@ private final class OverlayPreviewCoordinator: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(
             systemSymbolName: "pawprint.fill",
-            accessibilityDescription: "Codex Habitat overlay preview"
+            accessibilityDescription: L10n.text("Codex Habitat overlay preview")
         )
 
         let menu = NSMenu()
         let interaction = NSMenuItem(
-            title: "Enable Click-Through",
+            title: L10n.text("Enable Click-Through"),
             action: #selector(toggleInteraction),
             keyEquivalent: ""
         )
         interaction.target = self
         menu.addItem(interaction)
         let widgets = NSMenuItem(
-            title: "Collapse Widgets",
+            title: L10n.text("Collapse Widgets"),
             action: #selector(toggleWidgets),
             keyEquivalent: ""
         )
         widgets.target = self
         menu.addItem(widgets)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Preview", action: #selector(quitPreview), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.text("Quit Preview"), action: #selector(quitPreview), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         item.menu = menu
@@ -94,12 +94,16 @@ private final class OverlayPreviewCoordinator: NSObject {
 
     @objc private func toggleInteraction() {
         overlay.setInteractive(!overlay.isInteractive)
-        interactionItem?.title = overlay.isInteractive ? "Enable Click-Through" : "Enable Interaction"
+        interactionItem?.title = L10n.text(
+            overlay.isInteractive ? "Enable Click-Through" : "Enable Interaction"
+        )
     }
 
     @objc private func toggleWidgets() {
         presentation.isWidgetRailExpanded.toggle()
-        widgetItem?.title = presentation.isWidgetRailExpanded ? "Collapse Widgets" : "Expand Widgets"
+        widgetItem?.title = L10n.text(
+            presentation.isWidgetRailExpanded ? "Collapse Widgets" : "Expand Widgets"
+        )
     }
 
     @objc private func quitPreview() {
@@ -161,7 +165,7 @@ private struct OverlayPreviewView: View {
         )
         .animation(.snappy(duration: 0.22), value: presentation.isWidgetRailExpanded)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Codex Habitat overlay preview")
+        .accessibilityLabel(L10n.text("Codex Habitat overlay preview"))
     }
 
     @ViewBuilder

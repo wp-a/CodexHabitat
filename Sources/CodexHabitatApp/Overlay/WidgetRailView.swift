@@ -191,7 +191,7 @@ struct WidgetRailView: View {
                 .stroke(textColor.opacity(0.13), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Habitat widgets")
+        .accessibilityLabel(L10n.text("Habitat widgets"))
     }
 
     private var resolvedWidgets: [WidgetIdentifier] {
@@ -225,7 +225,7 @@ struct WidgetRailView: View {
 
     private var statusRow: some View {
         WidgetRow(systemImage: statusSymbol, tint: statusColor) {
-            Text(statusTitle)
+            Text(L10n.text(statusTitle))
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
             Spacer(minLength: 4)
@@ -234,11 +234,11 @@ struct WidgetRailView: View {
                     .font(.system(size: 8, weight: .bold, design: .rounded))
                     .foregroundStyle(connectionColor)
                     .frame(width: 30, alignment: .trailing)
-                    .help(connectionTitle)
+                    .help(L10n.text(connectionTitle))
                 Circle()
                     .fill(connectionColor)
                     .frame(width: 7, height: 7)
-                    .accessibilityLabel(connectionTitle)
+                    .accessibilityLabel(L10n.text(connectionTitle))
             }
         }
     }
@@ -251,10 +251,10 @@ struct WidgetRailView: View {
                 }
                 .gaugeStyle(.accessoryLinear)
                 .tint(accentColor)
-                .accessibilityLabel("Account quota")
+                .accessibilityLabel(L10n.text("Account quota"))
                 .accessibilityValue(usageValue)
             } else {
-                Text("Quota")
+                Text(L10n.text("Quota"))
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(textColor.opacity(0.62))
                 Spacer(minLength: 2)
@@ -269,7 +269,7 @@ struct WidgetRailView: View {
 
     private var tokenRow: some View {
         WidgetRow(systemImage: "number.square.fill", tint: accentColor) {
-            Text("Tokens")
+            Text(L10n.text("Tokens"))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(textColor.opacity(0.62))
             Spacer(minLength: 2)
@@ -286,7 +286,7 @@ struct WidgetRailView: View {
             }
             .gaugeStyle(.accessoryLinear)
             .tint(attentionColor)
-            .accessibilityLabel("Context used")
+            .accessibilityLabel(L10n.text("Context used"))
             .accessibilityValue(contextValue)
 
             Text(contextValue)
@@ -298,7 +298,7 @@ struct WidgetRailView: View {
 
     private var speedRow: some View {
         WidgetRow(systemImage: "speedometer", tint: .green) {
-            Text("Output speed")
+            Text(L10n.text("Output speed"))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(textColor.opacity(0.62))
             Spacer(minLength: 2)
@@ -323,7 +323,7 @@ struct WidgetRailView: View {
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(model.pomodoroSnapshot.phase == .rest ? "REST" : "FOCUS")
+                Text(L10n.text(model.pomodoroSnapshot.phase == .rest ? "REST" : "FOCUS"))
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(textColor.opacity(0.62))
                 Text(formattedDuration(model.pomodoroSnapshot.remainingSeconds))
@@ -354,7 +354,7 @@ struct WidgetRailView: View {
             Text(formattedDuration(model.countdownSnapshot.remainingSeconds))
                 .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
                 .foregroundStyle(model.countdownSnapshot.isComplete ? errorColor : textColor)
-                .accessibilityLabel("Countdown")
+                .accessibilityLabel(L10n.text("Countdown"))
                 .accessibilityValue(formattedDuration(model.countdownSnapshot.remainingSeconds))
             Spacer(minLength: 2)
             timerButton(
@@ -386,8 +386,8 @@ struct WidgetRailView: View {
         }
         .buttonStyle(.plain)
         .background(textColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-        .help(label)
-        .accessibilityLabel(label)
+        .help(L10n.text(label))
+        .accessibilityLabel(L10n.text(label))
         .accessibilityIdentifier(identifier)
     }
 
@@ -540,7 +540,7 @@ private struct HabitatClockText: View {
         }
             .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
             .lineLimit(1)
-            .accessibilityLabel("Local time")
+            .accessibilityLabel(L10n.text("Local time"))
             .task {
                 while !Task.isCancelled {
                     let seconds = Calendar.current.component(.second, from: Date())

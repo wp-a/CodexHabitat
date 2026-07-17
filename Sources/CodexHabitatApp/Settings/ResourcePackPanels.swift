@@ -7,8 +7,8 @@ import UniformTypeIdentifiers
 enum ResourcePackPanels {
     static func chooseImport() -> URL? {
         let panel = NSOpenPanel()
-        panel.title = "Import Habitat Pack"
-        panel.prompt = "Import"
+        panel.title = L10n.text("Import Habitat Pack")
+        panel.prompt = L10n.text("Import")
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [habitatPackType]
@@ -17,8 +17,8 @@ enum ResourcePackPanels {
 
     static func chooseExport(for package: InstalledPackage) -> URL? {
         let panel = NSSavePanel()
-        panel.title = "Export Habitat Pack"
-        panel.prompt = "Export"
+        panel.title = L10n.text("Export Habitat Pack")
+        panel.prompt = L10n.text("Export")
         panel.allowedContentTypes = [habitatPackType]
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = "\(package.id)-\(package.version).habitat-pack"
@@ -38,21 +38,21 @@ struct ResourceOperationStatusView: View {
         case .idle:
             EmptyView()
         case .importing:
-            status("Validating and importing...", symbol: "arrow.down.circle", color: .secondary)
+            status(L10n.text("Validating and importing..."), symbol: "arrow.down.circle", color: .secondary)
         case let .imported(name):
-            status("\(name) imported", symbol: "checkmark.circle.fill", color: .green)
+            status(L10n.format("%@ imported", name), symbol: "checkmark.circle.fill", color: .green)
         case let .replacementRequired(filename):
-            status("\(filename) is already installed", symbol: "exclamationmark.circle.fill", color: .orange)
+            status(L10n.format("%@ is already installed", filename), symbol: "exclamationmark.circle.fill", color: .orange)
         case .exporting:
-            status("Preparing export...", symbol: "arrow.up.circle", color: .secondary)
+            status(L10n.text("Preparing export..."), symbol: "arrow.up.circle", color: .secondary)
         case let .exported(name):
-            status("\(name) exported", symbol: "checkmark.circle.fill", color: .green)
+            status(L10n.format("%@ exported", name), symbol: "checkmark.circle.fill", color: .green)
         case .uninstalling:
-            status("Removing package...", symbol: "trash", color: .secondary)
+            status(L10n.text("Removing package..."), symbol: "trash", color: .secondary)
         case let .uninstalled(name):
-            status("\(name) removed", symbol: "checkmark.circle.fill", color: .green)
+            status(L10n.format("%@ removed", name), symbol: "checkmark.circle.fill", color: .green)
         case .failed:
-            status("The package operation failed validation.", symbol: "xmark.octagon.fill", color: .red)
+            status(L10n.text("The package operation failed validation."), symbol: "xmark.octagon.fill", color: .red)
         }
     }
 

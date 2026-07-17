@@ -36,14 +36,14 @@ struct DiagnosticsView: View {
 
             SettingsGroup("Recovery") {
                 LabeledContent("Official appearance") {
-                    Text(bridge.statusText)
+                    Text(L10n.text(bridge.statusText))
                         .foregroundStyle(.secondary)
                 }
                 Button {
                     confirmsRestore = true
                 } label: {
                     Label(
-                        DiagnosticRecovery.officialAppearanceTitle,
+                        L10n.text(DiagnosticRecovery.officialAppearanceTitle),
                         systemImage: "arrow.counterclockwise"
                     )
                 }
@@ -71,7 +71,7 @@ struct DiagnosticsView: View {
 
             SettingsGroup("Local data") {
                 if let status = diagnostics.localDataStatus {
-                    Label(status, systemImage: diagnostics.localDataSucceeded
+                    Label(L10n.text(status), systemImage: diagnostics.localDataSucceeded
                         ? "checkmark.circle.fill"
                         : "exclamationmark.triangle.fill")
                         .foregroundStyle(diagnostics.localDataSucceeded ? .green : .secondary)
@@ -116,9 +116,9 @@ struct DiagnosticsView: View {
         symbol: String,
         action: @escaping () -> Void
     ) -> some View {
-        LabeledContent(title) {
+        LabeledContent(L10n.text(title)) {
             HStack(spacing: 10) {
-                Label(status, systemImage: symbol)
+                Label(L10n.text(status), systemImage: symbol)
                     .foregroundStyle(.secondary)
                 Button(action: action) {
                     Image(systemName: "play.fill")
@@ -126,7 +126,7 @@ struct DiagnosticsView: View {
                 .buttonStyle(.borderless)
                 .disabled(diagnostics.isBusy)
                 .help("Run check")
-                .accessibilityLabel("Check \(title)")
+                .accessibilityLabel(L10n.format("Check %@", L10n.text(title)))
             }
         }
     }

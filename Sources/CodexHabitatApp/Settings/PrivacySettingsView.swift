@@ -32,8 +32,8 @@ struct PrivacySettingsView: View {
     }
 
     private func privacyRow(_ title: String, value: String, symbol: String) -> some View {
-        LabeledContent(title) {
-            Label(value, systemImage: symbol)
+        LabeledContent(L10n.text(title)) {
+            Label(L10n.text(value), systemImage: symbol)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 3)

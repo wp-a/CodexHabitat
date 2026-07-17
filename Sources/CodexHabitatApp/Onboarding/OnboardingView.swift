@@ -29,7 +29,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Codex Habitat")
                     .font(.system(size: 22, weight: .semibold))
-                Text(stepTitle)
+                Text(L10n.text(stepTitle))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -37,13 +37,13 @@ struct OnboardingView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 6) {
-                Text("STEP \(model.onboardingStep.rawValue + 1) OF 3")
+                Text(L10n.format("Step %d of 3", model.onboardingStep.rawValue + 1).uppercased())
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                 ProgressView(value: Double(model.onboardingStep.rawValue + 1), total: 3)
                     .frame(width: 116)
-                    .accessibilityLabel("Setup progress")
-                    .accessibilityValue("Step \(model.onboardingStep.rawValue + 1) of 3")
+                    .accessibilityLabel(L10n.text("Setup progress"))
+                    .accessibilityValue(L10n.format("Step %d of 3", model.onboardingStep.rawValue + 1))
             }
         }
         .padding(.horizontal, 24)
@@ -148,7 +148,7 @@ struct OnboardingView: View {
                                 set: { model.setWidget(widget.id, enabled: $0) }
                             )
                         ) {
-                            Label(widget.displayName, systemImage: widget.systemImage)
+                            Label(L10n.text(widget.displayName), systemImage: widget.systemImage)
                                 .font(.body.weight(.medium))
                         }
                         .toggleStyle(.switch)
@@ -181,7 +181,7 @@ struct OnboardingView: View {
 
             Button(action: advance) {
                 Label(
-                    model.onboardingStep == .widgets ? "Place Habitat" : "Continue",
+                    L10n.text(model.onboardingStep == .widgets ? "Place Habitat" : "Continue"),
                     systemImage: model.onboardingStep == .widgets ? "checkmark" : "chevron.right"
                 )
             }
@@ -203,9 +203,9 @@ struct OnboardingView: View {
 
     private func stepHeading(_ title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(L10n.text(title))
                 .font(.system(size: 20, weight: .semibold))
-            Text(detail)
+            Text(L10n.text(detail))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

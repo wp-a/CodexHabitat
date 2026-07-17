@@ -345,7 +345,7 @@ private struct HabitatDesktopView: View {
                 }
                 .contextMenu {
                     if !petChoices.isEmpty {
-                        Menu("Pet") {
+                        Menu(L10n.text("Pet")) {
                             ForEach(petChoices) { pet in
                                 Button {
                                     onSelectPet(pet.id)
@@ -362,16 +362,16 @@ private struct HabitatDesktopView: View {
                     }
                     Button(action: onTogglePositionLock) {
                         Label(
-                            positionLocked ? "Unlock Position" : "Lock Position",
+                            L10n.text(positionLocked ? "Unlock Position" : "Lock Position"),
                             systemImage: positionLocked ? "lock.open" : "lock"
                         )
                     }
                     Divider()
                     Button(action: onHide) {
-                        Label("Hide Habitat", systemImage: "eye.slash")
+                        Label(L10n.text("Hide Habitat"), systemImage: "eye.slash")
                     }
                     Button(action: onOpenSettings) {
-                        Label("Settings…", systemImage: "gearshape")
+                        Label(L10n.text("Settings…"), systemImage: "gearshape")
                     }
                 }
                 .accessibilityAddTraits(.isButton)
@@ -404,7 +404,7 @@ private struct HabitatDesktopView: View {
                 .font(.system(size: 44, weight: .medium))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel("Codex Habitat pet unavailable")
+                .accessibilityLabel(L10n.text("Codex Habitat pet unavailable"))
         }
     }
 }

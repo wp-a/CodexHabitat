@@ -21,7 +21,7 @@ struct PetsSettingsView: View {
         ) {
             Picker("Pet source", selection: $source) {
                 ForEach(Source.allCases) { source in
-                    Text(source.rawValue).tag(source)
+                    Text(L10n.text(source.rawValue)).tag(source)
                 }
             }
             .pickerStyle(.segmented)
@@ -50,7 +50,7 @@ struct PetsSettingsView: View {
     private var localPets: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Text("\(model.validPets.count) available")
+                Text(L10n.format("%d available", model.validPets.count))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button(action: importPack) {
@@ -126,7 +126,7 @@ struct PetChoiceCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(pet.manifest?.displayName ?? "Pet")
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
         .accessibilityIdentifier("pets.choice.\(pet.manifest?.id ?? "unknown")")
     }
 }

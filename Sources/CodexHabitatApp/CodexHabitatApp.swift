@@ -78,7 +78,7 @@ private struct HabitatMenuBarView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Codex Habitat")
                         .font(.headline)
-                    Text(model.settings.selectedThemeID.replacingOccurrences(of: "-", with: " ").capitalized)
+                    Text(L10n.text(model.selectedTheme.name))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -86,7 +86,7 @@ private struct HabitatMenuBarView: View {
                 Circle()
                     .fill(model.isLoaded ? Color.green : Color.orange)
                     .frame(width: 8, height: 8)
-                    .accessibilityLabel(model.isLoaded ? "Ready" : "Loading")
+                    .accessibilityLabel(L10n.text(model.isLoaded ? "Ready" : "Loading"))
             }
 
             Divider()
@@ -101,7 +101,7 @@ private struct HabitatMenuBarView: View {
                 let moveMode = HabitatMoveModePresentation(
                     isActive: desktopController.isTemporaryMoveMode
                 )
-                Label(moveMode.title, systemImage: moveMode.symbol)
+                Label(L10n.text(moveMode.title), systemImage: moveMode.symbol)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
@@ -173,9 +173,9 @@ private struct HabitatMenuBarView: View {
                 .foregroundStyle(connectionTint)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 1) {
-                Text(connection.title)
+                Text(L10n.text(connection.title))
                     .font(.subheadline.weight(.medium))
-                Text(activityTitle)
+                Text(L10n.text(activityTitle))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -290,7 +290,7 @@ private struct HabitatMenuTimerControls: View {
                 .foregroundStyle(tint)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 1) {
-                Text(title)
+                Text(L10n.text(title))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(formattedDuration(duration))
@@ -299,12 +299,12 @@ private struct HabitatMenuTimerControls: View {
             Spacer()
             menuTimerButton(
                 systemImage: isRunning ? "pause.fill" : "play.fill",
-                label: isRunning ? "Pause \(title)" : "Start \(title)",
+                label: L10n.format(isRunning ? "Pause %@" : "Start %@", L10n.text(title)),
                 action: toggle
             )
             menuTimerButton(
                 systemImage: "arrow.counterclockwise",
-                label: "Reset \(title)",
+                label: L10n.format("Reset %@", L10n.text(title)),
                 action: reset
             )
         }

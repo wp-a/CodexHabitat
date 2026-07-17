@@ -34,9 +34,9 @@ struct WidgetsSettingsView: View {
                     .foregroundStyle(tint(for: descriptor.id))
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(descriptor.displayName)
+                    Text(L10n.text(descriptor.displayName))
                         .font(.body.weight(.medium))
-                    Text(detail(for: descriptor.id))
+                    Text(L10n.text(detail(for: descriptor.id)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -9,7 +9,7 @@ struct SettingsRootView: View {
                 ProgressView()
                     .controlSize(.small)
                     .frame(width: 760, height: 520)
-                    .accessibilityLabel("Loading Codex Habitat")
+                    .accessibilityLabel(L10n.text("Loading Codex Habitat"))
             } else if model.requiresOnboarding {
                 OnboardingView(model: model)
             } else {
@@ -25,7 +25,7 @@ struct SettingsRootView: View {
     private var settingsNavigation: some View {
         NavigationSplitView {
             List(SettingsSection.allCases, selection: $model.selectedSettingsSection) { section in
-                Label(section.title, systemImage: section.systemImage)
+                Label(L10n.text(section.title), systemImage: section.systemImage)
                     .tag(section)
                     .accessibilityIdentifier("settings.sidebar.\(section.rawValue)")
             }
@@ -76,9 +76,9 @@ struct SettingsPage<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(L10n.text(title))
                         .font(.system(size: 24, weight: .semibold))
-                    Text(subtitle)
+                    Text(L10n.text(subtitle))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -89,7 +89,7 @@ struct SettingsPage<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .navigationTitle(title)
+        .navigationTitle(L10n.text(title))
     }
 }
 
@@ -104,7 +104,7 @@ struct SettingsGroup<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased())
+            Text(L10n.text(title).uppercased())
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
             content

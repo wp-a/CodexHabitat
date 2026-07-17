@@ -153,7 +153,7 @@ struct PetMarketplaceView: View {
             case .disabled:
                 disabledState
             case .loading:
-                ProgressView("Loading Petdex catalog...")
+                ProgressView(L10n.text("Loading Petdex catalog..."))
                     .controlSize(.small)
                     .frame(maxWidth: .infinity, minHeight: 250)
             case .offline:
@@ -171,7 +171,7 @@ struct PetMarketplaceView: View {
             }
         }
         .alert(
-            "Install \(model.pendingInstallation?.displayName ?? "pet")?",
+            L10n.format("Install %@?", model.pendingInstallation?.displayName ?? L10n.text("pet")),
             isPresented: Binding(
                 get: { model.pendingInstallation != nil },
                 set: { if !$0 { model.cancelInstallation() } }
@@ -183,7 +183,12 @@ struct PetMarketplaceView: View {
                 Task { await model.confirmInstallation() }
             }
         } message: { pet in
-            Text("Author: \(pet.author ?? "Unknown")\nLicense: \(pet.licenseLabel)\nSource: \(pet.sourceURL.absoluteString)")
+            Text(L10n.format(
+                "Author: %@\nLicense: %@\nSource: %@",
+                pet.author ?? L10n.text("Unknown"),
+                pet.licenseLabel,
+                pet.sourceURL.absoluteString
+            ))
         }
     }
 
@@ -204,9 +209,9 @@ struct PetMarketplaceView: View {
 
     private func unavailableState(title: String, description: String) -> some View {
         ContentUnavailableView {
-            Label(title, systemImage: "wifi.slash")
+            Label(L10n.text(title), systemImage: "wifi.slash")
         } description: {
-            Text(description)
+            Text(L10n.text(description))
         } actions: {
             HStack {
                 Button("Try Again") {
@@ -267,10 +272,10 @@ struct PetMarketplaceView: View {
     private var installationStatus: some View {
         switch model.installationState {
         case let .installing(id):
-            Label("Verifying and installing \(id)...", systemImage: "arrow.down.circle")
+            Label(L10n.format("Verifying and installing %@...", id), systemImage: "arrow.down.circle")
                 .foregroundStyle(.secondary)
         case let .installed(id):
-            Label("\(id) installed", systemImage: "checkmark.circle.fill")
+            Label(L10n.format("%@ installed", id), systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .unverified:
             Label("This entry is missing a license, content ID, or SHA-256 checksum.", systemImage: "lock.shield")
@@ -301,7 +306,7 @@ private struct MarketplacePetCard: View {
                     Text(pet.displayName)
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(2)
-                    Text(pet.author ?? "Unknown creator")
+                    Text(pet.author ?? L10n.text("Unknown creator"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -324,7 +329,7 @@ private struct MarketplacePetCard: View {
                     Image(systemName: "arrow.up.right.square")
                 }
                 .help("Open source")
-                .accessibilityLabel("Open source for \(pet.displayName)")
+                .accessibilityLabel(L10n.format("Open source for %@", pet.displayName))
                 Spacer()
                 if pet.isInstallable {
                     Button(action: install) {
@@ -336,7 +341,7 @@ private struct MarketplacePetCard: View {
                     }
                     .disabled(isInstalling)
                     .help("Review and install")
-                    .accessibilityLabel("Install \(pet.displayName)")
+                    .accessibilityLabel(L10n.format("Install %@", pet.displayName))
                 } else {
                     Image(systemName: "lock.shield")
                         .foregroundStyle(.secondary)

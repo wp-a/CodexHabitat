@@ -96,7 +96,7 @@ struct HabitatSettingsView: View {
                 }
 
                 if let errorMessage = model.errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.circle.fill")
+                    Label(L10n.text(errorMessage), systemImage: "exclamationmark.circle.fill")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }

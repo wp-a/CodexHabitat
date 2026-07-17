@@ -13,7 +13,7 @@ struct ThemesSettingsView: View {
             subtitle: "Native Habitat palettes independent from Codex theming"
         ) {
             HStack(spacing: 10) {
-                Text("\(model.availableThemes.count) available")
+                Text(L10n.format("%d available", model.availableThemes.count))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button(action: importPack) {
@@ -94,13 +94,13 @@ struct ThemesSettingsView: View {
             }
             .buttonStyle(.borderless)
             .help("Export pack")
-            .accessibilityLabel("Export \(package.manifest.name)")
+            .accessibilityLabel(L10n.format("Export %@", package.manifest.name))
             Button(role: .destructive, action: { packageIDToRemove = package.id }) {
                 Image(systemName: "trash")
             }
             .buttonStyle(.borderless)
             .help("Remove pack")
-            .accessibilityLabel("Remove \(package.manifest.name)")
+            .accessibilityLabel(L10n.format("Remove %@", package.manifest.name))
         }
         .padding(.vertical, 10)
     }
@@ -147,9 +147,9 @@ struct ThemeChoiceCard: View {
                         }
                     }
                 }
-                Text(theme.name)
+                Text(L10n.text(theme.name))
                     .font(.body.weight(.semibold))
-                Text(theme.detail)
+                Text(L10n.text(theme.detail))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -167,8 +167,8 @@ struct ThemeChoiceCard: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(theme.name)
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityLabel(L10n.text(theme.name))
+        .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
         .accessibilityIdentifier("themes.choice.\(theme.id)")
     }
 

@@ -19,6 +19,6 @@ struct PetView: View {
         )
         .frame(width: model.overlaySize.width, height: model.overlaySize.height)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Codex Habitat pet")
+        .accessibilityLabel(L10n.text("Codex Habitat pet"))
     }
 }

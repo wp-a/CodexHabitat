@@ -67,10 +67,10 @@ private final class PetPreviewCoordinator: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(
             systemSymbolName: "pawprint.fill",
-            accessibilityDescription: "Codex Habitat pet preview"
+            accessibilityDescription: L10n.text("Codex Habitat pet preview")
         )
         let menu = NSMenu()
-        let quit = NSMenuItem(title: "Quit Preview", action: #selector(quitPreview), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.text("Quit Preview"), action: #selector(quitPreview), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         item.menu = menu

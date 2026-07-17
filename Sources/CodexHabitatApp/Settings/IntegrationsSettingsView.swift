@@ -40,7 +40,7 @@ struct IntegrationsSettingsView: View {
                     }
                     .accessibilityIdentifier("integrations.native-theme.copy")
                     if let nativeThemeCopyStatus {
-                        Label(nativeThemeCopyStatus, systemImage: "checkmark.circle.fill")
+                        Label(L10n.text(nativeThemeCopyStatus), systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .foregroundStyle(.green)
                     }
@@ -59,7 +59,7 @@ struct IntegrationsSettingsView: View {
                                 ? "checkmark.shield.fill"
                                 : "shield.lefthalf.filled")
                         }
-                        Text(bridge.statusText)
+                        Text(L10n.text(bridge.statusText))
                     }
                     .foregroundStyle(bridge.state == .active ? .green : .secondary)
                 }
