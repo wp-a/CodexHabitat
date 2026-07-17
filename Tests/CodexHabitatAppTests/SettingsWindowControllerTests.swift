@@ -38,3 +38,23 @@ func settingsWindowOpensAtAStableMinimumSizeAndIsReused() {
 
     originalWindow?.close()
 }
+
+@Test @MainActor
+func visualQASettingsWindowHonorsABoundedWideContentSize() {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatWideWindowTests-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: root),
+        petRoot: root.appending(path: "Pets")
+    )
+    let options = HabitatVisualQALaunchOptions(arguments: [
+        "CodexHabitatApp", "--visual-qa", "--visual-qa-settings-width", "1040",
+    ])
+    let controller = HabitatSettingsWindowController()
+
+    controller.show(model: model, activate: false, visualQAOptions: options)
+
+    #expect(controller.window?.contentLayoutRect.width == 1_040)
+    controller.window?.close()
+}

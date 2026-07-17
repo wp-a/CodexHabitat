@@ -7,14 +7,17 @@ final class HabitatSettingsWindowController: NSWindowController {
         self.init(window: nil)
     }
 
-    func show(model: HabitatAppModel, activate: Bool = true) {
+    func show(
+        model: HabitatAppModel,
+        activate: Bool = true,
+        visualQAOptions: HabitatVisualQALaunchOptions = .current
+    ) {
         let application = NSApplication.shared
         let desiredPolicy = Self.activationPolicy(for: application.activationPolicy())
         if desiredPolicy != application.activationPolicy() {
             application.setActivationPolicy(desiredPolicy)
         }
         if window == nil {
-            let visualQAOptions = HabitatVisualQALaunchOptions.current
             let contentView = SettingsRootView(
                 model: model,
                 visualQAOptions: visualQAOptions
@@ -34,6 +37,7 @@ final class HabitatSettingsWindowController: NSWindowController {
             window.minSize = CGSize(width: 760, height: 520)
             window.isReleasedWhenClosed = false
             window.contentViewController = NSHostingController(rootView: contentView)
+            window.setContentSize(CGSize(width: visualQAOptions.settingsWidth, height: 520))
             window.center()
             self.window = window
         }
