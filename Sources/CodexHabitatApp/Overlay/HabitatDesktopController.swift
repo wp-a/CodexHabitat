@@ -67,7 +67,11 @@ final class HabitatDesktopController: ObservableObject {
     init(isWidgetRailExpanded: Bool = true) {
         presentation.isWidgetRailExpanded = isWidgetRailExpanded
         presentation.onExpansionChange = { [weak self] _ in
-            self?.resizePanelForPresentation()
+            let rightEdge = self?.overlay?.panel.frame.maxX
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.resizePanelForPresentation(rightEdgeAnchor: rightEdge)
+            }
         }
     }
 
@@ -255,7 +259,7 @@ final class HabitatDesktopController: ObservableObject {
         )
     }
 
-    private func resizePanelForPresentation() {
+    private func resizePanelForPresentation(rightEdgeAnchor: CGFloat? = nil) {
         guard let overlay, let scale = renderedScale else { return }
         let layout = HabitatOverlayLayout(
             isWidgetRailExpanded: presentation.isWidgetRailExpanded
@@ -263,7 +267,8 @@ final class HabitatDesktopController: ObservableObject {
         )
         overlay.resize(
             to: Self.scaledSize(layout.containerSize, scale: scale),
-            preservingRightEdge: true
+            preservingRightEdge: true,
+            rightEdgeAnchor: rightEdgeAnchor
         )
         overlay.setDragFrame(Self.scaledFrame(layout.petFrame, scale: scale))
     }

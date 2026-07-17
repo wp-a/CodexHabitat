@@ -27,7 +27,7 @@ func completedSetupShowsAndHidesTheDesktopHabitat() {
 }
 
 @Test @MainActor
-func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
+func collapsingAndExpandingDeferPanelResizeAndKeepThePetRightAnchored() async {
     let controller = HabitatDesktopController()
     var settings = HabitatSettings.default
     settings.onboardingCompleted = true
@@ -37,6 +37,13 @@ func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
 
     controller.setWidgetRailExpanded(false)
 
+    #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
+    await waitForPanelLayout(
+        size: HabitatOverlayLayout.collapsedSize,
+        rightEdge: rightEdge,
+        dragRegionFrame: CGRect(origin: .zero, size: HabitatOverlayLayout.petSize),
+        in: controller
+    )
     #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
     #expect(controller.panelFrame.maxX == rightEdge)
     #expect(controller.isTemporaryMoveMode)
@@ -47,6 +54,16 @@ func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
 
     controller.setWidgetRailExpanded(true)
 
+    #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
+    await waitForPanelLayout(
+        size: HabitatOverlayLayout.expandedSize,
+        rightEdge: rightEdge,
+        dragRegionFrame: CGRect(
+            origin: CGPoint(x: 188, y: 0),
+            size: HabitatOverlayLayout.petSize
+        ),
+        in: controller
+    )
     #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
     #expect(controller.panelFrame.maxX == rightEdge)
     #expect(controller.isTemporaryMoveMode)
@@ -54,6 +71,21 @@ func collapsingAndExpandingResizeTheActualPanelAroundARightAnchoredPet() {
         origin: CGPoint(x: 188, y: 0),
         size: HabitatOverlayLayout.petSize
     ))
+}
+
+@MainActor
+private func waitForPanelLayout(
+    size expectedSize: CGSize,
+    rightEdge expectedRightEdge: CGFloat,
+    dragRegionFrame expectedDragRegionFrame: CGRect,
+    in controller: HabitatDesktopController
+) async {
+    for _ in 0..<100 where controller.panelSize != expectedSize
+        || controller.panelFrame.maxX != expectedRightEdge
+        || controller.dragRegionFrame != expectedDragRegionFrame
+    {
+        await Task.yield()
+    }
 }
 
 @Test @MainActor

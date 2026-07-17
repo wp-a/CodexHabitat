@@ -98,7 +98,11 @@ public final class OverlayController: NSObject {
         dragRegion.frame = clippedFrame.isNull ? .zero : clippedFrame
     }
 
-    public func resize(to requestedSize: CGSize, preservingRightEdge: Bool = true) {
+    public func resize(
+        to requestedSize: CGSize,
+        preservingRightEdge: Bool = true,
+        rightEdgeAnchor: CGFloat? = nil
+    ) {
         let nextSize = Self.boundedSize(requestedSize)
         guard nextSize != panelSize else { return }
 
@@ -107,7 +111,7 @@ public final class OverlayController: NSObject {
             ?? display(containingPanelAt: oldFrame.origin)
         var origin = oldFrame.origin
         if preservingRightEdge {
-            origin.x = oldFrame.maxX - nextSize.width
+            origin.x = (rightEdgeAnchor ?? oldFrame.maxX) - nextSize.width
         }
         panelSize = nextSize
         if let activeDisplay {
