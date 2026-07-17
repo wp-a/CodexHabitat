@@ -28,7 +28,7 @@ private enum ManifestShapeValidator {
     private static let rootKeys: Set<String> = [
         "schemaVersion", "id", "name", "version", "author", "license",
         "minimumRuntimeVersion", "modes", "preview", "colors", "assets",
-        "pets", "widgets",
+        "pets", "widgets", "theme",
     ]
 
     static func validate(_ root: [String: Any]) throws {
@@ -42,6 +42,21 @@ private enum ManifestShapeValidator {
             ],
             path: "$.colors"
         )
+        try validateObject(
+            root["theme"],
+            allowed: [
+                "category", "styleFamily", "background", "artFocus", "safeSide",
+                "backgroundStrength", "panelOpacity", "blurRadius", "density",
+            ],
+            path: "$.theme"
+        )
+        if let theme = root["theme"] as? [String: Any] {
+            try validateObject(
+                theme["artFocus"],
+                allowed: ["x", "y"],
+                path: "$.theme.artFocus"
+            )
+        }
 
         if let assets = root["assets"] as? [[String: Any]] {
             for (index, asset) in assets.enumerated() {

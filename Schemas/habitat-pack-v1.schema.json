@@ -36,6 +36,7 @@
     },
     "preview": {"$ref": "#/$defs/imagePath"},
     "colors": {"$ref": "#/$defs/colors"},
+    "theme": {"$ref": "#/$defs/theme"},
     "assets": {
       "type": "array",
       "maxItems": 64,
@@ -115,6 +116,47 @@
         "highlight": {"$ref": "#/$defs/color"},
         "attention": {"$ref": "#/$defs/color"},
         "error": {"$ref": "#/$defs/color"}
+      }
+    },
+    "themeCategory": {
+      "enum": [
+        "utility", "dark", "game", "cozy", "nostalgia", "chat", "classic",
+        "animeEnergy", "adventure", "cozyAdventure", "cinematic", "fantasy",
+        "storybook", "pixelGame", "sports", "custom"
+      ]
+    },
+    "themeStyleFamily": {
+      "enum": [
+        "arcade", "retroMessenger", "greenChat", "classicDesktop", "gameCinematic",
+        "cozyWorld", "animeEnergy", "fantasyAdventure", "pixelWorld"
+      ]
+    },
+    "themeFocalPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category", "styleFamily", "background", "artFocus", "safeSide",
+        "backgroundStrength", "panelOpacity", "blurRadius", "density"
+      ],
+      "properties": {
+        "category": {"$ref": "#/$defs/themeCategory"},
+        "styleFamily": {"$ref": "#/$defs/themeStyleFamily"},
+        "background": {"$ref": "#/$defs/imagePath"},
+        "artFocus": {"$ref": "#/$defs/themeFocalPoint"},
+        "safeSide": {"enum": ["leading", "trailing"]},
+        "backgroundStrength": {"type": "number", "minimum": 0.10, "maximum": 0.70},
+        "panelOpacity": {"type": "number", "minimum": 0.65, "maximum": 1.0},
+        "blurRadius": {"type": "number", "minimum": 0, "maximum": 24},
+        "density": {"enum": ["compact", "comfortable"]}
       }
     },
     "resource": {

@@ -12,6 +12,7 @@ public struct HabitatManifest: Decodable, Equatable, Sendable {
     public let modes: [HabitatMode]
     public let preview: String
     public let colors: HabitatColorTokens
+    public let theme: HabitatThemeAppearance?
     public let assets: [HabitatResource]
     public let pets: [HabitatPetAdapter]
     public let widgets: [HabitatWidget]

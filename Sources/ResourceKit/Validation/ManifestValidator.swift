@@ -15,6 +15,7 @@ public enum ManifestValidationError: Error, Equatable, Sendable {
     case invalidColorToken(String)
     case duplicateIdentifier(String)
     case duplicatePath(String)
+    case undeclaredThemeBackground(String)
     case numericOutOfRange(String)
     case widgetConfigurationMismatch(WidgetIdentifier)
 }
@@ -69,6 +70,7 @@ public struct ManifestValidator: Sendable {
         }
         var resourceIDs: Set<String> = []
         var resourcePaths: Set<String> = []
+        var imagePaths: Set<String> = []
         for resource in manifest.assets {
             switch resource {
             case let .image(image):
@@ -80,6 +82,7 @@ public struct ManifestValidator: Sendable {
                     ids: &resourceIDs,
                     paths: &resourcePaths
                 )
+                imagePaths.insert(image.path)
             case let .font(font):
                 try validateResourceIdentity(
                     id: font.id,
@@ -90,6 +93,9 @@ public struct ManifestValidator: Sendable {
                     paths: &resourcePaths
                 )
             }
+        }
+        if let theme = manifest.theme {
+            try validateTheme(theme, declaredImagePaths: imagePaths)
         }
 
         guard manifest.pets.count <= 16 else {
@@ -134,6 +140,38 @@ public struct ManifestValidator: Sendable {
             try validatePath(license.file)
         } catch {
             throw ManifestValidationError.invalidLicense
+        }
+    }
+
+    private func validateTheme(
+        _ theme: HabitatThemeAppearance,
+        declaredImagePaths: Set<String>
+    ) throws {
+        try validatePath(theme.background, extensions: ["png", "jpg", "jpeg", "webp"])
+        guard declaredImagePaths.contains(theme.background) else {
+            throw ManifestValidationError.undeclaredThemeBackground(theme.background)
+        }
+        guard theme.artFocus.x.isFinite,
+              theme.artFocus.y.isFinite,
+              (0...1).contains(theme.artFocus.x),
+              (0...1).contains(theme.artFocus.y)
+        else {
+            throw ManifestValidationError.numericOutOfRange("theme.artFocus")
+        }
+        guard theme.backgroundStrength.isFinite,
+              (0.10...0.70).contains(theme.backgroundStrength)
+        else {
+            throw ManifestValidationError.numericOutOfRange("theme.backgroundStrength")
+        }
+        guard theme.panelOpacity.isFinite,
+              (0.65...1.0).contains(theme.panelOpacity)
+        else {
+            throw ManifestValidationError.numericOutOfRange("theme.panelOpacity")
+        }
+        guard theme.blurRadius.isFinite,
+              (0...24).contains(theme.blurRadius)
+        else {
+            throw ManifestValidationError.numericOutOfRange("theme.blurRadius")
         }
     }
 

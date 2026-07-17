@@ -18,6 +18,7 @@ func validV1ManifestDecodesIntoTypedResourcesAndWidgets() throws {
 func optionalRichColorsRemainBackwardCompatible() throws {
     let legacy = try ManifestDecoder(runtimeVersion: "1.0.0").decode(validManifestData())
     #expect(legacy.colors.panel == nil)
+    #expect(legacy.theme == nil)
 
     let rich = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
         try mutatedValidManifest {
@@ -44,6 +45,102 @@ func optionalRichColorsRemainBackwardCompatible() throws {
                 $0["colors"] = colors
             }
         )
+    }
+}
+
+@Test
+func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
+    let validData = try mutatedValidManifest { $0["theme"] = validThemeObject() }
+    let manifest = try ManifestDecoder(runtimeVersion: "1.0.0").decode(validData)
+    #expect(manifest.theme?.category == .animeEnergy)
+    #expect(manifest.theme?.styleFamily == .animeEnergy)
+    #expect(manifest.theme?.background == "artwork/desk.png")
+    #expect(manifest.theme?.artFocus == HabitatThemeFocalPoint(x: 0.72, y: 0.42))
+    #expect(manifest.theme?.density == .comfortable)
+
+    for (key, value) in [
+        ("category", "unknownCategory"),
+        ("styleFamily", "rawCSSFamily"),
+        ("safeSide", "center"),
+        ("density", "extraDense"),
+    ] {
+        #expect(throws: (any Error).self, "Expected unknown \(key) to fail") {
+            try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+                try mutatedValidManifest {
+                    var theme = validThemeObject()
+                    theme[key] = value
+                    $0["theme"] = theme
+                }
+            )
+        }
+    }
+
+    for (key, value) in [
+        ("backgroundStrength", 0.09),
+        ("backgroundStrength", 0.71),
+        ("panelOpacity", 0.64),
+        ("panelOpacity", 1.01),
+        ("blurRadius", -0.01),
+        ("blurRadius", 24.01),
+    ] {
+        #expect(throws: (any Error).self, "Expected \(key)=\(value) to fail") {
+            try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+                try mutatedValidManifest {
+                    var theme = validThemeObject()
+                    theme[key] = value
+                    $0["theme"] = theme
+                }
+            )
+        }
+    }
+
+    for (axis, value) in [("x", -0.01), ("x", 1.01), ("y", -0.01), ("y", 1.01)] {
+        #expect(throws: (any Error).self, "Expected artFocus.\(axis)=\(value) to fail") {
+            try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+                try mutatedValidManifest {
+                    var theme = validThemeObject()
+                    var artFocus = theme["artFocus"] as? [String: Any] ?? [:]
+                    artFocus[axis] = value
+                    theme["artFocus"] = artFocus
+                    $0["theme"] = theme
+                }
+            )
+        }
+    }
+
+    for background in [
+        "/tmp/background.jpg", "../background.jpg", "https://example.com/background.jpg",
+        "artwork/missing.jpg",
+    ] {
+        #expect(throws: (any Error).self, "Expected unsafe background to fail") {
+            try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+                try mutatedValidManifest {
+                    var theme = validThemeObject()
+                    theme["background"] = background
+                    $0["theme"] = theme
+                }
+            )
+        }
+    }
+
+    #expect(throws: ManifestDecodingError.unknownField("$.theme.css")) {
+        try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+            try mutatedValidManifest {
+                var theme = validThemeObject()
+                theme["css"] = "* { display: none }"
+                $0["theme"] = theme
+            }
+        )
+    }
+
+    let finiteJSON = try #require(String(data: validData, encoding: .utf8))
+    let nonFiniteJSON = finiteJSON.replacingOccurrences(
+        of: "\"blurRadius\":10",
+        with: "\"blurRadius\":1e309"
+    )
+    #expect(nonFiniteJSON != finiteJSON)
+    #expect(throws: (any Error).self) {
+        try ManifestDecoder(runtimeVersion: "1.0.0").decode(Data(nonFiniteJSON.utf8))
     }
 }
 
@@ -192,6 +289,11 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     let pomodoro = try #require(definitions["pomodoroConfiguration"] as? [String: Any])
     let pomodoroProperties = try #require(pomodoro["properties"] as? [String: Any])
     let focusSeconds = try #require(pomodoroProperties["focusSeconds"] as? [String: Any])
+    let theme = try #require(definitions["theme"] as? [String: Any])
+    let themeProperties = try #require(theme["properties"] as? [String: Any])
+    let backgroundStrength = try #require(themeProperties["backgroundStrength"] as? [String: Any])
+    let panelOpacity = try #require(themeProperties["panelOpacity"] as? [String: Any])
+    let blurRadius = try #require(themeProperties["blurRadius"] as? [String: Any])
 
     #expect(schema["additionalProperties"] as? Bool == false)
     #expect((properties["schemaVersion"] as? [String: Any])?["const"] as? Int == 1)
@@ -200,6 +302,13 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     #expect(x["maximum"] as? Int == 1)
     #expect(focusSeconds["minimum"] as? Int == 60)
     #expect(focusSeconds["maximum"] as? Int == 86_400)
+    #expect((properties["theme"] as? [String: Any])?["$ref"] as? String == "#/$defs/theme")
+    #expect(backgroundStrength["minimum"] as? Double == 0.10)
+    #expect(backgroundStrength["maximum"] as? Double == 0.70)
+    #expect(panelOpacity["minimum"] as? Double == 0.65)
+    #expect(panelOpacity["maximum"] as? Double == 1.0)
+    #expect(blurRadius["minimum"] as? Int == 0)
+    #expect(blurRadius["maximum"] as? Int == 24)
 }
 
 private func validManifestData() throws -> Data {
@@ -220,4 +329,18 @@ private func mutatedValidManifest(
     var manifest = try #require(object as? [String: Any])
     mutate(&manifest)
     return try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
+}
+
+private func validThemeObject() -> [String: Any] {
+    [
+        "category": "animeEnergy",
+        "styleFamily": "animeEnergy",
+        "background": "artwork/desk.png",
+        "artFocus": ["x": 0.72, "y": 0.42],
+        "safeSide": "leading",
+        "backgroundStrength": 0.42,
+        "panelOpacity": 0.88,
+        "blurRadius": 10.0,
+        "density": "comfortable",
+    ]
 }
