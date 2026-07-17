@@ -48,7 +48,11 @@ let package = Package(
             ],
             resources: [.copy("Resources")]
         ),
-        .executableTarget(name: "CodexHabitatThemeBridge", dependencies: ["HabitatCore"]),
+        .executableTarget(
+            name: "CodexHabitatThemeBridge",
+            dependencies: ["HabitatCore"],
+            linkerSettings: [.linkedFramework("Security")]
+        ),
         .testTarget(name: "HabitatCoreTests", dependencies: ["HabitatCore"]),
         .testTarget(
             name: "CodexConnectorTests",
@@ -77,6 +81,10 @@ let package = Package(
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ],
             resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "CodexHabitatThemeBridgeTests",
+            dependencies: ["CodexHabitatThemeBridge"]
         ),
     ],
     swiftLanguageModes: [.v6]
