@@ -19,16 +19,22 @@ timers work offline and do not require an account.
   animation state mapping.
 - Exact sanitized Codex activity when the local control socket is available,
   with an explicitly labelled metadata-only estimate when it is not.
-- Status, current-session Token count, context utilization, output speed, and
-  account quota widgets in the default compact rail. Clock, Pomodoro, and
-  countdown remain optional.
+- Status, latest-request Token count, request context utilization, recent
+  60-second output, and account quota widgets in the default compact rail.
+  Task-cumulative Token use remains available as secondary help text. Clock,
+  Pomodoro, and countdown remain optional.
+- A right-anchored pet overlay that is approximately 136 x 144 collapsed and
+  324 x 144 expanded at 100% scale, without an invisible interaction region.
 - Reliable whole-pet dragging, temporary move mode for click-through layouts,
   and per-display placement persistence.
 - English and Simplified Chinese UI that follows the macOS language.
 - Shared menu-bar timer controls, explicit connection health, pet context
   actions, and position locking.
-- Four built-in native themes with light and dark visual directions, local
-  preview art, and matching optional Codex deep-theme compositions.
+- Twenty-four original built-in themes across nine host-owned style families,
+  with searchable All, Nostalgia, Anime, and Custom gallery views.
+- A local Theme Studio that imports a single PNG, JPEG, or WebP image, exposes
+  only typed appearance controls, and saves or exports a validated
+  `.habitat-pack` without applying it to Codex.
 - Clipboard export to the native `codex-theme-v1` import shape verified in the
   locally installed Codex build, without writing Codex preferences.
 - Explicit opt-in Petdex browsing; only license-declared, hash-verified Habitat
@@ -46,13 +52,20 @@ timers work offline and do not require an account.
 
 ## Themes
 
-| Workbench | Night Shift |
-| --- | --- |
-| ![Workbench](Tests/VisualReferences/workbench-overlay.png) | ![Night Shift](Tests/VisualReferences/night-shift-overlay.png) |
+The built-in library includes four distinct nostalgic desktop directions,
+Retro Messenger 2007, Green Chat Desktop, Cyber Cafe Neon, and Win95
+Workbench, alongside high-saturation game, cozy, anime-energy, fantasy,
+cinematic, pixel, and sports directions. Every theme has original local bitmap
+art and one of nine compiler-owned style families; families change geometry,
+borders, texture, and scrims rather than only swapping colors.
 
-| Arcade Signal | Quiet Garden |
-| --- | --- |
-| ![Arcade Signal](Tests/VisualReferences/arcade-signal-overlay.png) | ![Quiet Garden](Tests/VisualReferences/quiet-garden-overlay.png) |
+![Twenty-four-theme native gallery](docs/qa/screenshots/2026-07-17/gallery-all.png)
+
+Theme Studio accepts local, single-frame images only. Input is signature
+checked, dimension and pixel bounded, oriented, downsampled, and re-encoded.
+The generated package uses `LicenseRef-Codex-Habitat-User-Content` so saving a
+theme never grants rights the user does not hold. Imports cannot contain CSS,
+JavaScript, selectors, commands, URLs, symlinks, or undeclared files.
 
 ## Build and run
 
@@ -84,6 +97,10 @@ to its session filename and accepts only `event_msg` records whose payload type
 is `token_count`; prompt, response, command, tool, and unknown records are
 discarded before their content enters the app model. Local polling and pet
 animation pause while Habitat is hidden.
+The Token primary value is the latest request's input plus output. Context is
+`last_input_tokens / model_context_window`; recent output is the cumulative
+output delta observed inside the last 60 seconds. Metrics become explicitly
+unavailable after five minutes without a matching Token event.
 Petdex network access is disabled until the user opts in. Update checks are
 disabled in debug and ad-hoc builds.
 
@@ -102,7 +119,9 @@ The bridge is disabled by default. Enabling it shows a restart confirmation,
 verifies bundle ID `com.openai.codex`, Team ID `2DC432GLL2`, code signature,
 architecture, process ancestry, and loopback listener ownership before any
 style is installed. Built-in background art is local, bounded, and host-owned;
-resource packs still cannot provide CSS, JavaScript, selectors, or commands.
+validated custom-theme art is single-frame, hash-checked, pixel-bounded, and
+limited to PNG, JPEG, or WebP. Resource packs still cannot provide CSS,
+JavaScript, selectors, commands, or remote URLs.
 
 After a successful apply, the helper watches for new verified `app://` page
 targets while Habitat is running. Quitting Habitat restores the official
@@ -125,8 +144,10 @@ hash mismatches are rejected before atomic installation.
 
 - [`macOS v1 QA checklist`](docs/qa/macos-v1-checklist.md)
 - [`Codex runtime compatibility`](docs/qa/codex-runtime-compatibility.md)
+- [`native theme and overlay screenshots`](docs/qa/screenshots/2026-07-17/README.md)
+- [`theme asset provenance`](docs/qa/theme-asset-provenance.md)
 - [`visual reference notes`](Tests/VisualReferences/README.md)
-- [`asset provenance`](docs/asset-provenance.md)
+- [`other asset provenance`](docs/asset-provenance.md)
 - [`release procedure`](docs/releasing.md)
 
 ## Research and dependencies

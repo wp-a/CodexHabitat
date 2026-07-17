@@ -2,7 +2,7 @@
 
 Generated: 2026-07-17
 
-All twenty-four built-in backgrounds were generated with the project-approved `imagegen` CLI fallback using `gpt-image-2` through the user-configured OpenAI-compatible endpoint `https://api.wpironman.top/v1`. Each job requested `1600 x 1008`, medium quality, JPEG output, and a separate rights-safe prompt. The endpoint returned `1586 x 992`; project assets were normalized with macOS `sips` to `1600 x 1000` JPEG and `800 x 500` PNG preview files.
+All twenty-four built-in backgrounds were generated with the project-approved `imagegen` CLI fallback using `gpt-image-2` through the user-configured image endpoint `https://api.wpironman.top/v1`. Each job requested `1600 x 1008`, medium quality, JPEG output, and a separate rights-safe prompt. The endpoint returned `1586 x 992`; project assets were normalized with macOS `sips` to `1600 x 1000` JPEG and `800 x 500` PNG preview files.
 
 The user-provided messenger screenshot was inspected locally for era, hierarchy, and spacing only. It was not supplied to the image model, edited, copied, or bundled. No third-party artwork or downloaded image is present in these theme directories.
 

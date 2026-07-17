@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 227 tests including security, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 255 tests including theme protocol, image bounds, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,6 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
+- [x] Final `Codex-Habitat-0.1.0.dmg` passes mounted-bundle `verify-release` and strict/deep signature checks; SHA-256 is `8df341369b8d03b59b96960bdb6d9cd3a0019ab78a1c35cd858403010af6819f`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -26,10 +27,13 @@ explicit user action.
 - [x] Settings minimum window is 760 x 520 and all pages scroll without overlap.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
-- [x] Workbench, Night Shift, Arcade Signal, and Quiet Garden references contain no blank sprites or layout shifts.
+- [x] All 24 bundled theme packages have unique IDs and hashes, validated 1600 x 1000 backgrounds, 800 x 500 previews, and nine materially distinct host-owned style families.
+- [x] All, Nostalgia, Anime, and Custom gallery filters plus Theme Studio at narrow and wide settings widths pass native screenshot review without blank previews, clipping, or overlap.
+- [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input and typed controls; it re-encodes bounded art and installs/exports through the validated package path with a user-content rights notice.
 - [x] Overlay does not activate the app and can be made click-through.
 - [x] Menu-bar connection state and Pomodoro/countdown controls render without clipping and share live timer state with the overlay.
-- [x] Simplified Chinese settings and the default status/Token/context/speed/quota overlay pass native screenshot review without overlap.
+- [x] Simplified Chinese settings and the default status/latest-request Token/context/recent-60-second-output/quota overlay pass native screenshot review without overlap.
+- [x] At 100% scale the physical overlay is 136 x 144 collapsed and 324 x 144 expanded; the right edge remains fixed and the collapsed window has no transparent mouse-blocking rail.
 - [x] Resource packs support validated import, explicit replacement, export, and uninstall from native settings.
 - [x] Whole-pet live dragging moved the packaged overlay from `+1138,+481` to `+948,+319`; position lock and per-display relative placement persist through settings schema v4.
 - [x] Launch-at-login uses `SMAppService.mainApp`; registration, rollback, and stored-state reconciliation are covered by tests.
@@ -49,6 +53,7 @@ explicit user action.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
 - [x] Post-enhancement static regression averaged 0.037% CPU over 30 one-second samples; all samples were below 1% and final memory was 21 MB.
 - [x] Post-enhancement active pet, Token polling, overlay, and settings averaged 0.820% CPU over 20 one-second samples; final sampled memory was 53 MB.
+- [x] Final expanded overlay averaged 0.58% CPU over five post-warmup samples and approximately 54 MB; collapsed averaged 0.42% CPU and approximately 53 MB under the same fixture.
 - [ ] Memory, wakeups, and energy-impact baseline from the notarized build.
 
 ## Privacy and recovery
@@ -61,8 +66,8 @@ explicit user action.
 - [x] Official Codex bundle verification is read-only and passes for `26.707.91948` arm64.
 - [x] Session fallback reads file metadata only and exposes an explicit `Local activity estimate` state.
 - [x] Installed Codex `26.707.91948` contains the `codex-theme-v1` Import/Copy shape; Habitat's clipboard encoder matches its required local schema.
-- [x] API-key mode exposes real local Token/context/speed values and labels unavailable account quota as `API Key` rather than a fabricated percentage.
-- [x] Salted active-thread selection keeps Token metrics on the matching session during parallel tasks and lets the 60-second speed window expire while idle.
+- [x] API-key mode exposes real local latest-request Token/context/recent-output values and labels unavailable account quota as `API Key` rather than a fabricated percentage.
+- [x] Salted active-thread selection keeps Token metrics on the matching session during parallel tasks, expires recent output after 60 seconds, and expires the complete metric summary after five minutes without a matching event.
 - [ ] Paste a Habitat-generated native theme into Codex Appearance and visually confirm both light and dark variants with user approval.
 - [ ] Exact control-socket activity on Codex `26.707.91948`; this build does not publish the proxy socket.
 - [ ] Live CDP apply, screenshot health review, helper crash, and official-appearance restore with fresh user confirmation.

@@ -23,8 +23,11 @@ main.main-surface
 ```
 
 Themes cannot provide selectors, CSS, script, commands, or remote URLs. The
-host compiler accepts approved color tokens and bounded host-owned PNG data;
-resource packs cannot inject their own deep-theme payloads.
+host compiler accepts approved color tokens and bounded single-frame PNG,
+JPEG, or WebP data from either the 24 bundled themes or a package that passes
+the same local installer and bridge revalidation. Theme packages select one of
+nine host-owned style families, but cannot inject CSS or other deep-theme
+payloads.
 
 ## Health gate
 
@@ -58,6 +61,11 @@ Habitat parent disappears. The UI leaves the active state if the watcher exits.
 5. With explicit user confirmation, capture a live screenshot, inspect every
    native control, restore, and confirm the port is closed.
 6. Record the exact tested version and architecture here.
+
+The current development run completed compiler, resolver, coordinator, health,
+and release-package tests without launching the bridge. Live CDP apply,
+screenshot inspection inside Codex, restore, and listener-closure confirmation
+remain manual user-approved acceptance steps and are not claimed as passed.
 
 The current selector direction was cross-checked against the MIT-licensed
 [Codex Dream Skin](https://github.com/Fei-Away/Codex-Dream-Skin) project. The
