@@ -20,6 +20,17 @@ struct BridgeThemeTokens: Codable, Equatable, Sendable {
 struct BridgeTheme: Codable, Equatable, Sendable {
     let tokens: BridgeThemeTokens
     let artBlobURL: String?
+    let artDataURL: String?
+
+    init(
+        tokens: BridgeThemeTokens,
+        artBlobURL: String?,
+        artDataURL: String? = nil
+    ) {
+        self.tokens = tokens
+        self.artBlobURL = artBlobURL
+        self.artDataURL = artDataURL
+    }
 }
 
 extension BridgeTheme {
@@ -55,7 +66,40 @@ extension BridgeTheme {
         default:
             return nil
         }
-        return BridgeTheme(tokens: tokens, artBlobURL: nil)
+        return BridgeTheme(
+            tokens: tokens,
+            artBlobURL: nil,
+            artDataURL: builtInArtDataURL(id: id)
+        )
+    }
+
+    private static func builtInArtDataURL(id: String) -> String? {
+        let subdirectory = "Resources/Themes/\(id)"
+        let sourceRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let candidates = [
+            PackagedResourceLocator.url(
+                forResource: "preview",
+                withExtension: "png",
+                subdirectory: subdirectory
+            ),
+            sourceRoot
+                .appending(path: "CodexHabitatApp", directoryHint: .isDirectory)
+                .appending(path: subdirectory, directoryHint: .isDirectory)
+                .appending(path: "preview.png"),
+        ].compactMap { $0 }
+        for url in candidates {
+            guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+                  data.count <= 1024 * 1024,
+                  data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+            else {
+                continue
+            }
+            return "data:image/png;base64,\(data.base64EncodedString())"
+        }
+        return nil
     }
 }
 
@@ -63,6 +107,7 @@ enum ThemeCompilationError: Error, Equatable {
     case unknownThemeField(String)
     case invalidColorToken(String)
     case invalidArtBlobURL
+    case invalidArtDataURL
     case unsafeTemplate
     case missingPlaceholder(String)
 }
@@ -73,7 +118,7 @@ struct BridgeThemeDecoder {
         else {
             throw ThemeCompilationError.unknownThemeField("document")
         }
-        let allowed: Set<String> = ["tokens", "artBlobURL"]
+        let allowed: Set<String> = ["tokens", "artBlobURL", "artDataURL"]
         let unknown = Set(object.keys).subtracting(allowed)
         if unknown.contains("selectors") {
             throw ThemeCompilationError.unknownThemeField("selectors")
@@ -138,7 +183,9 @@ struct ThemeCompiler {
             throw ThemeCompilationError.invalidColorToken(name)
         }
         let artBackground: String
-        if let artBlobURL = theme.artBlobURL {
+        if theme.artBlobURL != nil, theme.artDataURL != nil {
+            throw ThemeCompilationError.invalidArtDataURL
+        } else if let artBlobURL = theme.artBlobURL {
             guard artBlobURL.range(
                 of: "^blob:app://[A-Za-z0-9._/-]+$",
                 options: .regularExpression
@@ -146,6 +193,17 @@ struct ThemeCompiler {
                 throw ThemeCompilationError.invalidArtBlobURL
             }
             artBackground = "url(\"\(artBlobURL)\")"
+        } else if let artDataURL = theme.artDataURL {
+            let prefix = "data:image/png;base64,"
+            guard artDataURL.hasPrefix(prefix),
+                  artDataURL.count <= prefix.count + 1_400_000,
+                  let data = Data(base64Encoded: String(artDataURL.dropFirst(prefix.count))),
+                  data.count <= 1024 * 1024,
+                  data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+            else {
+                throw ThemeCompilationError.invalidArtDataURL
+            }
+            artBackground = "url(\"\(artDataURL)\")"
         } else {
             artBackground = "none"
         }
@@ -157,6 +215,7 @@ struct ThemeCompiler {
             "accent": theme.tokens.accent,
             "attention": theme.tokens.attention,
             "error": theme.tokens.error,
+            "color-scheme": Self.colorScheme(for: theme.tokens.surface),
             "art-background": artBackground,
             "sidebar": profile.selectors.sidebar,
             "main": profile.selectors.mainSurface,
@@ -175,5 +234,15 @@ struct ThemeCompiler {
             throw ThemeCompilationError.unsafeTemplate
         }
         return result
+    }
+
+    private static func colorScheme(for surface: String) -> String {
+        let value = UInt64(surface.dropFirst(), radix: 16) ?? 0
+        let red = Double((value >> 16) & 0xff) / 255
+        let green = Double((value >> 8) & 0xff) / 255
+        let blue = Double(value & 0xff) / 255
+        return (0.2126 * red + 0.7152 * green + 0.0722 * blue) < 0.5
+            ? "dark"
+            : "light"
     }
 }

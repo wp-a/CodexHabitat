@@ -3,7 +3,7 @@ import SwiftUI
 
 struct IntegrationsSettingsView: View {
     @ObservedObject var model: HabitatAppModel
-    @StateObject private var bridge = ThemeBridgeIntegrationModel.live()
+    @ObservedObject private var bridge = ThemeBridgeIntegrationModel.shared
     @State private var confirmsRestart = false
     @State private var codexVariant = CodexThemeVariant.dark
     @State private var nativeThemeCopyStatus: String?

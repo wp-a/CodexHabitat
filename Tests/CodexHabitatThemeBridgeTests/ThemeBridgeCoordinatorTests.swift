@@ -130,6 +130,27 @@ func authorizationAndSessionMismatchDoNotRestartOrTouchAnotherSession() async th
     #expect(mismatch.restarter.normalLaunches.isEmpty)
 }
 
+@Test
+func maintainInstallsOnlyNewTargetsAndKeepsExistingTargetsIdempotent() async throws {
+    let fixture = try CoordinatorFixture(initiallyActive: true)
+    defer { fixture.cleanup() }
+
+    let firstCount = try await fixture.coordinator.maintain(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil)
+    )
+    let secondCount = try await fixture.coordinator.maintain(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil)
+    )
+
+    #expect(firstCount == 1)
+    #expect(secondCount == 0)
+    #expect(fixture.client.installedTargets == [fixture.target])
+    #expect(fixture.session.stopCount == 0)
+    #expect(fixture.restarter.normalLaunches.isEmpty)
+}
+
 private final class CoordinatorFixture {
     let root: URL
     let bundle: VerifiedCodexBundle

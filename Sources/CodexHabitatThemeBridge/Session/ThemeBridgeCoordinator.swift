@@ -31,6 +31,7 @@ actor ThemeBridgeCoordinator {
     private let compiler: ThemeCompiler
     private let restarter: any CodexApplicationRestarting
     private let readinessAttempts: Int
+    private var maintainedTargetIDs: Set<String> = []
 
     init(
         verifier: any CodexBundleVerifying,
@@ -142,6 +143,49 @@ actor ThemeBridgeCoordinator {
             try session.stop()
             try restarter.launchNormally(bundleURL: bundle.bundleURL)
         }
+    }
+
+    func maintain(bundleURL: URL, theme: BridgeTheme) async throws -> Int {
+        let bundle = try verifier.verify(bundleURL)
+        guard case let .active(record) = session.status() else {
+            throw ThemeBridgeCoordinatorError.staleSession
+        }
+        guard Self.matches(record, bundle: bundle) else {
+            throw ThemeBridgeCoordinatorError.activeSessionMismatch
+        }
+        guard let profile = profileStore.profile(forVersion: record.bundleVersion) else {
+            throw ThemeBridgeCoordinatorError.unsupportedCodexVersion(record.bundleVersion)
+        }
+        guard (try? listenerVerifier.verify(
+            port: record.port,
+            owner: record.process
+        )) == true else {
+            throw ThemeBridgeCoordinatorError.listenerNotOwned
+        }
+        let client = clientProvider.client(port: record.port)
+        let targets = try await client.listPageTargets()
+        guard !targets.isEmpty else {
+            throw ThemeBridgeCoordinatorError.targetUnavailable
+        }
+        let activeIDs = Set(targets.map(\.id))
+        maintainedTargetIDs.formIntersection(activeIDs)
+        let newTargets = targets.filter { !maintainedTargetIDs.contains($0.id) }
+        guard !newTargets.isEmpty else { return 0 }
+
+        let css = try compiler.compile(theme: theme, profile: profile)
+        let healthCheck = LayoutHealthCheck(profile: profile)
+        for target in newTargets {
+            try await client.installStyle(css, on: target)
+            let report = healthCheck.evaluate(
+                try await client.healthSnapshot(on: target, check: healthCheck)
+            )
+            guard report.passed else {
+                try? await client.removeStyle(from: target)
+                throw ThemeBridgeCoordinatorError.healthCheckFailed
+            }
+            maintainedTargetIDs.insert(target.id)
+        }
+        return newTargets.count
     }
 
     private func waitForReadySession(

@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 
 struct DiagnosticsView: View {
     @StateObject private var diagnostics = DiagnosticsViewModel.live()
-    @StateObject private var bridge = ThemeBridgeIntegrationModel.live()
+    @ObservedObject private var bridge = ThemeBridgeIntegrationModel.shared
     @State private var confirmsClear = false
     @State private var confirmsRestore = false
 

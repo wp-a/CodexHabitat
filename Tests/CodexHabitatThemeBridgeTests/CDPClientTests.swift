@@ -43,7 +43,7 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     try await client.installStyle(css, on: target)
     try await client.removeStyle(from: target)
 
-    #expect(transport.messages.count == 2)
+    #expect(transport.messages.count == 3)
     let install = try #require(
         JSONSerialization.jsonObject(with: transport.messages[0]) as? [String: Any]
     )
@@ -64,8 +64,19 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(decoded == [css])
     #expect(!expression.contains("eval("))
 
-    let removal = try #require(
+    let bootstrap = try #require(
         JSONSerialization.jsonObject(with: transport.messages[1]) as? [String: Any]
+    )
+    #expect(bootstrap["method"] as? String == "Page.addScriptToEvaluateOnNewDocument")
+    let bootstrapParams = try #require(bootstrap["params"] as? [String: Any])
+    let source = try #require(bootstrapParams["source"] as? String)
+    #expect(source.contains("MutationObserver"))
+    #expect(source.contains("codex-habitat-theme-style"))
+    #expect(source.contains("blocked()"))
+    #expect(!source.contains("</style><script>"))
+
+    let removal = try #require(
+        JSONSerialization.jsonObject(with: transport.messages[2]) as? [String: Any]
     )
     let removalParams = try #require(removal["params"] as? [String: Any])
     #expect((removalParams["expression"] as? String)?.contains("removeAttribute") == true)

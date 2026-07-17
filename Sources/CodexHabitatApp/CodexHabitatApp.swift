@@ -24,6 +24,12 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
             HabitatAppEnvironment.runtimeController.start(
                 desktopController: HabitatAppEnvironment.desktopController
             )
+            let bridge = ThemeBridgeIntegrationModel.shared
+            await bridge.refresh()
+            if model.settings.themeBridgeEnabled {
+                bridge.resumeWatching(themeID: model.settings.selectedThemeID)
+                model.setThemeBridgeEnabled(bridge.state == .active)
+            }
             let shouldShowSettings = model.requiresOnboarding
                 || CommandLine.arguments.contains("--show-settings")
             guard shouldShowSettings else { return }
@@ -43,6 +49,9 @@ private final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         Task { @MainActor in
             await HabitatAppEnvironment.runtimeController.stop()
+            await ThemeBridgeIntegrationModel.shared.restoreForApplicationTermination()
+            HabitatAppEnvironment.model.setThemeBridgeEnabled(false)
+            await HabitatAppEnvironment.model.flushSettings()
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater

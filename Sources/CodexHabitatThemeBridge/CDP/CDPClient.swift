@@ -59,28 +59,57 @@ actor CDPClient {
 
     func installStyle(_ css: String, on target: CDPTarget) async throws {
         _ = try validator.validate(target)
-        let cssLiteral = Self.javaScriptString(css)
-        let expression = """
+        let expression = Self.styleInstallerExpression(css: css, reportsResult: true)
+        _ = try await evaluate(expression, on: target)
+        _ = try await command(
+            method: "Page.addScriptToEvaluateOnNewDocument",
+            parameters: [
+                "source": Self.styleInstallerExpression(css: css, reportsResult: false),
+            ],
+            target: target
+        )
+    }
+
+    private static func styleInstallerExpression(
+        css: String,
+        reportsResult: Bool
+    ) -> String {
+        let cssLiteral = javaScriptString(css)
+        return """
         (() => {
-          const id = "codex-habitat-theme-style";
-          let style = document.getElementById(id);
-          if (!style) {
-            style = document.createElement("style");
-            style.id = id;
-            document.head.appendChild(style);
+          const install = () => {
+            const id = "codex-habitat-theme-style";
+            let style = document.getElementById(id);
+            if (!style) {
+              style = document.createElement("style");
+              style.id = id;
+              (document.head || document.documentElement).appendChild(style);
+            }
+            style.textContent = \(cssLiteral);
+            document.documentElement.setAttribute("data-codex-habitat-theme", "1");
+            globalThis.__codexHabitatThemeObserver?.disconnect();
+            const observer = new MutationObserver(() => {
+              if (!document.getElementById(id)) install();
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+            globalThis.__codexHabitatThemeObserver = observer;
+            return { installed: true };
+          };
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", install, { once: true });
+            return { installed: true, pending: true };
           }
-          style.textContent = \(cssLiteral);
-          document.documentElement.setAttribute("data-codex-habitat-theme", "1");
-          return { installed: true };
+          return install();
         })()
         """
-        _ = try await evaluate(expression, on: target)
     }
 
     func removeStyle(from target: CDPTarget) async throws {
         _ = try validator.validate(target)
         let expression = """
         (() => {
+          globalThis.__codexHabitatThemeObserver?.disconnect();
+          delete globalThis.__codexHabitatThemeObserver;
           document.getElementById("codex-habitat-theme-style")?.remove();
           document.documentElement.removeAttribute("data-codex-habitat-theme");
           return { removed: true };

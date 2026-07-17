@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 @main
@@ -68,6 +69,37 @@ enum CodexHabitatThemeBridge {
                 let session = liveSession()
                 try await liveCoordinator(session: session).restore(bundleURL: bundleURL)
                 print("restored")
+            case "watch":
+                guard let themeID = value(after: "--theme", in: arguments),
+                      let theme = BridgeTheme.builtIn(id: themeID),
+                      let parentValue = value(after: "--parent-pid", in: arguments),
+                      let parentPID = Int32(parentValue),
+                      parentPID > 1,
+                      parentPID == getppid()
+                else {
+                    throw ThemeBridgeCLIError.invalidParentProcess
+                }
+                let bundleURL = try resolveBundle(
+                    path: value(after: "--app", in: arguments)
+                )
+                let coordinator = try liveCoordinator(session: liveSession())
+                while getppid() == parentPID {
+                    do {
+                        _ = try await coordinator.maintain(
+                            bundleURL: bundleURL,
+                            theme: theme
+                        )
+                    } catch ThemeBridgeCoordinatorError.targetUnavailable {
+                        // Renderer replacement can briefly leave the target list empty.
+                    } catch ThemeBridgeCoordinatorError.staleSession {
+                        return
+                    } catch {
+                        try? await coordinator.restore(bundleURL: bundleURL)
+                        throw error
+                    }
+                    try await Task.sleep(for: .seconds(2))
+                }
+                try? await coordinator.restore(bundleURL: bundleURL)
             default:
                 printUsage()
                 Foundation.exit(64)
@@ -143,7 +175,7 @@ enum CodexHabitatThemeBridge {
     }
 
     private static func printUsage() {
-        print("usage: CodexHabitatThemeBridge verify [app] | start --authorized [app] | status | stop | apply --authorized --theme <id> [--screenshot <png>] [--app <app>] | restore [--app <app>]")
+        print("usage: CodexHabitatThemeBridge verify [app] | start --authorized [app] | status | stop | apply --authorized --theme <id> [--screenshot <png>] [--app <app>] | watch --theme <id> --parent-pid <pid> [--app <app>] | restore [--app <app>]")
     }
 
     private static func value(after flag: String, in arguments: [String]) -> String? {
@@ -158,4 +190,5 @@ enum CodexHabitatThemeBridge {
 
 private enum ThemeBridgeCLIError: Error {
     case invalidTheme
+    case invalidParentProcess
 }

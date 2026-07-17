@@ -7,6 +7,8 @@ struct ThemeBridgeCommandResult: Equatable, Sendable {
 
 protocol ThemeBridgeCommandExecuting: Sendable {
     func run(arguments: [String]) async throws -> ThemeBridgeCommandResult
+    func startWatching(themeID: String) throws
+    func stopWatching()
 }
 
 enum ThemeBridgeIntegrationState: Equatable {
@@ -22,6 +24,8 @@ enum ThemeBridgeIntegrationState: Equatable {
 @MainActor
 final class ThemeBridgeIntegrationModel: ObservableObject {
     @Published private(set) var state = ThemeBridgeIntegrationState.checking
+
+    static let shared = ThemeBridgeIntegrationModel.live()
 
     private let runner: (any ThemeBridgeCommandExecuting)?
 
@@ -90,7 +94,17 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             let result = try await runner.run(arguments: [
                 "apply", "--authorized", "--theme", themeID,
             ])
-            state = result.exitCode == 0 ? .active : .failed
+            guard result.exitCode == 0 else {
+                state = .failed
+                return
+            }
+            do {
+                try runner.startWatching(themeID: themeID)
+                state = .active
+            } catch {
+                _ = try? await runner.run(arguments: ["restore"])
+                state = .failed
+            }
         } catch {
             state = .failed
         }
@@ -101,6 +115,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             state = .unavailable
             return
         }
+        runner.stopWatching()
         state = .restoring
         do {
             let result = try await runner.run(arguments: ["restore"])
@@ -109,10 +124,36 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             state = .failed
         }
     }
+
+    func restoreForApplicationTermination() async {
+        await refresh()
+        guard state == .active else { return }
+        await restore()
+    }
+
+    func resumeWatching(themeID: String) {
+        guard state == .active,
+              ["workbench", "night-shift", "arcade-signal", "quiet-garden"]
+                .contains(themeID),
+              let runner
+        else {
+            return
+        }
+        do {
+            try runner.startWatching(themeID: themeID)
+        } catch {
+            state = .failed
+        }
+    }
 }
 
-private struct ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting {
+private final class ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting, @unchecked Sendable {
     let executableURL: URL
+    private var watchProcess: Process?
+
+    init(executableURL: URL) {
+        self.executableURL = executableURL
+    }
 
     static func locate(
         bundle: Bundle = .main,
@@ -147,7 +188,8 @@ private struct ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting {
     }
 
     func run(arguments: [String]) async throws -> ThemeBridgeCommandResult {
-        try await Task.detached {
+        let executableURL = executableURL
+        return try await Task.detached {
             let process = Process()
             let pipe = Pipe()
             process.executableURL = executableURL
@@ -164,5 +206,28 @@ private struct ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }.value
+    }
+
+    func startWatching(themeID: String) throws {
+        stopWatching()
+        let process = Process()
+        process.executableURL = executableURL
+        process.arguments = [
+            "watch",
+            "--theme", themeID,
+            "--parent-pid", String(ProcessInfo.processInfo.processIdentifier),
+        ]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        watchProcess = process
+    }
+
+    func stopWatching() {
+        guard let process = watchProcess else { return }
+        if process.isRunning {
+            process.terminate()
+        }
+        watchProcess = nil
     }
 }

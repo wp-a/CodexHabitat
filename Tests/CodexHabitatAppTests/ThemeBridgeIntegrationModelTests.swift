@@ -39,6 +39,7 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(runner.invocations == [[
             "apply", "--authorized", "--theme", "night-shift",
         ]])
+        #expect(runner.watchedThemes == ["night-shift"])
     }
 
     @Test
@@ -57,16 +58,42 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(model.statusText == "Theme bridge action failed")
         #expect(!model.statusText.contains("sensitive"))
     }
+
+    @Test
+    func applicationTerminationRestoresAnActiveBridgeSession() async {
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(exitCode: 0, output: "verified"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "active: pid=42 port=55000"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "restored"),
+        ])
+        let model = ThemeBridgeIntegrationModel(runner: runner)
+
+        await model.restoreForApplicationTermination()
+
+        #expect(model.state == .ready)
+        #expect(runner.invocations == [["verify"], ["status"], ["restore"]])
+        #expect(runner.stopWatchingCount == 1)
+    }
 }
 
 private final class StubThemeBridgeRunner: ThemeBridgeCommandExecuting, @unchecked Sendable {
     var results: [ThemeBridgeCommandResult]
     var invocations: [[String]] = []
+    var watchedThemes: [String] = []
+    var stopWatchingCount = 0
 
     init(results: [ThemeBridgeCommandResult]) { self.results = results }
 
     func run(arguments: [String]) async throws -> ThemeBridgeCommandResult {
         invocations.append(arguments)
         return results.removeFirst()
+    }
+
+    func startWatching(themeID: String) throws {
+        watchedThemes.append(themeID)
+    }
+
+    func stopWatching() {
+        stopWatchingCount += 1
     }
 }
