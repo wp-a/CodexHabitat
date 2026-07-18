@@ -26,7 +26,7 @@ func bundledProfileCompilesOnlyHostSelectorsApprovedTokensAndLocalBlobArt() thro
     #expect(css.contains(definition.palette.highlight))
     #expect(css.contains("blob:app://codex/habitat-art-1"))
     #expect(css.contains("habitat-style-family: gameCinematic"))
-    #expect(css.contains("--habitat-art-position: 76% 42%"))
+    #expect(css.contains("--habitat-art-position: 80% 42%"))
     #expect(css.contains("--habitat-tinted-blur-radius: 5.5px"))
     #expect(!css.contains("* 0.55"))
     #expect(!css.contains("soft-light"))
@@ -96,6 +96,37 @@ func legacyMinimumBackgroundStrengthCompilesWithBoundedTaskFallback() throws {
 }
 
 @Test
+func immersiveHomeHeaderAcceptsTheTypedTransparentRange() throws {
+    let appearance = HabitatThemeAppearance(
+        category: .custom,
+        styleFamily: .gameCinematic,
+        background: "background.jpg",
+        artFocus: HabitatThemeFocalPoint(x: 0.8, y: 0.45),
+        safeSide: .leading,
+        backgroundStrength: 0.42,
+        panelOpacity: 0.88,
+        blurRadius: 8,
+        density: .comfortable,
+        homeMode: .immersive,
+        headerOpacity: 0.18
+    )
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+
+    let css = try ThemeCompiler.bundled().compile(
+        theme: BridgeTheme(
+            tokens: .workbench,
+            appearance: BridgeThemeAppearance(appearance),
+            artBlobURL: nil
+        ),
+        profile: profile
+    )
+
+    #expect(css.contains("--habitat-header-opacity: 18%"))
+}
+
+@Test
 func unknownCodexVersionsFailClosed() throws {
     let store = try CompatibilityProfileStore.bundled()
 
@@ -115,8 +146,14 @@ func staticallyVerifiedCodexLinesResolveToNarrowProfiles() throws {
     #expect(legacy.id == "codex-26.707")
     #expect(current.id == "codex-26.715")
     #expect(current.minimumVersion == "26.715.0")
-    #expect(current.maximumVersionExclusive == "26.716.0")
-    #expect(current.selectors == legacy.selectors)
+    #expect(current.maximumVersionExclusive == "26.715.31925")
+    #expect(current.selectors.sidebar == legacy.selectors.sidebar)
+    #expect(current.selectors.appShell == nil)
+
+    let exactBuild = try #require(store.profile(forVersion: "26.715.31925"))
+    #expect(exactBuild.id == "codex-26.715.31925")
+    #expect(exactBuild.selectors.appShell == "#root")
+    #expect(exactBuild.selectors.messageSurface == "[data-content-search-unit-key]")
 }
 
 @Test(arguments: [

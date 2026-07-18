@@ -9,11 +9,12 @@ it is not inferred from DOM similarity.
 | Codex version | Profile | Identity verification | Automated injection/restore | Live apply/restore | Status |
 | --- | --- | --- | --- | --- | --- |
 | `26.707.0` to `<26.708.0` | `codex-26.707` | Passed on `26.707.91948` arm64 | Passed, including reload bootstrap and watcher idempotence | Requires packaged-Habitat confirmation | Supported with live gate |
-| `26.715.0` to `<26.716.0` | `codex-26.715` | Passed on `26.715.31251` and `26.715.31925` arm64 | Passed, including main-renderer selection, profile compilation, layout health, fail-close, and watcher idempotence | Requires packaged-Habitat confirmation | Static selectors verified; live gate pending |
-| `26.708.0` to `<26.715.0`, and `26.716.0` or newer | None | Version may verify | Rejected before restarting or injecting | Not applicable | Unsupported, fail closed |
+| `26.715.0` to `<26.715.31925` | `codex-26.715` | Passed on `26.715.31251` arm64 | Passed for the seven baseline surfaces | Requires packaged-Habitat confirmation | Baseline profile; live gate pending |
+| `26.715.31925` to `<26.715.31926` | `codex-26.715.31925` | Passed on `26.715.31925` arm64 | Passed, including complete surface-profile decoding and safety validation | Requires packaged-Habitat confirmation | Exact-build static profile; live gate pending |
+| `26.708.0` to `<26.715.0`, and `26.715.31926` or newer | None | Version may verify | Rejected before restarting or injecting | Not applicable | Unsupported, fail closed |
 | Older versions | None | Not evaluated | Rejected before injection | Not applicable | Unsupported, fail closed |
 
-## Profile-owned selectors
+## Baseline profile-owned selectors
 
 ```text
 aside.app-shell-left-panel
@@ -21,12 +22,40 @@ main.main-surface
 .composer-surface-chrome
 .thread-scroll-container
 [data-radix-popper-content-wrapper]
+main.main-surface > header.app-header-tint
+[data-testid="home-icon"]
 ```
 
-The `26.715` profile was derived from read-only extractions of the verified
+The exact `26.715.31925` profile additionally owns these independently validated
+selectors:
+
+```text
+#root
+main.main-surface [role="main"]
+[class~="group/home-suggestions"]
+aside.app-shell-left-panel [aria-current]
+[data-content-search-unit-key]
+[data-content-search-unit-key] pre
+[data-content-search-unit-key] [data-testid="exec-shell-body"]
+[data-content-search-unit-key] [data-testid="dynamic-tool-call-group-body"]
+[data-content-search-unit-key] [data-testid="pending-mcp-tool-calls-body"]
+aside.app-shell-left-panel .sidebar-resize-handle-line
+.app-shell-main-content-top-fade
+.thread-scroll-container [data-thread-scroll-footer="true"] > [class~="pointer-events-none"]
+main.main-surface [data-codex-composer-root]
+```
+
+No `stickyBand` selector is shipped because the read-only evidence did not
+establish a narrow stable marker. The profile does not use positional `div`
+selectors, content text, `aria-label`, wildcard roots, `:has`, or `:nth-*`.
+
+The `26.715` profiles were derived from read-only extractions of the verified
 official `26.715.31251` and `26.715.31925` bundles. Their `app.asar` SHA-256
 values are `8142e0848fe49097c129a1093f80061c13de04c2893525ee7c751d26b5a7bd4f`
 and `0c9dd677134340cb944e7642b8bc2504c7b73c7dc334d9d756547858171eea41`.
+The current bundle was reconfirmed read-only while the official Codex process
+remained PID `23647`, started `Sat Jul 18 14:48:19 2026`; no apply, restart, or
+quit action was performed.
 The extracted React bundles still mount the sidebar class on an `aside`, the
 main-surface class on a `main`, the composer and thread-scroll classes on their
 respective live containers, and the Radix popper wrapper attribute. The current

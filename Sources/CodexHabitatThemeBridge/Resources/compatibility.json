@@ -18,7 +18,7 @@
     {
       "id": "codex-26.715",
       "minimumVersion": "26.715.0",
-      "maximumVersionExclusive": "26.716.0",
+      "maximumVersionExclusive": "26.715.31925",
       "selectors": {
         "sidebar": "aside.app-shell-left-panel",
         "mainSurface": "main.main-surface",
@@ -27,6 +27,36 @@
         "popover": "[data-radix-popper-content-wrapper]",
         "header": "main.main-surface > header.app-header-tint",
         "homeMarker": "[data-testid=\"home-icon\"]"
+      }
+    },
+    {
+      "id": "codex-26.715.31925",
+      "minimumVersion": "26.715.31925",
+      "maximumVersionExclusive": "26.715.31926",
+      "selectors": {
+        "sidebar": "aside.app-shell-left-panel",
+        "mainSurface": "main.main-surface",
+        "composer": ".composer-surface-chrome",
+        "threadScroll": ".thread-scroll-container",
+        "popover": "[data-radix-popper-content-wrapper]",
+        "header": "main.main-surface > header.app-header-tint",
+        "homeMarker": "[data-testid=\"home-icon\"]",
+        "appShell": "#root",
+        "homeContent": "main.main-surface [role=\"main\"]",
+        "homeSuggestions": "[class~=\"group/home-suggestions\"]",
+        "selectedNavigation": "aside.app-shell-left-panel [aria-current]",
+        "taskTranscript": ".thread-scroll-container",
+        "messageSurface": "[data-content-search-unit-key]",
+        "codeSurface": "[data-content-search-unit-key] pre",
+        "toolSurfaces": [
+          "[data-content-search-unit-key] [data-testid=\"exec-shell-body\"]",
+          "[data-content-search-unit-key] [data-testid=\"dynamic-tool-call-group-body\"]",
+          "[data-content-search-unit-key] [data-testid=\"pending-mcp-tool-calls-body\"]"
+        ],
+        "sidebarResizeChrome": "aside.app-shell-left-panel .sidebar-resize-handle-line",
+        "topFade": ".app-shell-main-content-top-fade",
+        "bottomFade": ".thread-scroll-container [data-thread-scroll-footer=\"true\"] > [class~=\"pointer-events-none\"]",
+        "composerContext": "main.main-surface [data-codex-composer-root]"
       }
     }
   ]

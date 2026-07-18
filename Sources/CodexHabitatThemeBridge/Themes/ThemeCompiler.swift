@@ -567,10 +567,14 @@ struct ThemeCompiler {
         }
         for (name, value) in [
             ("sidebarOpacity", appearance.sidebarOpacity),
-            ("headerOpacity", appearance.headerOpacity),
             ("composerOpacity", appearance.composerOpacity),
         ] where !value.isFinite || !(0.40...1.0).contains(value) {
             throw ThemeCompilationError.invalidAppearance(name)
+        }
+        guard appearance.headerOpacity.isFinite,
+              (0.0...1.0).contains(appearance.headerOpacity)
+        else {
+            throw ThemeCompilationError.invalidAppearance("headerOpacity")
         }
     }
 

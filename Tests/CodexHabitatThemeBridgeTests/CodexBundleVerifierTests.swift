@@ -28,6 +28,18 @@ func officialIdentitySignatureArchitectureAndExecutablePathAreRequired() throws 
     #expect(verified.executableURL == executableURL)
 }
 
+@Test
+func verifiedCurrentBundleVersionResolvesOnlyItsExactSurfaceProfile() throws {
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+
+    #expect(profile.id == "codex-26.715.31925")
+    #expect(profile.minimumVersion == "26.715.31925")
+    #expect(profile.maximumVersionExclusive == "26.715.31926")
+    #expect(profile.selectors.appShell == "#root")
+}
+
 @Test(arguments: [
     (
         CodexBundleMetadata(
