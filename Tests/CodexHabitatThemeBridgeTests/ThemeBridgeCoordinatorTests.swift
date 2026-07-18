@@ -58,8 +58,10 @@ func unknownVersionAndUnownedListenerFailClosedBeforeInjection() async throws {
         )
     }
     #expect(unknown.client.installedTargets.isEmpty)
-    #expect(unknown.session.stopCount == 1)
-    #expect(unknown.restarter.normalLaunches == [unknown.bundle.bundleURL])
+    #expect(unknown.restarter.prepareCount == 0)
+    #expect(unknown.session.startCount == 0)
+    #expect(unknown.session.stopCount == 0)
+    #expect(unknown.restarter.normalLaunches.isEmpty)
 
     let unowned = try CoordinatorFixture(listenerOwned: false)
     defer { unowned.cleanup() }
@@ -74,6 +76,24 @@ func unknownVersionAndUnownedListenerFailClosedBeforeInjection() async throws {
     #expect(unowned.client.installedTargets.isEmpty)
     #expect(unowned.session.stopCount == 1)
     #expect(unowned.restarter.normalLaunches == [unowned.bundle.bundleURL])
+}
+
+@Test
+func staticallyVerifiedCurrentVersionAppliesThroughTheHealthGate() async throws {
+    let fixture = try CoordinatorFixture(version: "26.715.31251")
+    defer { fixture.cleanup() }
+
+    let result = try await fixture.coordinator.apply(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+        authorized: true,
+        screenshotURL: nil
+    )
+
+    #expect(result.healthReport.passed)
+    #expect(fixture.restarter.prepareCount == 1)
+    #expect(fixture.client.installedTargets == [fixture.target])
+    #expect(fixture.restarter.normalLaunches.isEmpty)
 }
 
 @Test

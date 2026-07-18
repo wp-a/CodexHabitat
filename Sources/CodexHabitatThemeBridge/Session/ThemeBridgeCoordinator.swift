@@ -61,6 +61,9 @@ actor ThemeBridgeCoordinator {
     ) async throws -> ThemeBridgeApplyResult {
         guard authorized else { throw ThemeBridgeCoordinatorError.authorizationRequired }
         let bundle = try verifier.verify(bundleURL)
+        guard let profile = profileStore.profile(forVersion: bundle.version) else {
+            throw ThemeBridgeCoordinatorError.unsupportedCodexVersion(bundle.version)
+        }
         let initialStatus = session.status()
         if case let .active(existing) = initialStatus,
            !Self.matches(existing, bundle: bundle) {
@@ -78,9 +81,6 @@ actor ThemeBridgeCoordinator {
                 record = try session.start(bundleURL: bundle.bundleURL, authorized: true)
             }
             guard let record else { throw ThemeBridgeCoordinatorError.restorationFailed }
-            guard let profile = profileStore.profile(forVersion: record.bundleVersion) else {
-                throw ThemeBridgeCoordinatorError.unsupportedCodexVersion(record.bundleVersion)
-            }
             let css = try compiler.compile(theme: theme, profile: profile)
             let ready = try await waitForReadySession(record)
             client = ready.client

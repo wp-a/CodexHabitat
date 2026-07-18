@@ -38,8 +38,23 @@ func unknownCodexVersionsFailClosed() throws {
     let store = try CompatibilityProfileStore.bundled()
 
     #expect(store.profile(forVersion: "26.708.0") == nil)
+    #expect(store.profile(forVersion: "26.714.99999") == nil)
+    #expect(store.profile(forVersion: "26.716.0") == nil)
     #expect(store.profile(forVersion: "999.0.0") == nil)
     #expect(store.profile(forVersion: "not-a-version") == nil)
+}
+
+@Test
+func staticallyVerifiedCodexLinesResolveToNarrowProfiles() throws {
+    let store = try CompatibilityProfileStore.bundled()
+    let legacy = try #require(store.profile(forVersion: "26.707.91948"))
+    let current = try #require(store.profile(forVersion: "26.715.31251"))
+
+    #expect(legacy.id == "codex-26.707")
+    #expect(current.id == "codex-26.715")
+    #expect(current.minimumVersion == "26.715.0")
+    #expect(current.maximumVersionExclusive == "26.716.0")
+    #expect(current.selectors == legacy.selectors)
 }
 
 @Test(arguments: [
