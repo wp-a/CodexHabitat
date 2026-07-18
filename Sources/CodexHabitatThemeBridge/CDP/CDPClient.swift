@@ -54,9 +54,16 @@ actor CDPClient {
         } catch {
             throw CDPClientError.invalidTargetList
         }
-        return targets
-            .filter { $0.type == "page" }
-            .compactMap { try? validator.validate($0) }
+        var mainPages: [CDPTarget] = []
+        for target in targets where target.type == "page" {
+            switch try validator.classification(of: target) {
+            case .mainPage:
+                mainPages.append(target)
+            case .officialAuxiliaryPage:
+                continue
+            }
+        }
+        return mainPages
     }
 
     func installStyle(_ css: String, on target: CDPTarget) async throws {

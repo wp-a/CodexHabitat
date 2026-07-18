@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-}"
 VERSION="${VERSION:-0.1.0}"
-BUILD_NUMBER="${BUILD_NUMBER:-4}"
+BUILD_NUMBER="${BUILD_NUMBER:-5}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT/dist}"
 SCRATCH_PATH="${HABITAT_SCRATCH_PATH:-/tmp/codex-habitat-release-build}"
 APP="$OUTPUT_DIR/Codex Habitat.app"

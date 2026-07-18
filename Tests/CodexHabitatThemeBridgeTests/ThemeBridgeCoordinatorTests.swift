@@ -40,9 +40,49 @@ func unhealthyLayoutFailsClosedRemovesStyleStopsSessionAndLaunchesNormally() asy
         )
     }
 
-    #expect(fixture.client.removedTargets == [fixture.target])
+    #expect(fixture.client.installedTargets.isEmpty)
+    #expect(fixture.client.removedTargets.isEmpty)
     #expect(fixture.session.stopCount == 1)
     #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+}
+
+@Test
+func auxiliaryRendererFailingNativeLayoutIsNeverStyled() async throws {
+    let fixture = try CoordinatorFixture()
+    defer { fixture.cleanup() }
+    let auxiliary = CDPTarget(
+        id: "auxiliary-page",
+        type: "page",
+        title: "Auxiliary",
+        url: URL(
+            string: "app://codex/index.html?initialRoute=%2Ffuture-auxiliary"
+        )!,
+        webSocketDebuggerURL: URL(
+            string: "ws://127.0.0.1:55000/devtools/page/auxiliary-page"
+        )!
+    )
+    fixture.client.targets = [auxiliary, fixture.target]
+    fixture.client.snapshotsByTargetID[auxiliary.id] = LayoutHealthSnapshot(
+        sidebarVisible: false,
+        mainSurfaceVisible: false,
+        composerVisible: false,
+        composerAcceptsPointerEvents: false,
+        threadCanScroll: false,
+        popoversWithinViewport: true,
+        controlsWithinViewport: false,
+        horizontalOverflowPixels: 0
+    )
+
+    let result = try await fixture.coordinator.apply(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+        authorized: true,
+        screenshotURL: nil
+    )
+
+    #expect(result.targetCount == 1)
+    #expect(fixture.client.installedTargets == [fixture.target])
+    #expect(fixture.client.removedTargets.isEmpty)
 }
 
 @Test
@@ -340,9 +380,10 @@ private struct StubListenerVerifier: LoopbackListenerVerifying {
 }
 
 private final class StubCDPController: CDPControlling, @unchecked Sendable {
-    let targets: [CDPTarget]
+    var targets: [CDPTarget]
     let snapshot: LayoutHealthSnapshot
     let screenshot: Data
+    var snapshotsByTargetID: [String: LayoutHealthSnapshot] = [:]
     var installedTargets: [CDPTarget] = []
     var removedTargets: [CDPTarget] = []
     var styledTargetIDs: Set<String> = []
@@ -365,7 +406,9 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     func healthSnapshot(
         on target: CDPTarget,
         check: LayoutHealthCheck
-    ) async throws -> LayoutHealthSnapshot { snapshot }
+    ) async throws -> LayoutHealthSnapshot {
+        snapshotsByTargetID[target.id] ?? snapshot
+    }
     func captureScreenshot(of target: CDPTarget) async throws -> Data { screenshot }
 }
 

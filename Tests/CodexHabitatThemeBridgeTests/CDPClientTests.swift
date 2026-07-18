@@ -57,7 +57,66 @@ func clientKeepsTheCodexMainPageWhenOfficialAuxiliaryPagesArePresent() async thr
             string: "ws://127.0.0.1:55000/devtools/page/pet-surface"
         )!
     )
-    let unknownQueryPage = CDPTarget(
+    let auxiliaryRoutes = [
+        "/avatar-overlay",
+        "/hotkey-window/thread/active",
+        "/global-dictation",
+        "/chatgpt/quick-chat-prewarm",
+        "/debug",
+    ].enumerated().map { index, route in
+        let id = "auxiliary-\(index)"
+        return CDPTarget(
+            id: id,
+            type: "page",
+            title: "Auxiliary",
+            url: URL(
+                string: "app://-/index.html?initialRoute=\(route)"
+            )!,
+            webSocketDebuggerURL: URL(
+                string: "ws://127.0.0.1:55000/devtools/page/\(id)"
+            )!
+        )
+    }
+    let transport = StubCDPTransport(
+        listData: try JSONEncoder().encode(
+            [petSurface] + auxiliaryRoutes + [mainPage]
+        )
+    )
+    let client = CDPClient(port: 55_000, transport: transport)
+
+    let targets = try await client.listPageTargets()
+
+    #expect(targets == [mainPage])
+}
+
+@Test
+func clientFailsClosedWhenAnyPageHasAnUnsafeDebuggerEndpoint() async throws {
+    let mainPage = validTarget()
+    let wrongPort = CDPTarget(
+        id: "wrong-port",
+        type: "page",
+        title: "Auxiliary",
+        url: URL(
+            string: "app://-/avatar-overlay-composition-surface.html?surfaceId=pet-1"
+        )!,
+        webSocketDebuggerURL: URL(
+            string: "ws://127.0.0.1:55001/devtools/page/wrong-port"
+        )!
+    )
+    let transport = StubCDPTransport(
+        listData: try JSONEncoder().encode([wrongPort, mainPage])
+    )
+    let client = CDPClient(port: 55_000, transport: transport)
+
+    await #expect(throws: CDPTargetValidationError.wrongPort) {
+        _ = try await client.listPageTargets()
+    }
+}
+
+@Test
+func clientFailsClosedWhenAnIndexPageHasAnUnknownQuery() async throws {
+    let mainPage = validTarget()
+    let unknownQuery = CDPTarget(
         id: "unknown-query",
         type: "page",
         title: "Codex",
@@ -67,17 +126,13 @@ func clientKeepsTheCodexMainPageWhenOfficialAuxiliaryPagesArePresent() async thr
         )!
     )
     let transport = StubCDPTransport(
-        listData: try JSONEncoder().encode([
-            petSurface,
-            unknownQueryPage,
-            mainPage,
-        ])
+        listData: try JSONEncoder().encode([unknownQuery, mainPage])
     )
     let client = CDPClient(port: 55_000, transport: transport)
 
-    let targets = try await client.listPageTargets()
-
-    #expect(targets == [mainPage])
+    await #expect(throws: CDPTargetValidationError.queryOrFragmentNotAllowed) {
+        _ = try await client.listPageTargets()
+    }
 }
 
 @Test

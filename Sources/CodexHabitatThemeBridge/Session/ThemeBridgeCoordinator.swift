@@ -82,9 +82,12 @@ actor ThemeBridgeCoordinator {
             }
             guard let record else { throw ThemeBridgeCoordinatorError.restorationFailed }
             let css = try compiler.compile(theme: theme, profile: profile)
-            let ready = try await waitForReadySession(record)
-            client = ready.client
             let healthCheck = LayoutHealthCheck(profile: profile)
+            let ready = try await waitForReadySession(
+                record,
+                healthCheck: healthCheck
+            )
+            client = ready.client
             var reports: [LayoutHealthReport] = []
             for target in ready.targets {
                 try await ready.client.installStyle(css, on: target)
@@ -180,6 +183,12 @@ actor ThemeBridgeCoordinator {
                 maintainedTargetIDs.insert(target.id)
                 continue
             }
+            guard let snapshot = try? await client.healthSnapshot(
+                on: target,
+                check: healthCheck
+            ), healthCheck.evaluate(snapshot).passed else {
+                continue
+            }
             try await client.installStyle(css, on: target)
             let report = healthCheck.evaluate(
                 try await client.healthSnapshot(on: target, check: healthCheck)
@@ -195,10 +204,12 @@ actor ThemeBridgeCoordinator {
     }
 
     private func waitForReadySession(
-        _ record: SessionRecord
+        _ record: SessionRecord,
+        healthCheck: LayoutHealthCheck
     ) async throws -> (client: any CDPControlling, targets: [CDPTarget]) {
         let client = clientProvider.client(port: record.port)
         var listenerOwned = false
+        var foundUnhealthyTargets = false
         for attempt in 0..<readinessAttempts {
             do {
                 listenerOwned = try listenerVerifier.verify(
@@ -207,14 +218,36 @@ actor ThemeBridgeCoordinator {
                 )
                 if listenerOwned {
                     let targets = try await client.listPageTargets()
-                    if !targets.isEmpty { return (client, targets) }
+                    if !targets.isEmpty {
+                        var healthyTargets: [CDPTarget] = []
+                        for target in targets {
+                            guard let snapshot = try? await client.healthSnapshot(
+                                on: target,
+                                check: healthCheck
+                            ) else {
+                                continue
+                            }
+                            if healthCheck.evaluate(snapshot).passed {
+                                healthyTargets.append(target)
+                            }
+                        }
+                        if !healthyTargets.isEmpty {
+                            return (client, healthyTargets)
+                        }
+                        foundUnhealthyTargets = true
+                    }
                 }
+            } catch let error as CDPTargetValidationError {
+                throw error
             } catch {
                 listenerOwned = false
             }
             if attempt + 1 < readinessAttempts {
                 try await Task.sleep(for: .milliseconds(200))
             }
+        }
+        if listenerOwned, foundUnhealthyTargets {
+            throw ThemeBridgeCoordinatorError.healthCheckFailed
         }
         throw listenerOwned
             ? ThemeBridgeCoordinatorError.targetUnavailable
