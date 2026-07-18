@@ -70,6 +70,163 @@ func bundledPrototypeManifestsPreserveTheirDistinctTreatments() throws {
     #expect(Set(signatures).count == identifiers.count)
 }
 
+@Test
+func allBuiltInManifestsMatchTheCanonicalCatalog() throws {
+    let descriptors = HabitatThemeDescriptor.builtIn
+
+    #expect(descriptors.count == BuiltInThemeCatalog.all.count)
+    for definition in BuiltInThemeCatalog.all {
+        let descriptor = try #require(descriptors.first { $0.id == definition.id })
+        #expect(catalogPaletteMismatches(definition: definition, descriptor: descriptor).isEmpty)
+        #expect(catalogAppearanceMismatches(
+            expected: definition.appearance(background: "background.jpg"),
+            actual: descriptor.appearance
+        ).isEmpty)
+    }
+}
+
+@Test
+func canonicalComparisonReportsAppearanceDrift() throws {
+    let definition = try #require(BuiltInThemeCatalog.definition(id: "workbench"))
+    let expected = definition.appearance(background: "background.jpg")
+    let changed = HabitatThemeAppearance(
+        category: expected.category,
+        styleFamily: expected.styleFamily,
+        background: expected.background,
+        artFocus: expected.artFocus,
+        safeSide: expected.safeSide,
+        backgroundStrength: expected.backgroundStrength,
+        panelOpacity: expected.panelOpacity,
+        blurRadius: expected.blurRadius,
+        density: expected.density,
+        homeMode: expected.homeMode,
+        taskMode: expected.taskMode,
+        chromeMaterial: expected.chromeMaterial,
+        homeStrength: expected.homeStrength,
+        taskStrength: 0.11,
+        sidebarOpacity: expected.sidebarOpacity,
+        headerOpacity: expected.headerOpacity,
+        composerOpacity: expected.composerOpacity
+    )
+
+    #expect(catalogAppearanceMismatches(expected: expected, actual: changed) == [
+        "theme.taskStrength",
+        "theme.resolvedTaskStrength",
+    ])
+}
+
+private func catalogPaletteMismatches(
+    definition: BuiltInThemeDefinition,
+    descriptor: HabitatThemeDescriptor
+) -> [String] {
+    var mismatches: [String] = []
+    appendMismatch("colors.surface", definition.palette.surface, descriptor.surfaceHex, to: &mismatches)
+    appendMismatch("colors.panel", definition.palette.panel, descriptor.panelHex, to: &mismatches)
+    appendMismatch("colors.panelAlt", definition.palette.panelAlt, descriptor.panelAltHex, to: &mismatches)
+    appendMismatch("colors.text", definition.palette.text, descriptor.textHex, to: &mismatches)
+    appendMismatch("colors.mutedText", definition.palette.mutedText, descriptor.mutedTextHex, to: &mismatches)
+    appendMismatch("colors.accent", definition.palette.accent, descriptor.accentHex, to: &mismatches)
+    appendMismatch("colors.secondary", definition.palette.secondary, descriptor.secondaryHex, to: &mismatches)
+    appendMismatch("colors.highlight", definition.palette.highlight, descriptor.highlightHex, to: &mismatches)
+    appendMismatch("colors.attention", definition.palette.attention, descriptor.attentionHex, to: &mismatches)
+    appendMismatch("colors.error", definition.palette.error, descriptor.errorHex, to: &mismatches)
+    return mismatches
+}
+
+private func catalogAppearanceMismatches(
+    expected: HabitatThemeAppearance,
+    actual: HabitatThemeAppearance
+) -> [String] {
+    var mismatches: [String] = []
+    appendMismatch("theme.category", expected.category, actual.category, to: &mismatches)
+    appendMismatch("theme.styleFamily", expected.styleFamily, actual.styleFamily, to: &mismatches)
+    appendMismatch("theme.background", expected.background, actual.background, to: &mismatches)
+    appendMismatch("theme.artFocus", expected.artFocus, actual.artFocus, to: &mismatches)
+    appendMismatch("theme.safeSide", expected.safeSide, actual.safeSide, to: &mismatches)
+    appendMismatch(
+        "theme.backgroundStrength",
+        expected.backgroundStrength,
+        actual.backgroundStrength,
+        to: &mismatches
+    )
+    appendMismatch("theme.panelOpacity", expected.panelOpacity, actual.panelOpacity, to: &mismatches)
+    appendMismatch("theme.blurRadius", expected.blurRadius, actual.blurRadius, to: &mismatches)
+    appendMismatch("theme.density", expected.density, actual.density, to: &mismatches)
+    appendMismatch("theme.homeMode", expected.homeMode, actual.homeMode, to: &mismatches)
+    appendMismatch("theme.taskMode", expected.taskMode, actual.taskMode, to: &mismatches)
+    appendMismatch(
+        "theme.chromeMaterial",
+        expected.chromeMaterial,
+        actual.chromeMaterial,
+        to: &mismatches
+    )
+    appendMismatch("theme.homeStrength", expected.homeStrength, actual.homeStrength, to: &mismatches)
+    appendMismatch("theme.taskStrength", expected.taskStrength, actual.taskStrength, to: &mismatches)
+    appendMismatch("theme.sidebarOpacity", expected.sidebarOpacity, actual.sidebarOpacity, to: &mismatches)
+    appendMismatch("theme.headerOpacity", expected.headerOpacity, actual.headerOpacity, to: &mismatches)
+    appendMismatch("theme.composerOpacity", expected.composerOpacity, actual.composerOpacity, to: &mismatches)
+    appendMismatch(
+        "theme.resolvedHomeMode",
+        expected.resolvedHomeMode,
+        actual.resolvedHomeMode,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskMode",
+        expected.resolvedTaskMode,
+        actual.resolvedTaskMode,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedChromeMaterial",
+        expected.resolvedChromeMaterial,
+        actual.resolvedChromeMaterial,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedHomeStrength",
+        expected.resolvedHomeStrength,
+        actual.resolvedHomeStrength,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskStrength",
+        expected.resolvedTaskStrength,
+        actual.resolvedTaskStrength,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedSidebarOpacity",
+        expected.resolvedSidebarOpacity,
+        actual.resolvedSidebarOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedHeaderOpacity",
+        expected.resolvedHeaderOpacity,
+        actual.resolvedHeaderOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedComposerOpacity",
+        expected.resolvedComposerOpacity,
+        actual.resolvedComposerOpacity,
+        to: &mismatches
+    )
+    return mismatches
+}
+
+private func appendMismatch<Value: Equatable>(
+    _ path: String,
+    _ expected: Value,
+    _ actual: Value,
+    to mismatches: inout [String]
+) {
+    if expected != actual {
+        mismatches.append(path)
+    }
+}
+
 private func imageDimensions(_ url: URL) throws -> CGSize {
     let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
     let properties = try #require(
