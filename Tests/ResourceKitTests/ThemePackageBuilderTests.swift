@@ -2,6 +2,7 @@ import Foundation
 import HabitatCore
 import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import ResourceKit
 
 @Test
@@ -134,6 +135,38 @@ func themePackageBuilderKeepsHighEntropyBridgeArtWithinOneMiB() throws {
 }
 
 @Test
+func themePackageBuilderAcceptsUppercaseSupportedSourceExtensions() throws {
+    let root = temporaryBuilderRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let builder = ThemePackageBuilder(
+        workingRoot: root.appending(path: "Work", directoryHint: .isDirectory)
+    )
+    let inputs = [
+        ("PNG", try testImageData(type: .png)),
+        ("JPG", try testImageData(type: .jpeg)),
+        ("JPEG", try testImageData(type: .jpeg)),
+    ]
+
+    for (pathExtension, data) in inputs {
+        let source = root.appending(path: "source.\(pathExtension)")
+        try data.write(to: source)
+        #expect(allPaletteColors(try builder.suggestPalette(from: source)).allSatisfy(isHexColor))
+    }
+}
+
+@Test
+func themePackageBuilderStillRejectsUnsupportedSourceExtensions() throws {
+    let root = temporaryBuilderRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appending(path: "source.TIFF")
+    try testPNG(width: 8, height: 8).write(to: source)
+
+    #expect(throws: ThemePackageBuildError.unsupportedSourceType) {
+        try ThemePackageBuilder().suggestPalette(from: source)
+    }
+}
+
+@Test
 func themePackageBuilderRejectsUnsafeOrOversizedSourceImagesAndCleansUp() throws {
     let root = temporaryBuilderRoot()
     defer { try? FileManager.default.removeItem(at: root) }
@@ -185,6 +218,22 @@ private func imageDimensions(_ url: URL) throws -> CGSize {
     let width = try #require((properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue)
     let height = try #require((properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue)
     return CGSize(width: width, height: height)
+}
+
+private func testImageData(type: UTType) throws -> Data {
+    let png = try testPNG(width: 8, height: 8)
+    let source = try #require(CGImageSourceCreateWithData(png as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    let data = NSMutableData()
+    let destination = try #require(CGImageDestinationCreateWithData(
+        data,
+        type.identifier as CFString,
+        1,
+        nil
+    ))
+    CGImageDestinationAddImage(destination, image, nil)
+    #expect(CGImageDestinationFinalize(destination))
+    return data as Data
 }
 
 private func allPaletteColors(_ palette: HabitatThemePalette) -> [String] {

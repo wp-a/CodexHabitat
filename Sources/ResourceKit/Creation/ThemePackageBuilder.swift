@@ -254,9 +254,7 @@ public struct ThemePackageBuilder: Sendable {
             throw ThemePackageBuildError.unsafeSourceImage
         }
         let extensionName = url.pathExtension.lowercased()
-        guard ["png", "jpg", "jpeg", "webp"].contains(extensionName),
-              extensionName == url.pathExtension
-        else {
+        guard ["png", "jpg", "jpeg", "webp"].contains(extensionName) else {
             throw ThemePackageBuildError.unsupportedSourceType
         }
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
