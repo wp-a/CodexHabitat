@@ -430,3 +430,4 @@
 "Replace Theme" = "Replace Theme";
 "Replacement confirmation required" = "Replacement confirmation required";
 "A local theme with this name already exists. Replace it with this draft?" = "A local theme with this name already exists. Replace it with this draft?";
+"Settings were created by a newer Habitat version and are read-only." = "Settings were created by a newer Habitat version and are read-only.";

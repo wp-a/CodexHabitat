@@ -430,3 +430,4 @@
 "Replace Theme" = "替换主题";
 "Replacement confirmation required" = "需要确认替换";
 "A local theme with this name already exists. Replace it with this draft?" = "已存在同名本地主题。要用当前草稿替换吗？";
+"Settings were created by a newer Habitat version and are read-only." = "设置由更高版本的 Habitat 创建，当前仅可读取。";

@@ -40,6 +40,7 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Edit theme", "Replace existing theme?", "Replace Theme",
         "Replacement confirmation required",
         "A local theme with this name already exists. Replace it with this draft?",
+        "Settings were created by a newer Habitat version and are read-only.",
         "Choose a local background image.",
         "Export does not grant image rights. You confirm you may use and share this image.",
         "Theme names must be 100 characters or fewer and contain no control characters.",
