@@ -62,6 +62,33 @@ func fourPrototypesCompileDistinctRouteAwareWindowTreatments() throws {
 }
 
 @Test
+func legacyMinimumBackgroundStrengthCompilesWithBoundedTaskFallback() throws {
+    let appearance = HabitatThemeAppearance(
+        category: .custom,
+        styleFamily: .cozyWorld,
+        background: "background.jpg",
+        artFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.5),
+        safeSide: .leading,
+        backgroundStrength: 0.10,
+        panelOpacity: 0.65,
+        blurRadius: 0,
+        density: .comfortable
+    )
+    let theme = BridgeTheme(
+        tokens: .workbench,
+        appearance: BridgeThemeAppearance(appearance),
+        artBlobURL: nil
+    )
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+
+    #expect(css.contains("--habitat-task-strength: 10%"))
+}
+
+@Test
 func unknownCodexVersionsFailClosed() throws {
     let store = try CompatibilityProfileStore.bundled()
 

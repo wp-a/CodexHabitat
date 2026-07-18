@@ -134,7 +134,9 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
     public var resolvedTaskMode: HabitatThemeTaskMode { taskMode ?? .ambient }
     public var resolvedChromeMaterial: HabitatThemeChromeMaterial { chromeMaterial ?? .tinted }
     public var resolvedHomeStrength: Double { homeStrength ?? backgroundStrength }
-    public var resolvedTaskStrength: Double { taskStrength ?? backgroundStrength * 0.46 }
+    public var resolvedTaskStrength: Double {
+        taskStrength ?? max(0.10, backgroundStrength * 0.46)
+    }
     public var resolvedSidebarOpacity: Double { sidebarOpacity ?? panelOpacity }
     public var resolvedHeaderOpacity: Double { headerOpacity ?? panelOpacity }
     public var resolvedComposerOpacity: Double { composerOpacity ?? panelOpacity }
