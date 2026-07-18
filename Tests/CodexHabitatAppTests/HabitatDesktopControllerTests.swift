@@ -169,7 +169,7 @@ func desktopUsesASelectedInstalledThemeDescriptor() {
 }
 
 @Test @MainActor
-func changingOnlyTheThemeReusesTheLoadedPetRenderer() throws {
+func changingOnlyTheThemeReusesTheLoadedPetRenderer() async throws {
     let testsRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -177,9 +177,9 @@ func changingOnlyTheThemeReusesTheLoadedPetRenderer() throws {
     let pet = try #require(
         PetLibrary(root: petRoot).discover().first(where: { $0.manifest?.id == "test-pet" })
     )
-    var rendererLoadCount = 0
+    let recorder = RendererThreadRecorder()
     let controller = HabitatDesktopController { url, atlas in
-        rendererLoadCount += 1
+        recorder.recordLoad(onMainThread: Thread.isMainThread)
         return SpriteSheetRenderer(contentsOf: url, atlas: atlas)
     }
     var settings = HabitatSettings.default
@@ -187,16 +187,104 @@ func changingOnlyTheThemeReusesTheLoadedPetRenderer() throws {
     settings.selectedPetID = "test-pet"
 
     controller.apply(settings: settings, pets: [pet], isVisible: true)
-    #expect(rendererLoadCount == 1)
+    await waitForPetRenderMode(.auto, in: controller)
+    #expect(recorder.mainThreadLoads.count == 1)
 
     settings.selectedThemeID = "night-shift"
     controller.apply(settings: settings, pets: [pet], isVisible: true)
 
-    #expect(rendererLoadCount == 1)
+    #expect(recorder.mainThreadLoads.count == 1)
 }
 
 @Test @MainActor
-func desktopConsumesResourcePetRenderingAndScale() throws {
+func switchingPetsBuildsTheNewRendererAwayFromTheMainActor() async {
+    let recorder = RendererThreadRecorder()
+    let controller = HabitatDesktopController { _, atlas in
+        recorder.recordLoad(onMainThread: Thread.isMainThread)
+        return SpriteSheetRenderer(image: nil, atlas: atlas)
+    }
+    let firstPet = desktopTestPet(id: "first-pet")
+    let secondPet = desktopTestPet(id: "second-pet")
+    let presentations = [
+        "first-pet": HabitatPetPresentation(renderMode: .smooth, scale: 1),
+        "second-pet": HabitatPetPresentation(renderMode: .pixelated, scale: 1),
+    ]
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.selectedPetID = "first-pet"
+
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForPetRenderMode(.smooth, in: controller)
+
+    settings.selectedPetID = "second-pet"
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForPetRenderMode(.pixelated, in: controller)
+
+    #expect(recorder.mainThreadLoads.count == 2)
+    #expect(recorder.mainThreadLoads[1] == false)
+}
+
+@Test @MainActor
+func switchingBackBeforeAQueuedRendererFinishesDiscardsTheStaleSelection() async {
+    let gate = RendererLoadGate(blockedPetID: "second-pet")
+    let controller = HabitatDesktopController { url, atlas in
+        gate.load(url: url, atlas: atlas)
+    }
+    let firstPet = desktopTestPet(id: "first-pet")
+    let secondPet = desktopTestPet(id: "second-pet")
+    let presentations = [
+        "first-pet": HabitatPetPresentation(renderMode: .smooth, scale: 1),
+        "second-pet": HabitatPetPresentation(renderMode: .pixelated, scale: 1),
+    ]
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.selectedPetID = "first-pet"
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForPetRenderMode(.smooth, in: controller)
+
+    settings.selectedPetID = "second-pet"
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForRendererLoad(of: "second-pet", in: gate)
+
+    settings.selectedPetID = "first-pet"
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    gate.releaseBlockedLoad()
+    await waitForRendererLoadCompletion(of: "second-pet", in: gate)
+    for _ in 0..<100 {
+        await Task.yield()
+    }
+
+    #expect(controller.currentPetRenderMode == .smooth)
+    #expect(gate.loadedPetIDs == ["first-pet", "second-pet"])
+}
+
+@Test @MainActor
+func desktopConsumesResourcePetRenderingAndScale() async throws {
     let testsRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -217,6 +305,7 @@ func desktopConsumesResourcePetRenderingAndScale() throws {
         ],
         isVisible: true
     )
+    await waitForPetRenderMode(.smooth, in: controller)
 
     #expect(controller.currentPetRenderMode == .smooth)
     #expect(controller.currentPetScale == 1.5)
@@ -247,4 +336,99 @@ func temporaryMoveModeOverridesClickThroughAndLockWithoutChangingSettings() {
     #expect(!controller.isTemporaryMoveMode)
     #expect(!controller.isInteractive)
     #expect(!controller.isMovementEnabled)
+}
+
+@MainActor
+private func waitForPetRenderMode(
+    _ expectedMode: PetRenderMode,
+    in controller: HabitatDesktopController
+) async {
+    for _ in 0..<1_000 where controller.currentPetRenderMode != expectedMode {
+        await Task.yield()
+    }
+}
+
+private final class RendererThreadRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recordedMainThreadLoads: [Bool] = []
+
+    var mainThreadLoads: [Bool] {
+        lock.withLock { recordedMainThreadLoads }
+    }
+
+    func recordLoad(onMainThread: Bool) {
+        lock.withLock { recordedMainThreadLoads.append(onMainThread) }
+    }
+}
+
+private final class RendererLoadGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private let blockedPetID: String
+    private let blockedLoad = DispatchSemaphore(value: 0)
+    private var recordedPetIDs: [String] = []
+    private var completedPetIDs: Set<String> = []
+
+    init(blockedPetID: String) {
+        self.blockedPetID = blockedPetID
+    }
+
+    var loadedPetIDs: [String] {
+        lock.withLock { recordedPetIDs }
+    }
+
+    func hasStarted(_ petID: String) -> Bool {
+        lock.withLock { recordedPetIDs.contains(petID) }
+    }
+
+    func hasCompleted(_ petID: String) -> Bool {
+        lock.withLock { completedPetIDs.contains(petID) }
+    }
+
+    func load(url: URL, atlas: PetAtlasMetadata) -> SpriteSheetRenderer {
+        let petID = url.deletingLastPathComponent().lastPathComponent
+        lock.withLock { recordedPetIDs.append(petID) }
+        if petID == blockedPetID {
+            blockedLoad.wait()
+        }
+        lock.withLock { _ = completedPetIDs.insert(petID) }
+        return SpriteSheetRenderer(image: nil, atlas: atlas)
+    }
+
+    func releaseBlockedLoad() {
+        blockedLoad.signal()
+    }
+}
+
+private func waitForRendererLoad(
+    of petID: String,
+    in gate: RendererLoadGate
+) async {
+    for _ in 0..<1_000 where !gate.hasStarted(petID) {
+        await Task.yield()
+    }
+}
+
+private func waitForRendererLoadCompletion(
+    of petID: String,
+    in gate: RendererLoadGate
+) async {
+    for _ in 0..<1_000 where !gate.hasCompleted(petID) {
+        await Task.yield()
+    }
+}
+
+private func desktopTestPet(id: String) -> PetLibraryEntry {
+    let root = URL(fileURLWithPath: "/tmp/\(id)", isDirectory: true)
+    return PetLibraryEntry(
+        packageURL: root,
+        manifest: PetManifest(
+            id: id,
+            displayName: id,
+            description: "Test fixture",
+            spritesheetPath: "spritesheet.png"
+        ),
+        spritesheetURL: root.appending(path: "spritesheet.png"),
+        atlas: PetAtlasMetadata(pixelWidth: 8, pixelHeight: 9, columns: 8, rows: 9),
+        status: .valid
+    )
 }

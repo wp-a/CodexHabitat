@@ -30,6 +30,14 @@ private struct HabitatPetAssetSource: Equatable {
     }
 }
 
+private struct HabitatDesktopApplication {
+    let settings: HabitatSettings
+    let pets: [PetLibraryEntry]
+    let petPresentations: [String: HabitatPetPresentation]
+    let isVisible: Bool
+    let themes: [HabitatThemeDescriptor]
+}
+
 @MainActor
 final class HabitatOverlayPresentation: ObservableObject {
     @Published var isWidgetRailExpanded = true {
@@ -44,7 +52,7 @@ final class HabitatOverlayPresentation: ObservableObject {
 
 @MainActor
 final class HabitatDesktopController: ObservableObject {
-    typealias PetRendererLoader = (URL, PetAtlasMetadata) -> SpriteSheetRenderer
+    typealias PetRendererLoader = @Sendable (URL, PetAtlasMetadata) -> SpriteSheetRenderer
 
     private var overlay: OverlayController?
     private let presentation = HabitatOverlayPresentation()
@@ -63,6 +71,9 @@ final class HabitatDesktopController: ObservableObject {
     private let petRendererLoader: PetRendererLoader
     private var cachedPetAssetSource: HabitatPetAssetSource?
     private var cachedPetAsset: HabitatPetAsset?
+    private var pendingPetAssetSource: HabitatPetAssetSource?
+    private var petRendererLoadTask: Task<Void, Never>?
+    private var latestApplication: HabitatDesktopApplication?
     private var storedClickThrough = false
     private var storedPositionLocked = false
 
@@ -127,8 +138,16 @@ final class HabitatDesktopController: ObservableObject {
         isVisible requestedVisibility: Bool,
         themes: [HabitatThemeDescriptor] = HabitatThemeDescriptor.builtIn
     ) {
+        latestApplication = HabitatDesktopApplication(
+            settings: settings,
+            pets: pets,
+            petPresentations: petPresentations,
+            isVisible: requestedVisibility,
+            themes: themes
+        )
         let shouldShow = settings.onboardingCompleted && requestedVisibility
         guard shouldShow else {
+            cancelPendingPetAssetLoad()
             endTemporaryMoveMode()
             petModel?.setAnimationActive(false)
             overlay?.hide()
@@ -261,6 +280,7 @@ final class HabitatDesktopController: ObservableObject {
               let spritesheetURL = entry.spritesheetURL,
               let atlas = entry.atlas
         else {
+            cancelPendingPetAssetLoad()
             cachedPetAssetSource = nil
             cachedPetAsset = nil
             return nil
@@ -273,17 +293,68 @@ final class HabitatDesktopController: ObservableObject {
             )
         )
         if source == cachedPetAssetSource {
+            cancelPendingPetAssetLoad()
             return cachedPetAsset
         }
-        let asset = HabitatPetAsset(
-            id: id,
-            renderer: petRendererLoader(spritesheetURL, atlas),
-            availableRows: Set(0..<min(atlas.rows, 9)),
-            presentation: source.presentation
-        )
-        cachedPetAssetSource = source
-        cachedPetAsset = asset
-        return asset
+        if source != pendingPetAssetSource {
+            startPetAssetLoad(
+                source: source,
+                id: id,
+                spritesheetURL: spritesheetURL,
+                atlas: atlas
+            )
+        }
+        return cachedPetAsset
+    }
+
+    private func startPetAssetLoad(
+        source: HabitatPetAssetSource,
+        id: String,
+        spritesheetURL: URL,
+        atlas: PetAtlasMetadata
+    ) {
+        cancelPendingPetAssetLoad()
+        pendingPetAssetSource = source
+        let loader = petRendererLoader
+        petRendererLoadTask = Task { [weak self] in
+            let rendererTask = Task.detached(priority: .userInitiated) {
+                loader(spritesheetURL, atlas)
+            }
+            let renderer = await withTaskCancellationHandler {
+                await rendererTask.value
+            } onCancel: {
+                rendererTask.cancel()
+            }
+            guard !Task.isCancelled,
+                  let self,
+                  self.pendingPetAssetSource == source
+            else {
+                return
+            }
+            self.cachedPetAssetSource = source
+            self.cachedPetAsset = HabitatPetAsset(
+                id: id,
+                renderer: renderer,
+                availableRows: Set(0..<min(atlas.rows, 9)),
+                presentation: source.presentation
+            )
+            self.pendingPetAssetSource = nil
+            self.petRendererLoadTask = nil
+            guard let application = self.latestApplication else { return }
+            self.apply(
+                settings: application.settings,
+                pets: application.pets,
+                petPresentations: application.petPresentations,
+                isVisible: application.isVisible,
+                themes: application.themes
+            )
+        }
+    }
+
+    private func cancelPendingPetAssetLoad() {
+        petRendererLoadTask?.cancel()
+        petRendererLoadTask = nil
+        pendingPetAssetSource = nil
     }
 
     private static func scaledSize(_ size: CGSize, scale: Double) -> CGSize {

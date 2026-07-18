@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
-public struct SpriteSheetRenderer {
+public struct SpriteSheetRenderer: Sendable {
     private let frames: [CGImage]
     public let atlas: PetAtlasMetadata
 
