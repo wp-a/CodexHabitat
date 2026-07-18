@@ -23,6 +23,12 @@ func fourPrototypeThemesResolveDistinctCompletePreviewTreatments() throws {
     #expect(workbench.headerOpacity == 0.66)
     #expect(workbench.composerOpacity == 0.90)
     #expect(workbench.density == .comfortable)
+
+    let quietGarden = models[3]
+    #expect(quietGarden.surfaceHex == "#F4FAF2")
+    #expect(quietGarden.panelHex == "#F9FFF8")
+    #expect(quietGarden.panelAltHex == "#DCEFD9")
+    #expect(quietGarden.textHex == "#193525")
 }
 
 @Test

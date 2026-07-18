@@ -164,8 +164,8 @@ public enum BuiltInThemeCatalog {
         ),
         theme(
             "quiet-garden", "Quiet Garden", "Morning glass, living greens, and calm daylight.",
-            "leaf.fill", "#12251D", "#21432E", "#32613D", "#F5FFE8",
-            "#B8D5AF", "#72E06A", "#35C9D0", "#FFF06A", "#FFB43A", "#FF5364",
+            "leaf.fill", "#F4FAF2", "#F9FFF8", "#DCEFD9", "#193525",
+            "#607565", "#3F9B57", "#4FAFB0", "#E6C84F", "#C97925", "#C94555",
             0.78, 0.46, .leading, .cozyWorld, .cozy,
             treatment(
                 .quiet, .off, .glass,

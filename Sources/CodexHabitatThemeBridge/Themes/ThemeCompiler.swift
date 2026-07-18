@@ -352,11 +352,29 @@ struct ThemeCompiler {
             """
             /* habitat-home-mode: framed */
             \(main) {
-              border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent);
-              border-right: 0;
-              border-bottom: 0;
-              border-radius: 16px 0 0 0;
-              box-shadow: -10px 0 32px color-mix(in srgb, var(--habitat-surface) 26%, transparent);
+              background-image: none;
+              border-radius: 0;
+            }
+            \(main)::before {
+              content: "";
+              position: absolute;
+              z-index: -1;
+              inset: 16px;
+              pointer-events: none;
+              background-color: var(--habitat-surface);
+              background-image:
+                var(--habitat-safe-scrim),
+                linear-gradient(
+                  color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent),
+                  color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent)
+                ),
+                var(--habitat-art-background);
+              background-position: center, center, var(--habitat-art-position);
+              background-repeat: no-repeat;
+              background-size: 100% 100%, 100% 100%, cover;
+              border: 1px solid color-mix(in srgb, var(--habitat-accent) 42%, transparent);
+              border-radius: 12px;
+              box-shadow: 0 14px 34px color-mix(in srgb, var(--habitat-surface) 24%, transparent);
             }
             """
         case .quiet:

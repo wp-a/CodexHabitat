@@ -15,16 +15,16 @@
   ],
   "preview": "preview.png",
   "colors": {
-    "accent": "#72E06A",
-    "attention": "#FFB43A",
-    "error": "#FF5364",
-    "highlight": "#FFF06A",
-    "mutedText": "#B8D5AF",
-    "panel": "#21432E",
-    "panelAlt": "#32613D",
-    "secondary": "#35C9D0",
-    "surface": "#12251D",
-    "text": "#F5FFE8"
+    "accent": "#3F9B57",
+    "attention": "#C97925",
+    "error": "#C94555",
+    "highlight": "#E6C84F",
+    "mutedText": "#607565",
+    "panel": "#F9FFF8",
+    "panelAlt": "#DCEFD9",
+    "secondary": "#4FAFB0",
+    "surface": "#F4FAF2",
+    "text": "#193525"
   },
   "theme": {
     "artFocus": {

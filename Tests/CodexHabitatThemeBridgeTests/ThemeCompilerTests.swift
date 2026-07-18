@@ -59,6 +59,13 @@ func fourPrototypesCompileDistinctRouteAwareWindowTreatments() throws {
     }
 
     #expect(Set(styles).count == identifiers.count)
+
+    let framed = styles[1]
+    #expect(framed.contains("habitat-home-mode: framed"))
+    #expect(framed.contains("main.main-surface::before"))
+    #expect(framed.contains("inset: 16px"))
+    #expect(framed.contains("pointer-events: none"))
+    #expect(framed.contains("background-image: none"))
 }
 
 @Test

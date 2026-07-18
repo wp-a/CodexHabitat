@@ -40,6 +40,11 @@ func fourPrototypeThemesHaveMateriallyDifferentRouteTreatments() throws {
     #expect(BuiltInThemeCatalog.definition(id: "quiet-garden")?.appearance(
         background: "background.jpg"
     ).resolvedTaskMode == .off)
+    let quietGarden = try #require(BuiltInThemeCatalog.definition(id: "quiet-garden"))
+    #expect(quietGarden.palette.surface == "#F4FAF2")
+    #expect(quietGarden.palette.panel == "#F9FFF8")
+    #expect(quietGarden.palette.panelAlt == "#DCEFD9")
+    #expect(quietGarden.palette.text == "#193525")
 }
 
 private func treatmentSignature(_ appearance: HabitatThemeAppearance) -> String {

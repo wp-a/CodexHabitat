@@ -100,10 +100,7 @@ struct ThemeTreatmentPreview: View {
         GeometryReader { geometry in
             ZStack {
                 Color(habitatHex: model.surfaceHex)
-                artwork(in: geometry.size)
-                Color(habitatHex: model.surfaceHex)
-                    .opacity(1 - artStrength)
-                readabilityScrim
+                treatmentArtwork(in: geometry.size)
                 chrome(in: geometry.size)
             }
             .clipShape(RoundedRectangle(cornerRadius: outerRadius))
@@ -120,6 +117,42 @@ struct ThemeTreatmentPreview: View {
             let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
             guard !Task.isCancelled else { return }
             image = loadedImage
+        }
+    }
+
+    @ViewBuilder
+    private func treatmentArtwork(in size: CGSize) -> some View {
+        if route == .home, model.homeMode == .framed {
+            let sidebarWidth = size.width * sidebarFraction
+            let artworkSize = CGSize(
+                width: max(1, size.width - sidebarWidth - 12),
+                height: max(1, size.height - 12)
+            )
+            HStack(spacing: 0) {
+                Color.clear.frame(width: sidebarWidth + 6)
+                artworkLayers(in: artworkSize)
+                    .frame(width: artworkSize.width, height: artworkSize.height)
+                    .clipShape(RoundedRectangle(cornerRadius: innerRadius))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: innerRadius)
+                            .stroke(
+                                Color(habitatHex: model.accentHex).opacity(0.48),
+                                lineWidth: 1
+                            )
+                    }
+            }
+            .frame(width: size.width, height: size.height, alignment: .leading)
+        } else {
+            artworkLayers(in: size)
+        }
+    }
+
+    private func artworkLayers(in size: CGSize) -> some View {
+        ZStack {
+            artwork(in: size)
+            Color(habitatHex: model.surfaceHex)
+                .opacity(1 - artStrength)
+            readabilityScrim
         }
     }
 
@@ -260,11 +293,7 @@ struct ThemeTreatmentPreview: View {
 
     @ViewBuilder
     private var homeFrameTreatment: some View {
-        if route == .home, model.homeMode == .framed {
-            RoundedRectangle(cornerRadius: innerRadius)
-                .stroke(Color(habitatHex: model.accentHex).opacity(0.48), lineWidth: 1)
-                .padding(3)
-        } else if route == .home, model.homeMode == .quiet {
+        if route == .home, model.homeMode == .quiet {
             Color(habitatHex: model.surfaceHex).opacity(0.10)
         } else if route == .task, model.taskMode == .banner {
             LinearGradient(
