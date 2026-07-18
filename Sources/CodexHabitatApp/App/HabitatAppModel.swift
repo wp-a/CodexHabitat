@@ -369,7 +369,11 @@ final class HabitatAppModel: ObservableObject {
             guard BuiltInThemeCatalog.definition(id: editingThemeID) == nil,
                   let package = installedPackages.first(where: {
                       $0.id == editingThemeID && $0.manifest.theme != nil
-                  })
+                  }),
+                  Self.isThemeStudioEditableManifest(
+                      package.manifest,
+                      packageID: package.id
+                  )
             else {
                 return nil
             }
@@ -391,6 +395,78 @@ final class HabitatAppModel: ObservableObject {
             editing: installedPackage,
             pairedPetID: editingThemeID.flatMap { settings.themePetPairings[$0] }
         )
+    }
+
+    func isThemeStudioEditableTheme(_ id: String) -> Bool {
+        guard let package = installedPackages.first(where: { $0.id == id }) else {
+            return false
+        }
+        return Self.isThemeStudioEditableManifest(package.manifest, packageID: package.id)
+    }
+
+    static func isThemeStudioEditableManifest(
+        _ manifest: HabitatManifest,
+        packageID: String
+    ) -> Bool {
+        guard let appearance = manifest.theme,
+              packageID == manifest.id,
+              packageID == ThemePackageBuilder.safeID(for: manifest.name),
+              manifest.license.spdx == "LicenseRef-Codex-Habitat-User-Content",
+              manifest.pets.isEmpty,
+              manifest.assets.count == 1,
+              case let .image(background) = manifest.assets[0],
+              background.id == "theme-background",
+              background.path == appearance.background,
+              background.rendering == .smooth
+        else {
+            return false
+        }
+        return hasStudioDefaultWidgets(manifest.widgets)
+    }
+
+    private static func hasStudioDefaultWidgets(_ widgets: [HabitatWidget]) -> Bool {
+        guard widgets.count == 5 else { return false }
+        return isStudioWidget(
+            widgets[0], id: .status, anchor: .topLeading, x: 0.04, y: 0.06
+        ) {
+            guard case let .status(configuration) = $0 else { return false }
+            return configuration.showsConnectionHealth
+        } && isStudioWidget(
+            widgets[1], id: .tokens, anchor: .topTrailing, x: 0.96, y: 0.24
+        ) {
+            guard case .tokens = $0 else { return false }
+            return true
+        } && isStudioWidget(
+            widgets[2], id: .context, anchor: .topTrailing, x: 0.96, y: 0.42
+        ) {
+            guard case .context = $0 else { return false }
+            return true
+        } && isStudioWidget(
+            widgets[3], id: .speed, anchor: .topTrailing, x: 0.96, y: 0.60
+        ) {
+            guard case .speed = $0 else { return false }
+            return true
+        } && isStudioWidget(
+            widgets[4], id: .usage, anchor: .topTrailing, x: 0.96, y: 0.78
+        ) {
+            guard case let .usage(configuration) = $0 else { return false }
+            return configuration.bucket == .primary
+        }
+    }
+
+    private static func isStudioWidget(
+        _ widget: HabitatWidget,
+        id: WidgetIdentifier,
+        anchor: HabitatAnchor,
+        x: Double,
+        y: Double,
+        configurationMatches: (HabitatWidgetConfiguration) -> Bool
+    ) -> Bool {
+        widget.id == id
+            && widget.anchor == anchor
+            && widget.position.x == x
+            && widget.position.y == y
+            && configurationMatches(widget.configuration)
     }
 
     func selectPet(_ id: String?) {

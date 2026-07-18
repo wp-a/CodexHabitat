@@ -202,6 +202,42 @@ func installedCustomThemeReopensAsCleanStronglyTypedStudioDraft() async throws {
     #expect(editor.pairedPetID == "test-pet")
     #expect(!editor.isDirty)
     #expect(appModel.makeThemeStudioModel(editingThemeID: "workbench") == nil)
+
+    let installed = try #require(appModel.installedPackages.first)
+    #expect(HabitatAppModel.isThemeStudioEditableManifest(
+        installed.manifest,
+        packageID: installed.id
+    ))
+    let manifestURL = installed.url.appending(path: "habitat.json")
+    let manifestData = try Data(contentsOf: manifestURL)
+    var manifestObject = try #require(
+        JSONSerialization.jsonObject(with: manifestData) as? [String: Any]
+    )
+    manifestObject["id"] = "vendor.external-theme"
+    let externalManifest = try JSONDecoder().decode(
+        HabitatManifest.self,
+        from: JSONSerialization.data(withJSONObject: manifestObject)
+    )
+    #expect(!HabitatAppModel.isThemeStudioEditableManifest(
+        externalManifest,
+        packageID: externalManifest.id
+    ))
+
+    manifestObject["id"] = installed.id
+    manifestObject["pets"] = [[
+        "id": "bundled-pet",
+        "path": "Pets/bundled-pet",
+        "rendering": "smooth",
+        "scale": 1.0,
+    ]]
+    let compositeManifest = try JSONDecoder().decode(
+        HabitatManifest.self,
+        from: JSONSerialization.data(withJSONObject: manifestObject)
+    )
+    #expect(!HabitatAppModel.isThemeStudioEditableManifest(
+        compositeManifest,
+        packageID: installed.id
+    ))
 }
 
 @Test @MainActor

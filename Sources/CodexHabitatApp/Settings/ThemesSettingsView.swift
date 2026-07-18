@@ -158,9 +158,7 @@ struct ThemesSettingsView: View {
                             theme: theme,
                             isSelected: model.settings.selectedThemeID == theme.id,
                             action: { model.selectTheme(theme.id) },
-                            editAction: model.installedPackages.contains(where: {
-                                $0.id == theme.id && $0.manifest.theme != nil
-                            })
+                            editAction: model.isThemeStudioEditableTheme(theme.id)
                                 ? { openThemeStudio(editingThemeID: theme.id) }
                                 : nil
                         )
