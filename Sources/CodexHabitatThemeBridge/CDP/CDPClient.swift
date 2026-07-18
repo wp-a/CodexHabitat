@@ -54,7 +54,9 @@ actor CDPClient {
         } catch {
             throw CDPClientError.invalidTargetList
         }
-        return try targets.filter { $0.type == "page" }.map(validator.validate)
+        return targets
+            .filter { $0.type == "page" }
+            .compactMap { try? validator.validate($0) }
     }
 
     func installStyle(_ css: String, on target: CDPTarget) async throws {

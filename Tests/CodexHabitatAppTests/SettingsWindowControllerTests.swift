@@ -60,7 +60,7 @@ func userLaunchOpensSettingsWhileLoginLaunchStaysQuiet() {
 }
 
 @Test
-func mainBundleConfigurationDeclaresAStandardVisibleBuildThreeApp() throws {
+func mainBundleConfigurationDeclaresAStandardVisibleBuildFourApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -71,7 +71,7 @@ func mainBundleConfigurationDeclaresAStandardVisibleBuildThreeApp() throws {
     )
 
     #expect(plist["LSUIElement"] == nil)
-    #expect(plist["CFBundleVersion"] as? String == "3")
+    #expect(plist["CFBundleVersion"] as? String == "4")
 }
 
 @Test @MainActor

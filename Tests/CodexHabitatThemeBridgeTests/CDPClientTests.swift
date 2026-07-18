@@ -34,6 +34,53 @@ func clientListsValidatedPageTargetsAndIgnoresWorkers() async throws {
 }
 
 @Test
+func clientKeepsTheCodexMainPageWhenOfficialAuxiliaryPagesArePresent() async throws {
+    let mainPage = CDPTarget(
+        id: "main-page",
+        type: "page",
+        title: "Codex",
+        url: URL(
+            string: "app://-/index.html?initialRoute=%2Flocal%2Fworkspace"
+        )!,
+        webSocketDebuggerURL: URL(
+            string: "ws://127.0.0.1:55000/devtools/page/main-page"
+        )!
+    )
+    let petSurface = CDPTarget(
+        id: "pet-surface",
+        type: "page",
+        title: "Pet Surface",
+        url: URL(
+            string: "app://-/avatar-overlay-composition-surface.html?surfaceId=pet-1"
+        )!,
+        webSocketDebuggerURL: URL(
+            string: "ws://127.0.0.1:55000/devtools/page/pet-surface"
+        )!
+    )
+    let unknownQueryPage = CDPTarget(
+        id: "unknown-query",
+        type: "page",
+        title: "Codex",
+        url: URL(string: "app://-/index.html?tracking=secret")!,
+        webSocketDebuggerURL: URL(
+            string: "ws://127.0.0.1:55000/devtools/page/unknown-query"
+        )!
+    )
+    let transport = StubCDPTransport(
+        listData: try JSONEncoder().encode([
+            petSurface,
+            unknownQueryPage,
+            mainPage,
+        ])
+    )
+    let client = CDPClient(port: 55_000, transport: transport)
+
+    let targets = try await client.listPageTargets()
+
+    #expect(targets == [mainPage])
+}
+
+@Test
 func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     let target = validTarget()
     let transport = StubCDPTransport(listData: Data("[]".utf8))

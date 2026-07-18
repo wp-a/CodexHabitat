@@ -73,14 +73,50 @@ struct CDPTargetValidator: Sendable {
 
         let pageURL = target.url
         guard pageURL.user == nil, pageURL.password == nil,
-              pageURL.query == nil, pageURL.fragment == nil
+              pageURL.fragment == nil
         else {
             throw CDPTargetValidationError.queryOrFragmentNotAllowed
         }
         guard pageURL.scheme?.lowercased() == "app" else {
             throw CDPTargetValidationError.nonAppPage
         }
+        guard ["-", "codex"].contains(pageURL.host?.lowercased() ?? ""),
+              pageURL.path == "/index.html"
+        else {
+            throw CDPTargetValidationError.nonAppPage
+        }
+        try validateMainPageQuery(pageURL)
         return target
+    }
+
+    private func validateMainPageQuery(_ url: URL) throws {
+        guard let items = URLComponents(
+            url: url,
+            resolvingAgainstBaseURL: false
+        )?.queryItems else {
+            return
+        }
+        var seen: Set<String> = []
+        for item in items {
+            guard seen.insert(item.name).inserted else {
+                throw CDPTargetValidationError.queryOrFragmentNotAllowed
+            }
+            switch item.name {
+            case "initialRoute":
+                guard let value = item.value,
+                      value.hasPrefix("/"),
+                      value.utf8.count <= 4_096
+                else {
+                    throw CDPTargetValidationError.queryOrFragmentNotAllowed
+                }
+            case "mcpAppSandboxDevtools":
+                guard item.value == "1" else {
+                    throw CDPTargetValidationError.queryOrFragmentNotAllowed
+                }
+            default:
+                throw CDPTargetValidationError.queryOrFragmentNotAllowed
+            }
+        }
     }
 
     func validateListEndpoint(_ url: URL) throws -> URL {
