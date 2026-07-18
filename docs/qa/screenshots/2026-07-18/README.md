@@ -60,7 +60,7 @@ warnings during this QA run.
 The Build 8 DMG mounted with both media and volume read-only, reported build 8
 and `Codex Habitat 0.1.0`, and passed mounted release and strict signature
 verification. Its SHA-256 is
-`be354f0085e918b81a8ff9d9c180ba552fad1fe826f80accbebd7c2b29757f72`.
+`3a6e72d0153503ed69fce1157d2312b8a6132cc3e388856af24c3ed8a6071b45`.
 
 Offline full-window Codex evidence for all 96 theme/route/viewport scenes is in
 [`offline-codex-window/`](offline-codex-window/README.md).

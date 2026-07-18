@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final build 8 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0`, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `be354f0085e918b81a8ff9d9c180ba552fad1fe826f80accbebd7c2b29757f72`.
+- [x] Final build 8 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0`, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `3a6e72d0153503ed69fce1157d2312b8a6132cc3e388856af24c3ed8a6071b45`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -59,7 +59,7 @@ explicit user action.
 - [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
 - [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Build 7 prototype gallery and narrow Theme Studio QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
-- [x] Build 8 isolated native QA measured Themes -> Pets at 305.6 ms and Pets -> Themes at 306.1 ms including accessibility automation overhead; repeated navigation showed no multi-second stall. The final complete 96-scene offline route check measured a 0.30 ms maximum internal route mutation.
+- [x] Build 8 isolated native QA measured Themes -> Pets at 305.6 ms and Pets -> Themes at 306.1 ms including accessibility automation overhead; repeated navigation showed no multi-second stall. The final complete 96-scene offline route check measured a 0.20 ms maximum internal route mutation.
 - [x] Build 8 native gallery, Studio, Pets, and 75%/100%/150% overlay QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
 - [x] Packaged idle CPU averaged 0.191% over 150 two-second `top` samples; 144/150 were below 1%.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
