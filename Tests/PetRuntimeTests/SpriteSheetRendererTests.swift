@@ -47,6 +47,41 @@ func repeatedFrameReadsReuseThePrecroppedImage() throws {
 }
 
 @Test
+func cancelledRendererBuildSkipsFramePrecropping() async throws {
+    let image = try testImage(width: 32, height: 36)
+    let atlas = PetAtlasMetadata(pixelWidth: 32, pixelHeight: 36, columns: 8, rows: 9)
+    let gate = RendererCancellationGate()
+    let task = Task.detached {
+        await gate.wait()
+        return SpriteSheetRenderer(image: image, atlas: atlas)
+    }
+
+    for _ in 0..<1_000 where await !gate.hasWaiter {
+        await Task.yield()
+    }
+    task.cancel()
+    await gate.release()
+    let renderer = await task.value
+
+    #expect(renderer.frame(row: 0, column: 0) == nil)
+}
+
+private actor RendererCancellationGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    var hasWaiter: Bool { continuation != nil }
+
+    func wait() async {
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
+@Test
 func transparentPaddingSurvivesCropping() throws {
     let image = try testImage(width: 32, height: 36) { context in
         context.setFillColor(CGColor(red: 0.1, green: 0.8, blue: 0.7, alpha: 1))

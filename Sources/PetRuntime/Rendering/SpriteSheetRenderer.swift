@@ -12,10 +12,16 @@ public struct SpriteSheetRenderer: Sendable {
     }
 
     public init(contentsOf url: URL, atlas: PetAtlasMetadata) {
-        let source = CGImageSourceCreateWithURL(url as CFURL, nil)
         self.atlas = atlas
+        guard !Task.isCancelled else {
+            frames = []
+            return
+        }
+        let source = CGImageSourceCreateWithURL(url as CFURL, nil)
         frames = Self.precroppedFrames(
-            image: source.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) },
+            image: Task.isCancelled
+                ? nil
+                : source.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) },
             atlas: atlas
         )
     }
@@ -85,7 +91,8 @@ public struct SpriteSheetRenderer: Sendable {
         image: CGImage?,
         atlas: PetAtlasMetadata
     ) -> [CGImage] {
-        guard let image,
+        guard !Task.isCancelled,
+              let image,
               image.width == atlas.pixelWidth,
               image.height == atlas.pixelHeight
         else {
@@ -95,6 +102,7 @@ public struct SpriteSheetRenderer: Sendable {
         result.reserveCapacity(atlas.rows * atlas.columns)
         for row in 0..<atlas.rows {
             for column in 0..<atlas.columns {
+                guard !Task.isCancelled else { return [] }
                 let rect = CGRect(
                     x: column * atlas.cellWidth,
                     y: row * atlas.cellHeight,
