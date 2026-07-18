@@ -194,12 +194,14 @@ public struct ManifestValidator: Sendable {
         }
         for (name, value) in [
             ("sidebarOpacity", theme.sidebarOpacity),
-            ("headerOpacity", theme.headerOpacity),
             ("composerOpacity", theme.composerOpacity),
         ] {
             guard value.map({ $0.isFinite && (0.40...1.0).contains($0) }) != false else {
                 throw ManifestValidationError.numericOutOfRange("theme.\(name)")
             }
+        }
+        guard theme.headerOpacity.map({ $0.isFinite && (0.0...1.0).contains($0) }) != false else {
+            throw ManifestValidationError.numericOutOfRange("theme.headerOpacity")
         }
         for (name, value, range) in [
             ("homeArtScale", theme.homeArtScale, 1.00...1.35),

@@ -77,6 +77,15 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
     #expect(manifest.theme?.resolvedHomeContentWidth == 0.52)
     #expect(manifest.theme?.resolvedVignetteStrength == 0.44)
 
+    let transparentHomeHeader = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+        try mutatedValidManifest {
+            var theme = validThemeObject()
+            theme["headerOpacity"] = 0.18
+            $0["theme"] = theme
+        }
+    )
+    #expect(transparentHomeHeader.theme?.resolvedHeaderOpacity == 0.18)
+
     let legacyManifest = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
         try mutatedValidManifest {
             var theme = validThemeObject()
@@ -141,7 +150,7 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
         ("taskStrength", 0.86),
         ("sidebarOpacity", 0.39),
         ("sidebarOpacity", 1.01),
-        ("headerOpacity", 0.39),
+        ("headerOpacity", -0.01),
         ("headerOpacity", 1.01),
         ("composerOpacity", 0.39),
         ("composerOpacity", 1.01),
@@ -437,10 +446,12 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
         #expect(field["minimum"] as? Double == 0.10)
         #expect(field["maximum"] as? Double == 0.85)
     }
-    for field in [sidebarOpacity, headerOpacity, composerOpacity] {
+    for field in [sidebarOpacity, composerOpacity] {
         #expect(field["minimum"] as? Double == 0.40)
         #expect(field["maximum"] as? Double == 1.0)
     }
+    #expect(headerOpacity["minimum"] as? Double == 0.0)
+    #expect(headerOpacity["maximum"] as? Double == 1.0)
     #expect(homeArtFocus["$ref"] as? String == "#/$defs/themeFocalPoint")
     #expect(taskArtFocus["$ref"] as? String == "#/$defs/themeFocalPoint")
     for field in [homeArtScale, taskArtScale] {

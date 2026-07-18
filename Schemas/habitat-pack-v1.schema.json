@@ -163,7 +163,7 @@
         "homeStrength": {"type": "number", "minimum": 0.10, "maximum": 0.85},
         "taskStrength": {"type": "number", "minimum": 0.10, "maximum": 0.85},
         "sidebarOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
-        "headerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
+        "headerOpacity": {"type": "number", "minimum": 0.0, "maximum": 1.0},
         "composerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
         "homeArtFocus": {"$ref": "#/$defs/themeFocalPoint"},
         "taskArtFocus": {"$ref": "#/$defs/themeFocalPoint"},
