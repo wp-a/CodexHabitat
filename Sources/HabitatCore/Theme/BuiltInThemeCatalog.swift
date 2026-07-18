@@ -35,6 +35,43 @@ public struct HabitatThemePalette: Codable, Equatable, Sendable {
     }
 }
 
+public struct BuiltInThemeTreatment: Equatable, Sendable {
+    public let homeMode: HabitatThemeHomeMode
+    public let taskMode: HabitatThemeTaskMode
+    public let chromeMaterial: HabitatThemeChromeMaterial
+    public let homeStrength: Double
+    public let taskStrength: Double
+    public let sidebarOpacity: Double
+    public let headerOpacity: Double
+    public let composerOpacity: Double
+    public let blurRadius: Double
+    public let density: HabitatThemeDensity
+
+    public init(
+        homeMode: HabitatThemeHomeMode,
+        taskMode: HabitatThemeTaskMode,
+        chromeMaterial: HabitatThemeChromeMaterial,
+        homeStrength: Double,
+        taskStrength: Double,
+        sidebarOpacity: Double,
+        headerOpacity: Double,
+        composerOpacity: Double,
+        blurRadius: Double,
+        density: HabitatThemeDensity
+    ) {
+        self.homeMode = homeMode
+        self.taskMode = taskMode
+        self.chromeMaterial = chromeMaterial
+        self.homeStrength = homeStrength
+        self.taskStrength = taskStrength
+        self.sidebarOpacity = sidebarOpacity
+        self.headerOpacity = headerOpacity
+        self.composerOpacity = composerOpacity
+        self.blurRadius = blurRadius
+        self.density = density
+    }
+}
+
 public struct BuiltInThemeDefinition: Equatable, Sendable {
     public let id: String
     public let name: String
@@ -46,6 +83,7 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
     public let artFocusY: Double
     public let safeSide: HabitatThemeSafeSide
     public let styleFamily: HabitatThemeStyleFamily
+    public let treatment: BuiltInThemeTreatment?
 
     public init(
         id: String,
@@ -57,7 +95,8 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
         artFocusX: Double,
         artFocusY: Double,
         safeSide: HabitatThemeSafeSide,
-        styleFamily: HabitatThemeStyleFamily
+        styleFamily: HabitatThemeStyleFamily,
+        treatment: BuiltInThemeTreatment? = nil
     ) {
         self.id = id
         self.name = name
@@ -69,6 +108,7 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
         self.artFocusY = artFocusY
         self.safeSide = safeSide
         self.styleFamily = styleFamily
+        self.treatment = treatment
     }
 
     public func appearance(background: String) -> HabitatThemeAppearance {
@@ -80,8 +120,16 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
             safeSide: safeSide,
             backgroundStrength: 0.42,
             panelOpacity: 0.88,
-            blurRadius: 10,
-            density: .comfortable
+            blurRadius: treatment?.blurRadius ?? 10,
+            density: treatment?.density ?? .comfortable,
+            homeMode: treatment?.homeMode,
+            taskMode: treatment?.taskMode,
+            chromeMaterial: treatment?.chromeMaterial,
+            homeStrength: treatment?.homeStrength,
+            taskStrength: treatment?.taskStrength,
+            sidebarOpacity: treatment?.sidebarOpacity,
+            headerOpacity: treatment?.headerOpacity,
+            composerOpacity: treatment?.composerOpacity
         )
     }
 }
@@ -92,7 +140,11 @@ public enum BuiltInThemeCatalog {
             "workbench", "Workbench Turbo", "Electric tools and hot metal panels.",
             "wrench.and.screwdriver.fill", "#171A21", "#242936", "#30384A", "#F7FBFF",
             "#AEB9C9", "#FF7A18", "#18D6C8", "#FFE04B", "#FFB020", "#FF4058",
-            0.78, 0.48, .leading, .gameCinematic, .utility
+            0.78, 0.48, .leading, .gameCinematic, .utility,
+            treatment(
+                .immersive, .ambient, .tinted,
+                0.72, 0.30, 0.92, 0.66, 0.90, 8, .comfortable
+            )
         ),
         theme(
             "night-shift", "Neon Night Shift", "Midnight control room in electric violet.",
@@ -104,19 +156,31 @@ public enum BuiltInThemeCatalog {
             "arcade-signal", "Arcade Overdrive", "Cabinet lights and score-chasing energy.",
             "gamecontroller.fill", "#121023", "#251A46", "#38225F", "#FFF8F0",
             "#C7B8D8", "#FF2D95", "#2DE2E6", "#FFF13D", "#FF9F1C", "#FF3B55",
-            0.74, 0.50, .leading, .arcade, .game
+            0.74, 0.50, .leading, .arcade, .game,
+            treatment(
+                .immersive, .banner, .solid,
+                0.76, 0.40, 0.90, 0.64, 0.94, 4, .compact
+            )
         ),
         theme(
             "quiet-garden", "Pixel Meadow", "Bright pixel flora and fresh open air.",
             "leaf.fill", "#12251D", "#21432E", "#32613D", "#F5FFE8",
             "#B8D5AF", "#72E06A", "#35C9D0", "#FFF06A", "#FFB43A", "#FF5364",
-            0.78, 0.46, .leading, .cozyWorld, .cozy
+            0.78, 0.46, .leading, .cozyWorld, .cozy,
+            treatment(
+                .quiet, .off, .glass,
+                0.48, 0.10, 0.72, 0.64, 0.78, 16, .comfortable
+            )
         ),
         theme(
             "retro-messenger", "Retro Messenger 2007", "Glossy blue desktop chat nostalgia.",
             "bubble.left.and.bubble.right.fill", "#DCEEFF", "#F5FAFF", "#C7E3FF", "#102A43",
             "#526C82", "#1687E8", "#55B8FF", "#FFF06A", "#FF9D2E", "#E43F5A",
-            0.80, 0.42, .leading, .retroMessenger, .nostalgia
+            0.80, 0.42, .leading, .retroMessenger, .nostalgia,
+            treatment(
+                .framed, .banner, .glass,
+                0.64, 0.34, 0.78, 0.72, 0.84, 14, .compact
+            )
         ),
         theme(
             "green-chat-desk", "Green Chat Desktop", "Forest rails and mint message panes.",
@@ -257,7 +321,8 @@ public enum BuiltInThemeCatalog {
         _ artFocusY: Double,
         _ safeSide: HabitatThemeSafeSide,
         _ styleFamily: HabitatThemeStyleFamily,
-        _ category: HabitatThemeCategory
+        _ category: HabitatThemeCategory,
+        _ treatment: BuiltInThemeTreatment? = nil
     ) -> BuiltInThemeDefinition {
         BuiltInThemeDefinition(
             id: id,
@@ -280,7 +345,34 @@ public enum BuiltInThemeCatalog {
             artFocusX: artFocusX,
             artFocusY: artFocusY,
             safeSide: safeSide,
-            styleFamily: styleFamily
+            styleFamily: styleFamily,
+            treatment: treatment
+        )
+    }
+
+    private static func treatment(
+        _ homeMode: HabitatThemeHomeMode,
+        _ taskMode: HabitatThemeTaskMode,
+        _ chromeMaterial: HabitatThemeChromeMaterial,
+        _ homeStrength: Double,
+        _ taskStrength: Double,
+        _ sidebarOpacity: Double,
+        _ headerOpacity: Double,
+        _ composerOpacity: Double,
+        _ blurRadius: Double,
+        _ density: HabitatThemeDensity
+    ) -> BuiltInThemeTreatment {
+        BuiltInThemeTreatment(
+            homeMode: homeMode,
+            taskMode: taskMode,
+            chromeMaterial: chromeMaterial,
+            homeStrength: homeStrength,
+            taskStrength: taskStrength,
+            sidebarOpacity: sidebarOpacity,
+            headerOpacity: headerOpacity,
+            composerOpacity: composerOpacity,
+            blurRadius: blurRadius,
+            density: density
         )
     }
 }

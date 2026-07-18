@@ -32,6 +32,30 @@ func bundledThemeDescriptorsExposeValidatedTokensAndPreviews() throws {
     }
 }
 
+@Test
+func bundledPrototypeManifestsPreserveTheirDistinctTreatments() throws {
+    let identifiers = ["workbench", "retro-messenger", "arcade-signal", "quiet-garden"]
+    let themes = try identifiers.map { identifier in
+        try #require(HabitatThemeDescriptor.builtIn.first(where: { $0.id == identifier }))
+    }
+    let signatures = themes.map { theme in
+        let appearance = theme.appearance
+        return [
+            appearance.resolvedHomeMode.rawValue,
+            appearance.resolvedTaskMode.rawValue,
+            appearance.resolvedChromeMaterial.rawValue,
+            appearance.density.rawValue,
+            String(format: "%.2f", appearance.resolvedHomeStrength),
+            String(format: "%.2f", appearance.resolvedTaskStrength),
+            String(format: "%.2f", appearance.resolvedSidebarOpacity),
+            String(format: "%.2f", appearance.resolvedHeaderOpacity),
+            String(format: "%.2f", appearance.resolvedComposerOpacity),
+        ].joined(separator: "|")
+    }
+
+    #expect(Set(signatures).count == identifiers.count)
+}
+
 private func imageDimensions(_ url: URL) throws -> CGSize {
     let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
     let properties = try #require(
