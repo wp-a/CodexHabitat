@@ -128,6 +128,13 @@ actor CDPClient {
         return """
         (() => {
           const homeMarker = \(homeMarkerLiteral);
+          const clearPendingInstall = () => {
+            const handler = globalThis.__codexHabitatDOMContentLoadedHandler;
+            if (handler !== undefined) {
+              document.removeEventListener("DOMContentLoaded", handler);
+              delete globalThis.__codexHabitatDOMContentLoadedHandler;
+            }
+          };
           const updateRoute = () => {
             const route = document.querySelector(homeMarker) ? "home" : "task";
             const currentRoute = document.documentElement.getAttribute("data-codex-habitat-route");
@@ -145,6 +152,7 @@ actor CDPClient {
             }, 120);
           };
           const install = () => {
+            clearPendingInstall();
             const id = "codex-habitat-theme-style";
             let style = document.getElementById(id);
             if (!style) {
@@ -177,7 +185,10 @@ actor CDPClient {
             return { installed: true };
           };
           if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", install, { once: true });
+            clearPendingInstall();
+            const installWhenReady = () => install();
+            globalThis.__codexHabitatDOMContentLoadedHandler = installWhenReady;
+            document.addEventListener("DOMContentLoaded", installWhenReady, { once: true });
             return { installed: true, pending: true };
           }
           return install();
@@ -208,6 +219,11 @@ actor CDPClient {
 
     private static let styleRemovalExpression = """
         (() => {
+          const pendingInstall = globalThis.__codexHabitatDOMContentLoadedHandler;
+          if (pendingInstall !== undefined) {
+            document.removeEventListener("DOMContentLoaded", pendingInstall);
+            delete globalThis.__codexHabitatDOMContentLoadedHandler;
+          }
           globalThis.__codexHabitatThemeObserver?.disconnect();
           delete globalThis.__codexHabitatThemeObserver;
           globalThis.__codexHabitatRouteObserver?.disconnect();
