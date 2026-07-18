@@ -57,12 +57,42 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
     #expect(manifest.theme?.background == "artwork/desk.png")
     #expect(manifest.theme?.artFocus == HabitatThemeFocalPoint(x: 0.72, y: 0.42))
     #expect(manifest.theme?.density == .comfortable)
+    #expect(manifest.theme?.homeMode == .immersive)
+    #expect(manifest.theme?.taskMode == .banner)
+    #expect(manifest.theme?.chromeMaterial == .glass)
+    #expect(manifest.theme?.safeSide == .center)
+    #expect(manifest.theme?.resolvedHomeStrength == 0.62)
+    #expect(manifest.theme?.resolvedTaskStrength == 0.28)
+    #expect(manifest.theme?.resolvedSidebarOpacity == 0.74)
+    #expect(manifest.theme?.resolvedHeaderOpacity == 0.68)
+    #expect(manifest.theme?.resolvedComposerOpacity == 0.82)
+
+    let legacyManifest = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+        try mutatedValidManifest {
+            var theme = validThemeObject()
+            for key in [
+                "homeMode", "taskMode", "chromeMaterial", "homeStrength",
+                "taskStrength", "sidebarOpacity", "headerOpacity", "composerOpacity",
+            ] {
+                theme.removeValue(forKey: key)
+            }
+            $0["theme"] = theme
+        }
+    )
+    #expect(legacyManifest.theme?.resolvedHomeStrength == 0.42)
+    #expect(legacyManifest.theme?.resolvedTaskStrength == 0.42 * 0.46)
+    #expect(legacyManifest.theme?.resolvedSidebarOpacity == 0.88)
+    #expect(legacyManifest.theme?.resolvedHeaderOpacity == 0.88)
+    #expect(legacyManifest.theme?.resolvedComposerOpacity == 0.88)
 
     for (key, value) in [
         ("category", "unknownCategory"),
         ("styleFamily", "rawCSSFamily"),
-        ("safeSide", "center"),
+        ("safeSide", "diagonal"),
         ("density", "extraDense"),
+        ("homeMode", "fullCSS"),
+        ("taskMode", "remote"),
+        ("chromeMaterial", "customShader"),
     ] {
         #expect(throws: (any Error).self, "Expected unknown \(key) to fail") {
             try ManifestDecoder(runtimeVersion: "1.0.0").decode(
@@ -82,6 +112,16 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
         ("panelOpacity", 1.01),
         ("blurRadius", -0.01),
         ("blurRadius", 24.01),
+        ("homeStrength", 0.09),
+        ("homeStrength", 0.86),
+        ("taskStrength", 0.09),
+        ("taskStrength", 0.86),
+        ("sidebarOpacity", 0.39),
+        ("sidebarOpacity", 1.01),
+        ("headerOpacity", 0.39),
+        ("headerOpacity", 1.01),
+        ("composerOpacity", 0.39),
+        ("composerOpacity", 1.01),
     ] {
         #expect(throws: (any Error).self, "Expected \(key)=\(value) to fail") {
             try ManifestDecoder(runtimeVersion: "1.0.0").decode(
@@ -294,6 +334,14 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     let backgroundStrength = try #require(themeProperties["backgroundStrength"] as? [String: Any])
     let panelOpacity = try #require(themeProperties["panelOpacity"] as? [String: Any])
     let blurRadius = try #require(themeProperties["blurRadius"] as? [String: Any])
+    let homeMode = try #require(themeProperties["homeMode"] as? [String: Any])
+    let taskMode = try #require(themeProperties["taskMode"] as? [String: Any])
+    let chromeMaterial = try #require(themeProperties["chromeMaterial"] as? [String: Any])
+    let homeStrength = try #require(themeProperties["homeStrength"] as? [String: Any])
+    let taskStrength = try #require(themeProperties["taskStrength"] as? [String: Any])
+    let sidebarOpacity = try #require(themeProperties["sidebarOpacity"] as? [String: Any])
+    let headerOpacity = try #require(themeProperties["headerOpacity"] as? [String: Any])
+    let composerOpacity = try #require(themeProperties["composerOpacity"] as? [String: Any])
 
     #expect(schema["additionalProperties"] as? Bool == false)
     #expect((properties["schemaVersion"] as? [String: Any])?["const"] as? Int == 1)
@@ -309,6 +357,17 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     #expect(panelOpacity["maximum"] as? Double == 1.0)
     #expect(blurRadius["minimum"] as? Int == 0)
     #expect(blurRadius["maximum"] as? Int == 24)
+    #expect(homeMode["enum"] as? [String] == ["immersive", "framed", "quiet"])
+    #expect(taskMode["enum"] as? [String] == ["ambient", "banner", "off"])
+    #expect(chromeMaterial["enum"] as? [String] == ["solid", "tinted", "glass"])
+    for field in [homeStrength, taskStrength] {
+        #expect(field["minimum"] as? Double == 0.10)
+        #expect(field["maximum"] as? Double == 0.85)
+    }
+    for field in [sidebarOpacity, headerOpacity, composerOpacity] {
+        #expect(field["minimum"] as? Double == 0.40)
+        #expect(field["maximum"] as? Double == 1.0)
+    }
 }
 
 private func validManifestData() throws -> Data {
@@ -337,10 +396,18 @@ private func validThemeObject() -> [String: Any] {
         "styleFamily": "animeEnergy",
         "background": "artwork/desk.png",
         "artFocus": ["x": 0.72, "y": 0.42],
-        "safeSide": "leading",
+        "safeSide": "center",
         "backgroundStrength": 0.42,
         "panelOpacity": 0.88,
         "blurRadius": 10.0,
         "density": "comfortable",
+        "homeMode": "immersive",
+        "taskMode": "banner",
+        "chromeMaterial": "glass",
+        "homeStrength": 0.62,
+        "taskStrength": 0.28,
+        "sidebarOpacity": 0.74,
+        "headerOpacity": 0.68,
+        "composerOpacity": 0.82,
     ]
 }

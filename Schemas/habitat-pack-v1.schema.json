@@ -152,11 +152,19 @@
         "styleFamily": {"$ref": "#/$defs/themeStyleFamily"},
         "background": {"$ref": "#/$defs/imagePath"},
         "artFocus": {"$ref": "#/$defs/themeFocalPoint"},
-        "safeSide": {"enum": ["leading", "trailing"]},
+        "safeSide": {"enum": ["leading", "trailing", "center", "none"]},
         "backgroundStrength": {"type": "number", "minimum": 0.10, "maximum": 0.70},
         "panelOpacity": {"type": "number", "minimum": 0.65, "maximum": 1.0},
         "blurRadius": {"type": "number", "minimum": 0, "maximum": 24},
-        "density": {"enum": ["compact", "comfortable"]}
+        "density": {"enum": ["compact", "comfortable"]},
+        "homeMode": {"enum": ["immersive", "framed", "quiet"]},
+        "taskMode": {"enum": ["ambient", "banner", "off"]},
+        "chromeMaterial": {"enum": ["solid", "tinted", "glass"]},
+        "homeStrength": {"type": "number", "minimum": 0.10, "maximum": 0.85},
+        "taskStrength": {"type": "number", "minimum": 0.10, "maximum": 0.85},
+        "sidebarOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
+        "headerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
+        "composerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0}
       }
     },
     "resource": {

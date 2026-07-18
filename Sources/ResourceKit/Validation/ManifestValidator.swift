@@ -173,6 +173,23 @@ public struct ManifestValidator: Sendable {
         else {
             throw ManifestValidationError.numericOutOfRange("theme.blurRadius")
         }
+        for (name, value) in [
+            ("homeStrength", theme.homeStrength),
+            ("taskStrength", theme.taskStrength),
+        ] {
+            guard value.map({ $0.isFinite && (0.10...0.85).contains($0) }) != false else {
+                throw ManifestValidationError.numericOutOfRange("theme.\(name)")
+            }
+        }
+        for (name, value) in [
+            ("sidebarOpacity", theme.sidebarOpacity),
+            ("headerOpacity", theme.headerOpacity),
+            ("composerOpacity", theme.composerOpacity),
+        ] {
+            guard value.map({ $0.isFinite && (0.40...1.0).contains($0) }) != false else {
+                throw ManifestValidationError.numericOutOfRange("theme.\(name)")
+            }
+        }
     }
 
     private func validateWidget(_ widget: HabitatWidget) throws {

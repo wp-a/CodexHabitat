@@ -47,6 +47,8 @@ private enum ManifestShapeValidator {
             allowed: [
                 "category", "styleFamily", "background", "artFocus", "safeSide",
                 "backgroundStrength", "panelOpacity", "blurRadius", "density",
+                "homeMode", "taskMode", "chromeMaterial", "homeStrength",
+                "taskStrength", "sidebarOpacity", "headerOpacity", "composerOpacity",
             ],
             path: "$.theme"
         )

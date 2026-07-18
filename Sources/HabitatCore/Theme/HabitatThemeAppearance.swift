@@ -36,11 +36,31 @@ public enum HabitatThemeStyleFamily: String, Codable, CaseIterable, Sendable {
 public enum HabitatThemeSafeSide: String, Codable, CaseIterable, Sendable {
     case leading
     case trailing
+    case center
+    case none
 }
 
 public enum HabitatThemeDensity: String, Codable, CaseIterable, Sendable {
     case compact
     case comfortable
+}
+
+public enum HabitatThemeHomeMode: String, Codable, CaseIterable, Sendable {
+    case immersive
+    case framed
+    case quiet
+}
+
+public enum HabitatThemeTaskMode: String, Codable, CaseIterable, Sendable {
+    case ambient
+    case banner
+    case off
+}
+
+public enum HabitatThemeChromeMaterial: String, Codable, CaseIterable, Sendable {
+    case solid
+    case tinted
+    case glass
 }
 
 public struct HabitatThemeFocalPoint: Codable, Equatable, Sendable {
@@ -63,6 +83,14 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
     public let panelOpacity: Double
     public let blurRadius: Double
     public let density: HabitatThemeDensity
+    public let homeMode: HabitatThemeHomeMode?
+    public let taskMode: HabitatThemeTaskMode?
+    public let chromeMaterial: HabitatThemeChromeMaterial?
+    public let homeStrength: Double?
+    public let taskStrength: Double?
+    public let sidebarOpacity: Double?
+    public let headerOpacity: Double?
+    public let composerOpacity: Double?
 
     public init(
         category: HabitatThemeCategory,
@@ -73,7 +101,15 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
         backgroundStrength: Double,
         panelOpacity: Double,
         blurRadius: Double,
-        density: HabitatThemeDensity
+        density: HabitatThemeDensity,
+        homeMode: HabitatThemeHomeMode? = nil,
+        taskMode: HabitatThemeTaskMode? = nil,
+        chromeMaterial: HabitatThemeChromeMaterial? = nil,
+        homeStrength: Double? = nil,
+        taskStrength: Double? = nil,
+        sidebarOpacity: Double? = nil,
+        headerOpacity: Double? = nil,
+        composerOpacity: Double? = nil
     ) {
         self.category = category
         self.styleFamily = styleFamily
@@ -84,5 +120,22 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
         self.panelOpacity = panelOpacity
         self.blurRadius = blurRadius
         self.density = density
+        self.homeMode = homeMode
+        self.taskMode = taskMode
+        self.chromeMaterial = chromeMaterial
+        self.homeStrength = homeStrength
+        self.taskStrength = taskStrength
+        self.sidebarOpacity = sidebarOpacity
+        self.headerOpacity = headerOpacity
+        self.composerOpacity = composerOpacity
     }
+
+    public var resolvedHomeMode: HabitatThemeHomeMode { homeMode ?? .quiet }
+    public var resolvedTaskMode: HabitatThemeTaskMode { taskMode ?? .ambient }
+    public var resolvedChromeMaterial: HabitatThemeChromeMaterial { chromeMaterial ?? .tinted }
+    public var resolvedHomeStrength: Double { homeStrength ?? backgroundStrength }
+    public var resolvedTaskStrength: Double { taskStrength ?? backgroundStrength * 0.46 }
+    public var resolvedSidebarOpacity: Double { sidebarOpacity ?? panelOpacity }
+    public var resolvedHeaderOpacity: Double { headerOpacity ?? panelOpacity }
+    public var resolvedComposerOpacity: Double { composerOpacity ?? panelOpacity }
 }
