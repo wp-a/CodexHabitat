@@ -52,6 +52,16 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     @Published private(set) var sidebarOpacity = 0.88
     @Published private(set) var headerOpacity = 0.88
     @Published private(set) var composerOpacity = 0.88
+    @Published private(set) var homeArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+    @Published private(set) var taskArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+    @Published private(set) var homeArtScale = 1.0
+    @Published private(set) var taskArtScale = 1.0
+    @Published private(set) var taskSidebarOpacity = 0.88
+    @Published private(set) var taskHeaderOpacity = 0.88
+    @Published private(set) var homeContentOpacity = 0.66
+    @Published private(set) var taskContentOpacity = 0.84
+    @Published private(set) var homeContentWidth = 0.56
+    @Published private(set) var vignetteStrength = 0.34
     @Published private(set) var pairedPetID: String?
     @Published private(set) var state = ThemeStudioState.editing
     @Published private(set) var isDirty = false
@@ -84,7 +94,17 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             taskStrength: taskStrength,
             sidebarOpacity: sidebarOpacity,
             headerOpacity: headerOpacity,
-            composerOpacity: composerOpacity
+            composerOpacity: composerOpacity,
+            homeArtFocus: homeArtFocus,
+            taskArtFocus: taskArtFocus,
+            homeArtScale: homeArtScale,
+            taskArtScale: taskArtScale,
+            taskSidebarOpacity: taskSidebarOpacity,
+            taskHeaderOpacity: taskHeaderOpacity,
+            homeContentOpacity: homeContentOpacity,
+            taskContentOpacity: taskContentOpacity,
+            homeContentWidth: homeContentWidth,
+            vignetteStrength: vignetteStrength
         )
     }
 
@@ -140,6 +160,16 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         sidebarOpacity = appearance.resolvedSidebarOpacity
         headerOpacity = appearance.resolvedHeaderOpacity
         composerOpacity = appearance.resolvedComposerOpacity
+        homeArtFocus = appearance.resolvedHomeArtFocus
+        taskArtFocus = appearance.resolvedTaskArtFocus
+        homeArtScale = appearance.resolvedHomeArtScale
+        taskArtScale = appearance.resolvedTaskArtScale
+        taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
+        taskHeaderOpacity = appearance.resolvedTaskHeaderOpacity
+        homeContentOpacity = appearance.resolvedHomeContentOpacity
+        taskContentOpacity = appearance.resolvedTaskContentOpacity
+        homeContentWidth = appearance.resolvedHomeContentWidth
+        vignetteStrength = appearance.resolvedVignetteStrength
         isDirty = false
         state = .editing
         suppressDirtyTracking = false
@@ -276,11 +306,51 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     }
 
     func setHeaderOpacity(_ value: Double) {
-        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.headerOpacity)
+        setBounded(value, range: 0.0...1.0, keyPath: \ThemeStudioModel.headerOpacity)
     }
 
     func setComposerOpacity(_ value: Double) {
         setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.composerOpacity)
+    }
+
+    func setHomeArtFocus(x: Double, y: Double) {
+        setFocus(x: x, y: y, keyPath: \ThemeStudioModel.homeArtFocus)
+    }
+
+    func setTaskArtFocus(x: Double, y: Double) {
+        setFocus(x: x, y: y, keyPath: \ThemeStudioModel.taskArtFocus)
+    }
+
+    func setHomeArtScale(_ value: Double) {
+        setBounded(value, range: 1.00...1.35, keyPath: \ThemeStudioModel.homeArtScale)
+    }
+
+    func setTaskArtScale(_ value: Double) {
+        setBounded(value, range: 1.00...1.35, keyPath: \ThemeStudioModel.taskArtScale)
+    }
+
+    func setTaskSidebarOpacity(_ value: Double) {
+        setBounded(value, range: 0.54...0.90, keyPath: \ThemeStudioModel.taskSidebarOpacity)
+    }
+
+    func setTaskHeaderOpacity(_ value: Double) {
+        setBounded(value, range: 0.54...0.90, keyPath: \ThemeStudioModel.taskHeaderOpacity)
+    }
+
+    func setHomeContentOpacity(_ value: Double) {
+        setBounded(value, range: 0.40...0.78, keyPath: \ThemeStudioModel.homeContentOpacity)
+    }
+
+    func setTaskContentOpacity(_ value: Double) {
+        setBounded(value, range: 0.60...0.84, keyPath: \ThemeStudioModel.taskContentOpacity)
+    }
+
+    func setHomeContentWidth(_ value: Double) {
+        setBounded(value, range: 0.46...0.68, keyPath: \ThemeStudioModel.homeContentWidth)
+    }
+
+    func setVignetteStrength(_ value: Double) {
+        setBounded(value, range: 0.00...0.70, keyPath: \ThemeStudioModel.vignetteStrength)
     }
 
     func setArtFocus(x: Double, y: Double) {
@@ -321,6 +391,16 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         sidebarOpacity = 0.88
         headerOpacity = 0.88
         composerOpacity = 0.88
+        homeArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+        taskArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+        homeArtScale = 1.0
+        taskArtScale = 1.0
+        taskSidebarOpacity = 0.88
+        taskHeaderOpacity = 0.88
+        homeContentOpacity = 0.66
+        taskContentOpacity = 0.84
+        homeContentWidth = 0.56
+        vignetteStrength = 0.34
         pairedPetID = nil
         state = .editing
         nameValidationMessage = nil
@@ -435,7 +515,17 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             taskStrength: taskStrength,
             sidebarOpacity: sidebarOpacity,
             headerOpacity: headerOpacity,
-            composerOpacity: composerOpacity
+            composerOpacity: composerOpacity,
+            homeArtFocus: homeArtFocus,
+            taskArtFocus: taskArtFocus,
+            homeArtScale: homeArtScale,
+            taskArtScale: taskArtScale,
+            taskSidebarOpacity: taskSidebarOpacity,
+            taskHeaderOpacity: taskHeaderOpacity,
+            homeContentOpacity: homeContentOpacity,
+            taskContentOpacity: taskContentOpacity,
+            homeContentWidth: homeContentWidth,
+            vignetteStrength: vignetteStrength
         )
     }
 
@@ -456,6 +546,20 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         keyPath: ReferenceWritableKeyPath<ThemeStudioModel, Double>
     ) {
         let value = min(max(value, range.lowerBound), range.upperBound)
+        guard self[keyPath: keyPath] != value else { return }
+        self[keyPath: keyPath] = value
+        markDirty()
+    }
+
+    private func setFocus(
+        x: Double,
+        y: Double,
+        keyPath: ReferenceWritableKeyPath<ThemeStudioModel, HabitatThemeFocalPoint>
+    ) {
+        let value = HabitatThemeFocalPoint(
+            x: min(max(x, 0), 1),
+            y: min(max(y, 0), 1)
+        )
         guard self[keyPath: keyPath] != value else { return }
         self[keyPath: keyPath] = value
         markDirty()

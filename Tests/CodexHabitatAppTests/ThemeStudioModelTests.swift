@@ -4,6 +4,23 @@ import ResourceKit
 import Testing
 @testable import CodexHabitatApp
 
+@Test
+func themeStudioDoesNotExposeLegacyDeadAppearanceSliders() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeStudioView.swift"
+        ),
+        encoding: .utf8
+    )
+
+    #expect(!source.contains("\"Background strength\","))
+    #expect(!source.contains("\"Panel opacity\","))
+}
+
 @Test @MainActor
 func themeStudioTracksDirtyDraftClampsAppearanceAndRequiresDiscardConfirmation() {
     let root = FileManager.default.temporaryDirectory
@@ -27,6 +44,16 @@ func themeStudioTracksDirtyDraftClampsAppearanceAndRequiresDiscardConfirmation()
     model.setSidebarOpacity(4)
     model.setHeaderOpacity(0)
     model.setComposerOpacity(4)
+    model.setHomeArtFocus(x: -1, y: 2)
+    model.setTaskArtFocus(x: 2, y: -1)
+    model.setHomeArtScale(4)
+    model.setTaskArtScale(0)
+    model.setTaskSidebarOpacity(4)
+    model.setTaskHeaderOpacity(0)
+    model.setHomeContentOpacity(4)
+    model.setTaskContentOpacity(0)
+    model.setHomeContentWidth(4)
+    model.setVignetteStrength(-1)
 
     #expect(model.isDirty)
     #expect(model.backgroundStrength == 0.70)
@@ -36,8 +63,18 @@ func themeStudioTracksDirtyDraftClampsAppearanceAndRequiresDiscardConfirmation()
     #expect(model.homeStrength == 0.85)
     #expect(model.taskStrength == 0.10)
     #expect(model.sidebarOpacity == 1.0)
-    #expect(model.headerOpacity == 0.40)
+    #expect(model.headerOpacity == 0.0)
     #expect(model.composerOpacity == 1.0)
+    #expect(model.homeArtFocus == HabitatThemeFocalPoint(x: 0, y: 1))
+    #expect(model.taskArtFocus == HabitatThemeFocalPoint(x: 1, y: 0))
+    #expect(model.homeArtScale == 1.35)
+    #expect(model.taskArtScale == 1.0)
+    #expect(model.taskSidebarOpacity == 0.90)
+    #expect(model.taskHeaderOpacity == 0.54)
+    #expect(model.homeContentOpacity == 0.78)
+    #expect(model.taskContentOpacity == 0.60)
+    #expect(model.homeContentWidth == 0.68)
+    #expect(model.vignetteStrength == 0.0)
     #expect(!model.requestClose())
     #expect(model.showsDiscardConfirmation)
 
@@ -69,6 +106,16 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     model.setSidebarOpacity(0.77)
     model.setHeaderOpacity(0.68)
     model.setComposerOpacity(0.91)
+    model.setHomeArtFocus(x: 0.18, y: 0.62)
+    model.setTaskArtFocus(x: 0.27, y: 0.57)
+    model.setHomeArtScale(1.14)
+    model.setTaskArtScale(1.06)
+    model.setTaskSidebarOpacity(0.78)
+    model.setTaskHeaderOpacity(0.71)
+    model.setHomeContentOpacity(0.57)
+    model.setTaskContentOpacity(0.74)
+    model.setHomeContentWidth(0.59)
+    model.setVignetteStrength(0.43)
     model.setDensity(.compact)
 
     try model.selectImage(imageURL)
@@ -95,6 +142,16 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     #expect(appearance.sidebarOpacity == 0.77)
     #expect(appearance.headerOpacity == 0.68)
     #expect(appearance.composerOpacity == 0.91)
+    #expect(appearance.homeArtFocus == HabitatThemeFocalPoint(x: 0.18, y: 0.62))
+    #expect(appearance.taskArtFocus == HabitatThemeFocalPoint(x: 0.27, y: 0.57))
+    #expect(appearance.homeArtScale == 1.14)
+    #expect(appearance.taskArtScale == 1.06)
+    #expect(appearance.taskSidebarOpacity == 0.78)
+    #expect(appearance.taskHeaderOpacity == 0.71)
+    #expect(appearance.homeContentOpacity == 0.57)
+    #expect(appearance.taskContentOpacity == 0.74)
+    #expect(appearance.homeContentWidth == 0.59)
+    #expect(appearance.vignetteStrength == 0.43)
     #expect(appearance.density == .compact)
     #expect(!model.isDirty)
 
@@ -159,6 +216,16 @@ func installedCustomThemeReopensAsCleanStronglyTypedStudioDraft() async throws {
     creator.setSidebarOpacity(0.74)
     creator.setHeaderOpacity(0.69)
     creator.setComposerOpacity(0.91)
+    creator.setHomeArtFocus(x: 0.19, y: 0.61)
+    creator.setTaskArtFocus(x: 0.29, y: 0.58)
+    creator.setHomeArtScale(1.13)
+    creator.setTaskArtScale(1.05)
+    creator.setTaskSidebarOpacity(0.77)
+    creator.setTaskHeaderOpacity(0.70)
+    creator.setHomeContentOpacity(0.56)
+    creator.setTaskContentOpacity(0.73)
+    creator.setHomeContentWidth(0.58)
+    creator.setVignetteStrength(0.42)
     try creator.selectImage(sourceImageURL)
     let expectedPalette = try #require(creator.palette)
     await creator.saveLocally()
@@ -199,6 +266,16 @@ func installedCustomThemeReopensAsCleanStronglyTypedStudioDraft() async throws {
     #expect(editor.sidebarOpacity == 0.74)
     #expect(editor.headerOpacity == 0.69)
     #expect(editor.composerOpacity == 0.91)
+    #expect(editor.homeArtFocus == HabitatThemeFocalPoint(x: 0.19, y: 0.61))
+    #expect(editor.taskArtFocus == HabitatThemeFocalPoint(x: 0.29, y: 0.58))
+    #expect(editor.homeArtScale == 1.13)
+    #expect(editor.taskArtScale == 1.05)
+    #expect(editor.taskSidebarOpacity == 0.77)
+    #expect(editor.taskHeaderOpacity == 0.70)
+    #expect(editor.homeContentOpacity == 0.56)
+    #expect(editor.taskContentOpacity == 0.73)
+    #expect(editor.homeContentWidth == 0.58)
+    #expect(editor.vignetteStrength == 0.42)
     #expect(editor.pairedPetID == "test-pet")
     #expect(!editor.isDirty)
     #expect(appModel.makeThemeStudioModel(editingThemeID: "workbench") == nil)

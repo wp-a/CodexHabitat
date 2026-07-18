@@ -165,6 +165,7 @@ struct ThemeStudioView: View {
         }
     }
 
+    @ViewBuilder
     private var appearanceSection: some View {
         Section("Appearance") {
             Picker("Style", selection: Binding(
@@ -198,26 +199,6 @@ struct ThemeStudioView: View {
             }
             .pickerStyle(.segmented)
 
-            Picker("Home treatment", selection: Binding(
-                get: { model.homeMode },
-                set: { model.setHomeMode($0) }
-            )) {
-                Text("Immersive").tag(HabitatThemeHomeMode.immersive)
-                Text("Framed").tag(HabitatThemeHomeMode.framed)
-                Text("Quiet").tag(HabitatThemeHomeMode.quiet)
-            }
-            .pickerStyle(.segmented)
-
-            Picker("Task treatment", selection: Binding(
-                get: { model.taskMode },
-                set: { model.setTaskMode($0) }
-            )) {
-                Text("Ambient").tag(HabitatThemeTaskMode.ambient)
-                Text("Banner").tag(HabitatThemeTaskMode.banner)
-                Text("Off").tag(HabitatThemeTaskMode.off)
-            }
-            .pickerStyle(.segmented)
-
             Picker("Chrome material", selection: Binding(
                 get: { model.chromeMaterial },
                 set: { model.setChromeMaterial($0) }
@@ -229,23 +210,26 @@ struct ThemeStudioView: View {
             .pickerStyle(.segmented)
 
             valueSlider(
-                "Background strength",
-                value: model.backgroundStrength,
-                range: 0.10...0.70,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setBackgroundStrength,
-                displayScale: 100
+                "Blur",
+                value: model.blurRadius,
+                range: 0...24,
+                step: 1,
+                format: "%.0f pt",
+                setter: model.setBlurRadius
             )
-            valueSlider(
-                "Panel opacity",
-                value: model.panelOpacity,
-                range: 0.65...1.0,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setPanelOpacity,
-                displayScale: 100
-            )
+        }
+
+        Section("Home composition") {
+            Picker("Home treatment", selection: Binding(
+                get: { model.homeMode },
+                set: { model.setHomeMode($0) }
+            )) {
+                Text("Immersive").tag(HabitatThemeHomeMode.immersive)
+                Text("Framed").tag(HabitatThemeHomeMode.framed)
+                Text("Quiet").tag(HabitatThemeHomeMode.quiet)
+            }
+            .pickerStyle(.segmented)
+
             valueSlider(
                 "Home strength",
                 value: model.homeStrength,
@@ -256,12 +240,30 @@ struct ThemeStudioView: View {
                 displayScale: 100
             )
             valueSlider(
-                "Task strength",
-                value: model.taskStrength,
-                range: 0.10...0.85,
+                "Home crop X",
+                value: model.homeArtFocus.x,
+                range: 0...1,
                 step: 0.01,
                 format: "%.0f%%",
-                setter: model.setTaskStrength,
+                setter: { model.setHomeArtFocus(x: $0, y: model.homeArtFocus.y) },
+                displayScale: 100
+            )
+            valueSlider(
+                "Home crop Y",
+                value: model.homeArtFocus.y,
+                range: 0...1,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { model.setHomeArtFocus(x: model.homeArtFocus.x, y: $0) },
+                displayScale: 100
+            )
+            valueSlider(
+                "Home artwork scale",
+                value: model.homeArtScale,
+                range: 1.00...1.35,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setHomeArtScale,
                 displayScale: 100
             )
             valueSlider(
@@ -276,10 +278,113 @@ struct ThemeStudioView: View {
             valueSlider(
                 "Header opacity",
                 value: model.headerOpacity,
-                range: 0.40...1.0,
+                range: 0...1.0,
                 step: 0.01,
                 format: "%.0f%%",
                 setter: model.setHeaderOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Home content opacity",
+                value: model.homeContentOpacity,
+                range: 0.40...0.78,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setHomeContentOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Home content width",
+                value: model.homeContentWidth,
+                range: 0.46...0.68,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setHomeContentWidth,
+                displayScale: 100
+            )
+            valueSlider(
+                "Vignette strength",
+                value: model.vignetteStrength,
+                range: 0...0.70,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setVignetteStrength,
+                displayScale: 100
+            )
+        }
+
+        Section("Task composition") {
+            Picker("Task treatment", selection: Binding(
+                get: { model.taskMode },
+                set: { model.setTaskMode($0) }
+            )) {
+                Text("Ambient").tag(HabitatThemeTaskMode.ambient)
+                Text("Banner").tag(HabitatThemeTaskMode.banner)
+                Text("Off").tag(HabitatThemeTaskMode.off)
+            }
+            .pickerStyle(.segmented)
+
+            valueSlider(
+                "Task strength",
+                value: model.taskStrength,
+                range: 0.10...0.85,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setTaskStrength,
+                displayScale: 100
+            )
+            valueSlider(
+                "Task crop X",
+                value: model.taskArtFocus.x,
+                range: 0...1,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { model.setTaskArtFocus(x: $0, y: model.taskArtFocus.y) },
+                displayScale: 100
+            )
+            valueSlider(
+                "Task crop Y",
+                value: model.taskArtFocus.y,
+                range: 0...1,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { model.setTaskArtFocus(x: model.taskArtFocus.x, y: $0) },
+                displayScale: 100
+            )
+            valueSlider(
+                "Task artwork scale",
+                value: model.taskArtScale,
+                range: 1.00...1.35,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setTaskArtScale,
+                displayScale: 100
+            )
+            valueSlider(
+                "Task sidebar opacity",
+                value: model.taskSidebarOpacity,
+                range: 0.54...0.90,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setTaskSidebarOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Task header opacity",
+                value: model.taskHeaderOpacity,
+                range: 0.54...0.90,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setTaskHeaderOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Task content opacity",
+                value: model.taskContentOpacity,
+                range: 0.60...0.84,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setTaskContentOpacity,
                 displayScale: 100
             )
             valueSlider(
@@ -289,32 +394,6 @@ struct ThemeStudioView: View {
                 step: 0.01,
                 format: "%.0f%%",
                 setter: model.setComposerOpacity,
-                displayScale: 100
-            )
-            valueSlider(
-                "Blur",
-                value: model.blurRadius,
-                range: 0...24,
-                step: 1,
-                format: "%.0f pt",
-                setter: model.setBlurRadius
-            )
-            valueSlider(
-                "Focal point X",
-                value: model.artFocus.x,
-                range: 0...1,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: { model.setArtFocus(x: $0, y: model.artFocus.y) },
-                displayScale: 100
-            )
-            valueSlider(
-                "Focal point Y",
-                value: model.artFocus.y,
-                range: 0...1,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: { model.setArtFocus(x: model.artFocus.x, y: $0) },
                 displayScale: 100
             )
         }

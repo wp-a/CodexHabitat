@@ -2,6 +2,19 @@ import ImageIO
 import ResourceKit
 import SwiftUI
 
+struct ThemePreviewRequestKey: Equatable, Hashable, Sendable {
+    let url: URL
+    let fileSize: Int?
+    let modificationDate: Date?
+
+    init(url: URL) {
+        self.url = url
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        fileSize = (attributes?[.size] as? NSNumber)?.intValue
+        modificationDate = attributes?[.modificationDate] as? Date
+    }
+}
+
 actor ThemePreviewStore {
     typealias Loader = @Sendable (URL) -> CGImage?
 
@@ -23,21 +36,8 @@ actor ThemePreviewStore {
         case missing
     }
 
-    private struct Key: Hashable, Sendable {
-        let url: URL
-        let fileSize: Int?
-        let modificationDate: Date?
-
-        init(url: URL) {
-            self.url = url
-            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-            fileSize = (attributes?[.size] as? NSNumber)?.intValue
-            modificationDate = attributes?[.modificationDate] as? Date
-        }
-    }
-
     private let loader: Loader
-    private var cache: [Key: CachedResult] = [:]
+    private var cache: [ThemePreviewRequestKey: CachedResult] = [:]
 
     init(loader: @escaping Loader) {
         self.loader = loader
@@ -45,7 +45,7 @@ actor ThemePreviewStore {
 
     func image(at url: URL?) -> CGImage? {
         guard let url else { return nil }
-        let key = Key(url: url)
+        let key = ThemePreviewRequestKey(url: url)
         if let cached = cache[key] {
             switch cached {
             case let .image(image):
@@ -297,6 +297,61 @@ struct ThemesSettingsView: View {
     }
 }
 
+struct ThemeGalleryPreviewPlan: Equatable, Sendable {
+    let imageURL: URL?
+    let usesStaticThumbnail: Bool
+    let usesBackdropMaterial: Bool
+
+    init(theme: HabitatThemeDescriptor) {
+        imageURL = theme.previewURL
+        usesStaticThumbnail = true
+        usesBackdropMaterial = false
+    }
+}
+
+struct StaticThemeThumbnail: View {
+    let imageURL: URL?
+    let symbol: String
+    let surfaceHex: String
+    let accentHex: String
+    @State private var image: CGImage?
+
+    var body: some View {
+        ZStack {
+            Color(habitatHex: surfaceHex)
+            if let image {
+                Image(decorative: image, scale: 1, orientation: .up)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color(habitatHex: accentHex))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 100)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .overlay {
+            RoundedRectangle(cornerRadius: 5)
+                .stroke(Color(habitatHex: accentHex).opacity(0.32), lineWidth: 1)
+        }
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+        .task(id: previewRequestKey) {
+            image = nil
+            let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
+            guard !Task.isCancelled else { return }
+            image = loadedImage
+        }
+    }
+
+    private var previewRequestKey: ThemePreviewRequestKey? {
+        imageURL.map(ThemePreviewRequestKey.init(url:))
+    }
+}
+
 struct ThemeChoiceCard: View {
     let theme: HabitatThemeDescriptor
     let isSelected: Bool
@@ -304,13 +359,15 @@ struct ThemeChoiceCard: View {
     var editAction: (() -> Void)? = nil
 
     var body: some View {
+        let previewPlan = ThemeGalleryPreviewPlan(theme: theme)
         ZStack(alignment: .topTrailing) {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 10) {
-                    ThemeTreatmentPreview(
-                        model: ThemeTreatmentPreviewModel(theme: theme),
-                        imageURL: theme.backgroundURL ?? theme.previewURL,
-                        symbol: theme.symbol
+                    StaticThemeThumbnail(
+                        imageURL: previewPlan.imageURL,
+                        symbol: theme.symbol,
+                        surfaceHex: theme.surfaceHex,
+                        accentHex: theme.accentHex
                     )
                     HStack {
                         HStack(spacing: 5) {
