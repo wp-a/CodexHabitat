@@ -303,9 +303,40 @@ func immersiveHomeLetsTheContinuousSceneOwnLargeSurfaces() throws {
     })
     #expect(headerRules.contains { rule in
         rule.contains("background-color: transparent")
+            && rule.contains("background-image: none")
             && rule.contains("border-bottom-color: transparent")
             && rule.contains("box-shadow: none")
     })
+}
+
+@Test
+func ambientTaskWithoutASafeSidePreservesTheConfiguredReadingOpacity() throws {
+    let appearance = HabitatThemeAppearance(
+        category: .custom,
+        styleFamily: .gameCinematic,
+        background: "background.jpg",
+        artFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.5),
+        safeSide: .none,
+        backgroundStrength: 0.42,
+        panelOpacity: 0.88,
+        blurRadius: 0,
+        density: .comfortable,
+        taskMode: .ambient,
+        taskContentOpacity: 0.84
+    )
+    let css = try ThemeCompiler.bundled().compile(
+        theme: BridgeTheme(
+            tokens: .workbench,
+            appearance: BridgeThemeAppearance(appearance),
+            artBlobURL: nil
+        ),
+        profile: try currentCompleteSurfaceProfile()
+    )
+
+    #expect(css.contains("--habitat-task-content-opacity: 84%"))
+    #expect(css.contains(
+        "--habitat-task-reading-scrim: linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent)"
+    ))
 }
 
 @Test

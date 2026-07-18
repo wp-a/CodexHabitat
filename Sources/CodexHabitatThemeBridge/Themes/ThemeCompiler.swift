@@ -564,6 +564,7 @@ struct ThemeCompiler {
             }
             \(header) {
               background-color: transparent;
+              background-image: none;
               border-bottom-color: transparent;
               backdrop-filter: none;
               box-shadow: none;
@@ -630,13 +631,7 @@ struct ThemeCompiler {
         let scene = "\(root) \(appShell)::before"
         let overlay = "\(root) \(appShell)::after"
         let main = "\(root) \(profile.selectors.mainSurface)"
-        let readingSurfaces = [profile.selectors.threadScroll, profile.selectors.taskTranscript]
-            .compactMap { $0 }
-            .reduce(into: [String]()) { result, selector in
-                if !result.contains(selector) {
-                    result.append(selector)
-                }
-            }
+        let readingSurfaces = [profile.selectors.threadScroll]
         func readingSurfaceRules(_ declarations: String) -> String {
             readingSurfaces.map { selector in
                 """
@@ -1115,7 +1110,7 @@ struct ThemeCompiler {
         case .center:
             "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 26%, color-mix(in srgb, var(--habitat-surface) 36%, transparent) 60%, transparent 88%)"
         case .none:
-            "linear-gradient(color-mix(in srgb, var(--habitat-surface) 34%, transparent), color-mix(in srgb, var(--habitat-surface) 34%, transparent))"
+            "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent))"
         }
     }
 

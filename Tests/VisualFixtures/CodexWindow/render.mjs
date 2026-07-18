@@ -512,10 +512,11 @@ async function inspectFixturePage(
     assert(finalScrollTop === 0, `task transcript did not restore scrollTop: ${finalScrollTop}`);
   }
 
-  const scene = await page.locator(selectors.appShell).evaluate((node) => {
+  const scene = await page.locator(selectors.appShell).evaluate((node, transcriptSelector) => {
     const artwork = getComputedStyle(node, "::before");
     const overlay = getComputedStyle(node, "::after");
     const sidebar = getComputedStyle(document.querySelector("aside.app-shell-left-panel"));
+    const transcript = getComputedStyle(document.querySelector(transcriptSelector));
     return {
       artworkBackground: artwork.backgroundImage,
       artworkOpacity: Number.parseFloat(artwork.opacity),
@@ -524,8 +525,9 @@ async function inspectFixturePage(
       artworkMask: artwork.maskImage || artwork.webkitMaskImage,
       overlayMask: overlay.maskImage || overlay.webkitMaskImage,
       sidebarBackdropFilter: sidebar.backdropFilter,
+      transcriptBackgroundImage: transcript.backgroundImage,
     };
-  });
+  }, selectors.threadScroll);
   assert(scene.artworkBackground.startsWith('url("data:image/'), "compiled artwork is not installed");
   assert(scene.artworkPosition === "fixed", `artwork position is ${scene.artworkPosition}`);
   assert(scene.artworkSize === "cover", `artwork size is ${scene.artworkSize}`);
@@ -542,6 +544,12 @@ async function inspectFixturePage(
     && scene.overlayMask.includes("linear-gradient")
   );
   assert(bannerFadeValid, "task banner artwork does not fade into the transcript");
+  const taskReadingScrimValid = routeName !== "task" || (
+    taskModeOff
+      ? scene.transcriptBackgroundImage === "none"
+      : scene.transcriptBackgroundImage.includes("gradient")
+  );
+  assert(taskReadingScrimValid, "task reading scrim is not active on the transcript owner");
 
   return {
     styleCount,
@@ -554,6 +562,7 @@ async function inspectFixturePage(
     homeSuggestionMinimumViewportInset: coreBounds.homeSuggestionMinimumViewportInset,
     semanticForegroundsValid: true,
     bannerFadeValid,
+    taskReadingScrimValid,
     taskCanScroll,
     finalScrollTop,
     artworkOpacity: scene.artworkOpacity,
