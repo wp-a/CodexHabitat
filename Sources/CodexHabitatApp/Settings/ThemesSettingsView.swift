@@ -1,6 +1,72 @@
-import AppKit
+import ImageIO
 import ResourceKit
 import SwiftUI
+
+actor ThemePreviewStore {
+    typealias Loader = @Sendable (URL) -> CGImage?
+
+    static let shared = ThemePreviewStore { url in
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return nil
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 480,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    private enum CachedResult {
+        case image(CGImage)
+        case missing
+    }
+
+    private struct Key: Hashable, Sendable {
+        let url: URL
+        let fileSize: Int?
+        let modificationDate: Date?
+
+        init(url: URL) {
+            self.url = url
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+            fileSize = (attributes?[.size] as? NSNumber)?.intValue
+            modificationDate = attributes?[.modificationDate] as? Date
+        }
+    }
+
+    private let loader: Loader
+    private var cache: [Key: CachedResult] = [:]
+
+    init(loader: @escaping Loader) {
+        self.loader = loader
+    }
+
+    func image(at url: URL?) -> CGImage? {
+        guard let url else { return nil }
+        let key = Key(url: url)
+        if let cached = cache[key] {
+            switch cached {
+            case let .image(image):
+                return image
+            case .missing:
+                return nil
+            }
+        }
+
+        let staleKeys = cache.keys.filter { $0.url == url }
+        for staleKey in staleKeys {
+            cache.removeValue(forKey: staleKey)
+        }
+        guard let image = loader(url) else {
+            cache[key] = .missing
+            return nil
+        }
+        cache[key] = .image(image)
+        return image
+    }
+}
 
 struct ThemesSettingsView: View {
     @ObservedObject var model: HabitatAppModel
@@ -234,27 +300,12 @@ struct ThemeChoiceCard: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
-                if let previewURL = theme.previewURL,
-                   let image = NSImage(contentsOf: previewURL) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 100)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                } else {
-                    Rectangle()
-                        .fill(Color(habitatHex: theme.panelHex))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 100)
-                        .overlay {
-                            Image(systemName: theme.symbol)
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundStyle(palette[0])
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
+                ThemePreview(
+                    url: theme.previewURL,
+                    panelColor: Color(habitatHex: theme.panelHex),
+                    symbol: theme.symbol,
+                    symbolColor: palette[0]
+                )
                 HStack {
                     HStack(spacing: 5) {
                         ForEach(Array(palette.enumerated()), id: \.offset) { _, color in
@@ -302,5 +353,40 @@ struct ThemeChoiceCard: View {
             Color(habitatHex: theme.attentionHex),
             Color(habitatHex: theme.errorHex),
         ]
+    }
+}
+
+private struct ThemePreview: View {
+    let url: URL?
+    let panelColor: Color
+    let symbol: String
+    let symbolColor: Color
+    @State private var image: CGImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1, orientation: .up)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Rectangle()
+                    .fill(panelColor)
+                    .overlay {
+                        Image(systemName: symbol)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(symbolColor)
+                    }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 100)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .task(id: url) {
+            let loadedImage = await ThemePreviewStore.shared.image(at: url)
+            guard !Task.isCancelled else { return }
+            image = loadedImage
+        }
     }
 }
