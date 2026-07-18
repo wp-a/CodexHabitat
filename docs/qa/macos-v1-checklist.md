@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 291 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, theme-navigation resource isolation, off-main pet renderer construction, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 305 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image and pet-import bounds, thumbnail cache invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `b37d9588539027ba7a9588387ccd2065b42e959dc706fc72dddbe34c2c607be8`.
+- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `5df5d212003e496b2185643cd93a2284fb0a9b6bce15190c3b7f9efd6b5d6272`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -53,7 +53,7 @@ explicit user action.
 - [x] Pet refresh is capped at 8 Hz active; resting, offline, and Reduce Motion are static.
 - [x] Sprite frames are cropped once and reused by subsequent redraws.
 - [x] Pet sprites decode only the requested thumbnail frame off the main thread and cache both successful and missing results.
-- [x] Selecting a different pet builds and precrops its immutable renderer off the main actor, keeps the current pet visible until publication, and discards cancelled stale results during rapid switching.
+- [x] Selecting a different pet builds and precrops its immutable renderer off the main actor through one serial worker, keeps the current pet visible until publication, prevents overlapping decodes during rapid switching, and discards cancelled stale results.
 - [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
 - [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Build 7 prototype gallery and narrow Theme Studio QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
@@ -70,7 +70,7 @@ explicit user action.
 - [x] Export removes unknown path, user, thread, and token fields and writes mode 0600.
 - [x] Diagnostics rotate after seven days and can be cleared independently of settings/resources.
 - [x] Petdex is opt-in; HTTPS host, redirects, size, license, hash, and content ID are checked.
-- [x] Invalid packages, symlinks, active content, and archive traversal fail before publication.
+- [x] Invalid packages, symlinks, active content, and archive traversal fail before publication. Pet imports additionally bound manifest and image bytes, text/path lengths, single-frame PNG/JPEG/WebP containers, 8192-pixel dimensions, and 32-million-pixel canvases before renderer construction.
 - [x] Official Codex bundle verification is read-only and passes for `26.715.31925` arm64; its narrow profile selectors, official `initialRoute` main-page query, and auxiliary pet renderer were confirmed from a read-only `app.asar` extraction before enabling automated main-renderer health-gate coverage.
 - [x] Session fallback reads file metadata only and exposes an explicit `Local activity estimate` state.
 - [x] Installed Codex `26.707.91948` contains the `codex-theme-v1` Import/Copy shape; Habitat's clipboard encoder matches its required local schema.

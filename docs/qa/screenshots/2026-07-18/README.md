@@ -8,14 +8,16 @@ or helper process existed, and Codex retained PID `23647` and its original
 
 ## Captures
 
-- [`gallery-prototypes.png`](gallery-prototypes.png): wide 1040-point theme
+- [`gallery-prototypes.png`](gallery-prototypes.png): 1152-point theme
   gallery showing the composed whole-window previews for Cathedral Foundry,
   Arcade Signal, Quiet Garden, and the beginning of the blue-glass Retro
-  Messenger row. The Retina capture is 2304 x 1432 including the window shadow.
-- [`retro-framed-preview.png`](retro-framed-preview.png): wide 1040-point
+  Messenger row. The visible Retina window content is 2304 x 1432; the complete
+  PNG is 2528 x 1656 including the macOS capture margin and shadow.
+- [`retro-framed-preview.png`](retro-framed-preview.png): 1108-point
   Nostalgia view showing Retro Messenger 2007 with artwork confined to the
   inset main pane beside its light grouped sidebar. The Retina capture is
-  2216 x 1344 including the window shadow.
+  2440 x 1568 including the macOS capture margin and shadow, with 2216 x 1344
+  of visible window content.
 - [`theme-studio-route-controls.png`](theme-studio-route-controls.png): narrow
   760-point parent with the Studio scrolled to the typed style, density, safe
   side, home treatment, task treatment, and chrome material controls. The
