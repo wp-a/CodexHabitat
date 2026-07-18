@@ -22,6 +22,13 @@ func successfulApplyRestartsOnceChecksLayoutAndWritesPrivateScreenshot() async t
     #expect(fixture.session.startCount == 1)
     #expect(fixture.client.installedTargets == [fixture.target])
     #expect(fixture.client.installedHomeMarkers == ["[data-testid=\"home-icon\"]"])
+    let expectedProfile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: fixture.bundle.version)
+    )
+    #expect(
+        fixture.client.installedAnnotationPlans
+            == [HostSurfaceAnnotationPlan(profile: expectedProfile)]
+    )
     #expect(try Data(contentsOf: screenshotURL) == fixture.client.screenshot)
     let attributes = try FileManager.default.attributesOfItem(atPath: screenshotURL.path)
     #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
@@ -48,6 +55,33 @@ func unhealthyLayoutFailsClosedRemovesStyleStopsSessionAndLaunchesNormally() asy
 }
 
 @Test
+func postInstallHealthFailureCleansBootstrapAndAllowsANewSession() async throws {
+    let fixture = try CoordinatorFixture(postInstallHealthy: false)
+    defer { fixture.cleanup() }
+
+    await #expect(throws: ThemeBridgeCoordinatorError.healthCheckFailed) {
+        _ = try await fixture.coordinator.apply(
+            bundleURL: fixture.bundle.bundleURL,
+            theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+            authorized: true,
+            screenshotURL: nil
+        )
+    }
+
+    #expect(fixture.client.installedTargets == [fixture.target])
+    #expect(fixture.client.removedTargets == [fixture.target])
+    #expect(fixture.session.stopCount == 1)
+    #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+
+    fixture.session.currentStatus = .active(fixture.record)
+    let installed = try await fixture.coordinator.maintain(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil)
+    )
+    #expect(installed == 1)
+}
+
+@Test
 func auxiliaryRendererFailingNativeLayoutIsNeverStyled() async throws {
     let fixture = try CoordinatorFixture()
     defer { fixture.cleanup() }
@@ -64,11 +98,15 @@ func auxiliaryRendererFailingNativeLayoutIsNeverStyled() async throws {
     )
     fixture.client.targets = [auxiliary, fixture.target]
     fixture.client.snapshotsByTargetID[auxiliary.id] = LayoutHealthSnapshot(
+        appShellVisible: false,
         sidebarVisible: false,
         mainSurfaceVisible: false,
+        headerVisible: false,
         composerVisible: false,
         composerAcceptsPointerEvents: false,
+        composerHitTestable: false,
         threadCanScroll: false,
+        requiredSurfaceAnnotationsPresent: false,
         popoversWithinViewport: true,
         controlsWithinViewport: false,
         horizontalOverflowPixels: 0
@@ -147,6 +185,83 @@ func restoreRemovesInjectedStyleStopsExactSessionAndLaunchesOfficialApp() async 
     #expect(fixture.client.removedTargets == [fixture.target])
     #expect(fixture.session.stopCount == 1)
     #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+}
+
+@Test
+func restoreUsesInstallingClientAndClearsMaintenanceState() async throws {
+    let fixture = try CoordinatorFixture(
+        initiallyActive: true,
+        usesFreshClientAfterFirstRequest: true
+    )
+    defer { fixture.cleanup() }
+
+    _ = try await fixture.coordinator.apply(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+        authorized: true,
+        screenshotURL: nil
+    )
+    try await fixture.coordinator.restore(bundleURL: fixture.bundle.bundleURL)
+
+    #expect(fixture.client.removedTargets == [fixture.target])
+    #expect(fixture.freshClient.removedTargets.isEmpty)
+
+    fixture.session.currentStatus = .active(fixture.record)
+    let installed = try await fixture.coordinator.maintain(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil)
+    )
+    #expect(installed == 1)
+}
+
+@Test
+func repeatedApplyReusesTheClientThatOwnsTheBootstrap() async throws {
+    let fixture = try CoordinatorFixture(
+        initiallyActive: true,
+        usesFreshClientAfterFirstRequest: true
+    )
+    defer { fixture.cleanup() }
+
+    for _ in 0..<2 {
+        _ = try await fixture.coordinator.apply(
+            bundleURL: fixture.bundle.bundleURL,
+            theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+            authorized: true,
+            screenshotURL: nil
+        )
+    }
+
+    #expect(fixture.client.installedTargets == [fixture.target, fixture.target])
+    #expect(fixture.freshClient.installedTargets.isEmpty)
+}
+
+@Test
+func failedRemovalAndStopRetainTheInstallingClientForRestoreRetry() async throws {
+    let fixture = try CoordinatorFixture(
+        initiallyActive: true,
+        usesFreshClientAfterFirstRequest: true
+    )
+    defer { fixture.cleanup() }
+    _ = try await fixture.coordinator.apply(
+        bundleURL: fixture.bundle.bundleURL,
+        theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+        authorized: true,
+        screenshotURL: nil
+    )
+    fixture.client.removeFails = true
+    fixture.session.stopFails = true
+
+    await #expect(throws: StubCoordinatorFailure.self) {
+        try await fixture.coordinator.restore(bundleURL: fixture.bundle.bundleURL)
+    }
+
+    fixture.client.removeFails = false
+    fixture.session.stopFails = false
+    try await fixture.coordinator.restore(bundleURL: fixture.bundle.bundleURL)
+
+    #expect(fixture.client.removeAttempts == [fixture.target, fixture.target])
+    #expect(fixture.client.removedTargets == [fixture.target])
+    #expect(fixture.freshClient.removedTargets.isEmpty)
 }
 
 @Test
@@ -264,6 +379,7 @@ private final class CoordinatorFixture {
     let record: SessionRecord
     let session: StubThemeSession
     let client: StubCDPController
+    let freshClient: StubCDPController
     let restarter: StubCodexRestarter
     let coordinator: ThemeBridgeCoordinator
 
@@ -272,7 +388,9 @@ private final class CoordinatorFixture {
         healthy: Bool = true,
         listenerOwned: Bool = true,
         initiallyActive: Bool = false,
-        activeBundleURL: URL? = nil
+        activeBundleURL: URL? = nil,
+        usesFreshClientAfterFirstRequest: Bool = false,
+        postInstallHealthy: Bool? = nil
     ) throws {
         root = FileManager.default.temporaryDirectory.appending(
             path: "ThemeBridgeCoordinatorTests-\(UUID().uuidString)",
@@ -312,11 +430,15 @@ private final class CoordinatorFixture {
         )
         session = StubThemeSession(record: record, initiallyActive: initiallyActive)
         let snapshot = LayoutHealthSnapshot(
+            appShellVisible: healthy,
             sidebarVisible: healthy,
             mainSurfaceVisible: true,
+            headerVisible: true,
             composerVisible: healthy,
             composerAcceptsPointerEvents: healthy,
+            composerHitTestable: healthy,
             threadCanScroll: true,
+            requiredSurfaceAnnotationsPresent: healthy,
             popoversWithinViewport: true,
             controlsWithinViewport: true,
             horizontalOverflowPixels: healthy ? 0 : 20
@@ -326,12 +448,38 @@ private final class CoordinatorFixture {
             snapshot: snapshot,
             screenshot: Data("screenshot".utf8)
         )
+        if postInstallHealthy == false {
+            client.snapshotSequencesByTargetID[target.id] = [
+                snapshot,
+                LayoutHealthSnapshot(
+                    appShellVisible: true,
+                    sidebarVisible: true,
+                    mainSurfaceVisible: true,
+                    headerVisible: true,
+                    composerVisible: true,
+                    composerAcceptsPointerEvents: true,
+                    composerHitTestable: true,
+                    threadCanScroll: true,
+                    requiredSurfaceAnnotationsPresent: false,
+                    popoversWithinViewport: true,
+                    controlsWithinViewport: true,
+                    horizontalOverflowPixels: 0
+                ),
+            ]
+        }
+        freshClient = StubCDPController(
+            targets: [target],
+            snapshot: snapshot,
+            screenshot: Data("fresh screenshot".utf8)
+        )
         restarter = StubCodexRestarter()
         coordinator = ThemeBridgeCoordinator(
             verifier: StubCoordinatorBundleVerifier(bundle: bundle),
             session: session,
             listenerVerifier: StubListenerVerifier(owned: listenerOwned),
-            clientProvider: StubCDPProvider(client: client),
+            clientProvider: StubCDPProvider(
+                clients: usesFreshClientAfterFirstRequest ? [client, freshClient] : [client]
+            ),
             profileStore: try CompatibilityProfileStore.bundled(),
             compiler: try ThemeCompiler.bundled(),
             restarter: restarter,
@@ -352,6 +500,7 @@ private final class StubThemeSession: ThemeSessionManaging, @unchecked Sendable 
     var currentStatus: ThemeSessionStatus
     var startCount = 0
     var stopCount = 0
+    var stopFails = false
 
     init(record: SessionRecord, initiallyActive: Bool) {
         self.record = record
@@ -368,6 +517,7 @@ private final class StubThemeSession: ThemeSessionManaging, @unchecked Sendable 
 
     func stop() throws {
         stopCount += 1
+        if stopFails { throw StubCoordinatorFailure() }
         currentStatus = .inactive
     }
 }
@@ -385,9 +535,13 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     let snapshot: LayoutHealthSnapshot
     let screenshot: Data
     var snapshotsByTargetID: [String: LayoutHealthSnapshot] = [:]
+    var snapshotSequencesByTargetID: [String: [LayoutHealthSnapshot]] = [:]
     var installedTargets: [CDPTarget] = []
     var installedHomeMarkers: [String] = []
+    var installedAnnotationPlans: [HostSurfaceAnnotationPlan] = []
     var removedTargets: [CDPTarget] = []
+    var removeAttempts: [CDPTarget] = []
+    var removeFails = false
     var styledTargetIDs: Set<String> = []
 
     init(targets: [CDPTarget], snapshot: LayoutHealthSnapshot, screenshot: Data) {
@@ -400,28 +554,52 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     func installStyle(
         _ css: String,
         homeMarker: String,
+        annotations: HostSurfaceAnnotationPlan,
         on target: CDPTarget
     ) async throws {
         installedTargets.append(target)
         installedHomeMarkers.append(homeMarker)
+        installedAnnotationPlans.append(annotations)
         styledTargetIDs.insert(target.id)
     }
     func isStyleInstalled(on target: CDPTarget) async throws -> Bool {
         styledTargetIDs.contains(target.id)
     }
-    func removeStyle(from target: CDPTarget) async throws { removedTargets.append(target) }
+    func removeStyle(from target: CDPTarget) async throws {
+        removeAttempts.append(target)
+        if removeFails { throw StubCoordinatorFailure() }
+        removedTargets.append(target)
+        styledTargetIDs.remove(target.id)
+    }
     func healthSnapshot(
         on target: CDPTarget,
         check: LayoutHealthCheck
     ) async throws -> LayoutHealthSnapshot {
-        snapshotsByTargetID[target.id] ?? snapshot
+        if var sequence = snapshotSequencesByTargetID[target.id], !sequence.isEmpty {
+            let next = sequence.removeFirst()
+            snapshotSequencesByTargetID[target.id] = sequence
+            return next
+        }
+        return snapshotsByTargetID[target.id] ?? snapshot
     }
     func captureScreenshot(of target: CDPTarget) async throws -> Data { screenshot }
 }
 
-private struct StubCDPProvider: CDPClientProviding {
-    let client: StubCDPController
-    func client(port: UInt16) -> any CDPControlling { client }
+private struct StubCoordinatorFailure: Error {}
+
+private final class StubCDPProvider: CDPClientProviding, @unchecked Sendable {
+    let clients: [StubCDPController]
+    private var requestCount = 0
+
+    init(clients: [StubCDPController]) {
+        self.clients = clients
+    }
+
+    func client(port: UInt16) -> any CDPControlling {
+        let client = clients[min(requestCount, clients.count - 1)]
+        requestCount += 1
+        return client
+    }
 }
 
 private final class StubCodexRestarter: CodexApplicationRestarting, @unchecked Sendable {

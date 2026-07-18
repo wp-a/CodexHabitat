@@ -32,6 +32,7 @@ actor ThemeBridgeCoordinator {
     private let restarter: any CodexApplicationRestarting
     private let readinessAttempts: Int
     private var maintainedTargetIDs: Set<String> = []
+    private var installingClients: [String: any CDPControlling] = [:]
 
     init(
         verifier: any CodexBundleVerifying,
@@ -77,30 +78,39 @@ actor ThemeBridgeCoordinator {
             case let .active(existing):
                 record = existing
             case .inactive, .stale:
+                resetMaintenanceState()
                 try await restarter.prepareForThemedLaunch(bundle)
                 record = try session.start(bundleURL: bundle.bundleURL, authorized: true)
             }
             guard let record else { throw ThemeBridgeCoordinatorError.restorationFailed }
             let css = try compiler.compile(theme: theme, profile: profile)
-            let healthCheck = LayoutHealthCheck(profile: profile)
+            let preflightHealthCheck = LayoutHealthCheck(
+                profile: profile,
+                requiresSurfaceAnnotations: false
+            )
+            let installedHealthCheck = LayoutHealthCheck(profile: profile)
             let ready = try await waitForReadySession(
                 record,
-                healthCheck: healthCheck
+                healthCheck: preflightHealthCheck
             )
             client = ready.client
             var reports: [LayoutHealthReport] = []
             for target in ready.targets {
-                try await ready.client.installStyle(
+                let installingClient = installingClients[target.id] ?? ready.client
+                try await installingClient.installStyle(
                     css,
                     homeMarker: profile.selectors.homeMarker,
+                    annotations: HostSurfaceAnnotationPlan(profile: profile),
                     on: target
                 )
                 installedTargets.append(target)
+                installingClients[target.id] = installingClient
+                maintainedTargetIDs.insert(target.id)
                 let snapshot = try await ready.client.healthSnapshot(
                     on: target,
-                    check: healthCheck
+                    check: installedHealthCheck
                 )
-                let report = healthCheck.evaluate(snapshot)
+                let report = installedHealthCheck.evaluate(snapshot)
                 reports.append(report)
                 guard report.passed else {
                     throw ThemeBridgeCoordinatorError.healthCheckFailed
@@ -133,8 +143,10 @@ actor ThemeBridgeCoordinator {
         let bundle = try verifier.verify(bundleURL)
         switch session.status() {
         case .stale:
+            resetMaintenanceState()
             throw ThemeBridgeCoordinatorError.staleSession
         case .inactive:
+            resetMaintenanceState()
             try restarter.launchNormally(bundleURL: bundle.bundleURL)
         case let .active(record):
             guard Self.matches(record, bundle: bundle) else {
@@ -144,10 +156,15 @@ actor ThemeBridgeCoordinator {
             if (try? listenerVerifier.verify(port: record.port, owner: record.process)) == true,
                let targets = try? await client.listPageTargets() {
                 for target in targets {
-                    try? await client.removeStyle(from: target)
+                    let installingClient = installingClients[target.id] ?? client
+                    do {
+                        try await installingClient.removeStyle(from: target)
+                        installingClients.removeValue(forKey: target.id)
+                    } catch {}
                 }
             }
             try session.stop()
+            resetMaintenanceState()
             try restarter.launchNormally(bundleURL: bundle.bundleURL)
         }
     }
@@ -176,11 +193,16 @@ actor ThemeBridgeCoordinator {
         }
         let activeIDs = Set(targets.map(\.id))
         maintainedTargetIDs.formIntersection(activeIDs)
+        installingClients = installingClients.filter { activeIDs.contains($0.key) }
         let newTargets = targets.filter { !maintainedTargetIDs.contains($0.id) }
         guard !newTargets.isEmpty else { return 0 }
 
         let css = try compiler.compile(theme: theme, profile: profile)
-        let healthCheck = LayoutHealthCheck(profile: profile)
+        let preflightHealthCheck = LayoutHealthCheck(
+            profile: profile,
+            requiresSurfaceAnnotations: false
+        )
+        let installedHealthCheck = LayoutHealthCheck(profile: profile)
         var installedCount = 0
         for target in newTargets {
             if try await client.isStyleInstalled(on: target) {
@@ -189,20 +211,26 @@ actor ThemeBridgeCoordinator {
             }
             guard let snapshot = try? await client.healthSnapshot(
                 on: target,
-                check: healthCheck
-            ), healthCheck.evaluate(snapshot).passed else {
+                check: preflightHealthCheck
+            ), preflightHealthCheck.evaluate(snapshot).passed else {
                 continue
             }
-            try await client.installStyle(
+            let installingClient = installingClients[target.id] ?? client
+            try await installingClient.installStyle(
                 css,
                 homeMarker: profile.selectors.homeMarker,
+                annotations: HostSurfaceAnnotationPlan(profile: profile),
                 on: target
             )
-            let report = healthCheck.evaluate(
-                try await client.healthSnapshot(on: target, check: healthCheck)
+            installingClients[target.id] = installingClient
+            let report = installedHealthCheck.evaluate(
+                try await client.healthSnapshot(on: target, check: installedHealthCheck)
             )
             guard report.passed else {
-                try? await client.removeStyle(from: target)
+                do {
+                    try await installingClient.removeStyle(from: target)
+                    installingClients.removeValue(forKey: target.id)
+                } catch {}
                 throw ThemeBridgeCoordinatorError.healthCheckFailed
             }
             maintainedTargetIDs.insert(target.id)
@@ -270,15 +298,22 @@ actor ThemeBridgeCoordinator {
     ) async -> Bool {
         if let client {
             for target in targets {
-                try? await client.removeStyle(from: target)
+                let installingClient = installingClients[target.id] ?? client
+                do {
+                    try await installingClient.removeStyle(from: target)
+                    installingClients.removeValue(forKey: target.id)
+                } catch {}
             }
         }
         if record != nil {
             do {
                 try session.stop()
+                resetMaintenanceState()
             } catch {
                 return false
             }
+        } else {
+            resetMaintenanceState()
         }
         do {
             try restarter.launchNormally(bundleURL: bundle.bundleURL)
@@ -298,6 +333,11 @@ actor ThemeBridgeCoordinator {
         )
         try data.write(to: url, options: .atomic)
         try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
+
+    private func resetMaintenanceState() {
+        maintainedTargetIDs.removeAll()
+        installingClients.removeAll()
     }
 
     private static func matches(

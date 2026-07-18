@@ -22,6 +22,72 @@ enum CDPClientError: Error, Equatable {
     case timeout
 }
 
+enum HostSurfaceName: String, Codable, CaseIterable, Hashable, Sendable {
+    case appShell = "app-shell"
+    case sidebar
+    case mainSurface = "main-surface"
+    case header
+    case homeContent = "home-content"
+    case homeSuggestions = "home-suggestions"
+    case selectedNavigation = "selected-navigation"
+    case taskTranscript = "task-transcript"
+    case messageSurface = "message-surface"
+    case codeSurface = "code-surface"
+    case toolSurface = "tool-surface"
+    case composer
+    case popover
+    case sidebarResizeChrome = "sidebar-resize-chrome"
+    case topFade = "top-fade"
+    case bottomFade = "bottom-fade"
+    case stickyBand = "sticky-band"
+    case composerContext = "composer-context"
+}
+
+struct HostSurfaceAnnotation: Codable, Equatable, Hashable, Sendable {
+    let selector: String
+    let surface: HostSurfaceName
+}
+
+struct HostSurfaceAnnotationPlan: Equatable, Sendable {
+    let entries: [HostSurfaceAnnotation]
+
+    init(profile: CompatibilityProfile) {
+        var entries: [HostSurfaceAnnotation] = []
+        var seen: Set<String> = []
+        func append(_ surface: HostSurfaceName, selectors: [String?]) {
+            for selector in selectors.compactMap({ $0 }) where seen.insert(selector).inserted {
+                entries.append(HostSurfaceAnnotation(selector: selector, surface: surface))
+            }
+        }
+
+        append(.appShell, selectors: [profile.selectors.appShell])
+        append(.sidebar, selectors: [profile.selectors.sidebar])
+        append(.mainSurface, selectors: [profile.selectors.mainSurface])
+        append(.header, selectors: [profile.selectors.header])
+        append(.taskTranscript, selectors: [
+            profile.selectors.threadScroll,
+            profile.selectors.taskTranscript,
+        ])
+        append(.composer, selectors: [profile.selectors.composer])
+        append(.popover, selectors: [profile.selectors.popover])
+        append(.homeContent, selectors: [profile.selectors.homeContent])
+        append(.homeSuggestions, selectors: [profile.selectors.homeSuggestions])
+        append(.selectedNavigation, selectors: [profile.selectors.selectedNavigation])
+        append(.messageSurface, selectors: [profile.selectors.messageSurface])
+        append(.codeSurface, selectors: [profile.selectors.codeSurface])
+        append(
+            .toolSurface,
+            selectors: (profile.selectors.toolSurfaces ?? []).map(Optional.some)
+        )
+        append(.sidebarResizeChrome, selectors: [profile.selectors.sidebarResizeChrome])
+        append(.topFade, selectors: [profile.selectors.topFade])
+        append(.bottomFade, selectors: [profile.selectors.bottomFade])
+        append(.stickyBand, selectors: [profile.selectors.stickyBand])
+        append(.composerContext, selectors: [profile.selectors.composerContext])
+        self.entries = entries
+    }
+}
+
 actor CDPClient {
     private let port: UInt16
     private let validator: CDPTargetValidator
@@ -70,6 +136,7 @@ actor CDPClient {
     func installStyle(
         _ css: String,
         homeMarker: String,
+        annotations: HostSurfaceAnnotationPlan,
         on target: CDPTarget
     ) async throws {
         _ = try validator.validate(target)
@@ -84,6 +151,7 @@ actor CDPClient {
         let expression = Self.styleInstallerExpression(
             css: css,
             homeMarker: homeMarker,
+            annotations: annotations,
             reportsResult: true
         )
         _ = try await evaluate(expression, on: target)
@@ -93,6 +161,7 @@ actor CDPClient {
                 "source": Self.styleInstallerExpression(
                     css: css,
                     homeMarker: homeMarker,
+                    annotations: annotations,
                     reportsResult: false
                 ),
             ],
@@ -121,13 +190,17 @@ actor CDPClient {
     private static func styleInstallerExpression(
         css: String,
         homeMarker: String,
+        annotations: HostSurfaceAnnotationPlan,
         reportsResult: Bool
     ) -> String {
         let cssLiteral = javaScriptString(css)
         let homeMarkerLiteral = javaScriptString(homeMarker)
+        let annotationLiteral = javaScriptJSON(annotations.entries)
         return """
         (() => {
           const homeMarker = \(homeMarkerLiteral);
+          const surfaceEntries = \(annotationLiteral);
+          const surfaceAttribute = "data-codex-habitat-surface";
           const clearPendingInstall = () => {
             const handler = globalThis.__codexHabitatDOMContentLoadedHandler;
             if (handler !== undefined) {
@@ -142,13 +215,38 @@ actor CDPClient {
               document.documentElement.setAttribute("data-codex-habitat-route", route);
             }
           };
+          const updateSurfaces = () => {
+            const previous = globalThis.__codexHabitatAnnotatedSurfaces instanceof Set
+              ? globalThis.__codexHabitatAnnotatedSurfaces
+              : new Set();
+            const next = new Set();
+            for (const entry of surfaceEntries) {
+              for (const node of document.querySelectorAll(entry.selector)) {
+                if (next.has(node)) continue;
+                const currentSurface = node.getAttribute(surfaceAttribute);
+                if (currentSurface !== entry.surface) {
+                  node.setAttribute(surfaceAttribute, entry.surface);
+                }
+                next.add(node);
+              }
+            }
+            for (const node of previous) {
+              if (!next.has(node)) node.removeAttribute(surfaceAttribute);
+            }
+            globalThis.__codexHabitatAnnotatedSurfaces = next;
+          };
+          const updateHostState = () => {
+            updateRoute();
+            updateSurfaces();
+          };
           const scheduleRouteUpdate = () => {
             if (globalThis.__codexHabitatRouteTimer !== undefined) {
               return;
             }
+            updateHostState();
             globalThis.__codexHabitatRouteTimer = setTimeout(() => {
               delete globalThis.__codexHabitatRouteTimer;
-              updateRoute();
+              updateHostState();
             }, 120);
           };
           const install = () => {
@@ -162,7 +260,7 @@ actor CDPClient {
             }
             style.textContent = \(cssLiteral);
             document.documentElement.setAttribute("data-codex-habitat-theme", "1");
-            updateRoute();
+            updateHostState();
             globalThis.__codexHabitatThemeObserver?.disconnect();
             const observer = new MutationObserver(() => {
               if (!document.getElementById(id)) install();
@@ -232,6 +330,13 @@ actor CDPClient {
             clearTimeout(globalThis.__codexHabitatRouteTimer);
             delete globalThis.__codexHabitatRouteTimer;
           }
+          const annotatedSurfaces = globalThis.__codexHabitatAnnotatedSurfaces;
+          if (annotatedSurfaces instanceof Set) {
+            for (const node of annotatedSurfaces) {
+              node.removeAttribute("data-codex-habitat-surface");
+            }
+          }
+          delete globalThis.__codexHabitatAnnotatedSurfaces;
           document.getElementById("codex-habitat-theme-style")?.remove();
           document.documentElement.removeAttribute("data-codex-habitat-theme");
           document.documentElement.removeAttribute("data-codex-habitat-route");
@@ -321,6 +426,15 @@ actor CDPClient {
         let encoded = data.flatMap { String(data: $0, encoding: .utf8) } ?? "[\"\"]"
         return String(encoded.dropFirst().dropLast())
     }
+
+    private static func javaScriptJSON<T: Encodable>(_ value: T) -> String {
+        guard let data = try? JSONEncoder().encode(value),
+              let encoded = String(data: data, encoding: .utf8)
+        else {
+            return "[]"
+        }
+        return encoded
+    }
 }
 
 protocol CDPControlling: Sendable {
@@ -328,6 +442,7 @@ protocol CDPControlling: Sendable {
     func installStyle(
         _ css: String,
         homeMarker: String,
+        annotations: HostSurfaceAnnotationPlan,
         on target: CDPTarget
     ) async throws
     func isStyleInstalled(on target: CDPTarget) async throws -> Bool

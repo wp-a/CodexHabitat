@@ -141,10 +141,15 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     let transport = StubCDPTransport(listData: Data("[]".utf8))
     let client = CDPClient(port: 55_000, transport: transport)
     let css = "html::before { content: \"</style><script>blocked()</script>\"; }"
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+    let annotations = HostSurfaceAnnotationPlan(profile: profile)
 
     try await client.installStyle(
         css,
         homeMarker: "[data-testid=\"home-icon\"]",
+        annotations: annotations,
         on: target
     )
     try await client.removeStyle(from: target)
@@ -185,6 +190,27 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(source.contains("new MutationObserver(scheduleRouteUpdate)"))
     #expect(source.contains("setTimeout"))
     #expect(source.contains("120"))
+    #expect(source.contains("__codexHabitatAnnotatedSurfaces"))
+    #expect(source.contains("data-codex-habitat-surface"))
+    #expect(source.contains("document.querySelectorAll(entry.selector)"))
+    #expect(source.components(separatedBy: "document.querySelectorAll(").count - 1 == 1)
+    #expect(source.contains("if (next.has(node)) continue"))
+    #expect(source.components(separatedBy: "new MutationObserver").count - 1 == 2)
+    #expect(source.components(separatedBy: "setTimeout(").count - 1 == 1)
+    #expect(source.contains("attributes: false"))
+    let annotationAssignment = try #require(
+        source.split(separator: "\n").first { $0.contains("const surfaceEntries = ") }
+    )
+    let annotationJSON = annotationAssignment
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .dropFirst("const surfaceEntries = ".count)
+        .dropLast()
+    let decodedAnnotations = try JSONDecoder().decode(
+        [HostSurfaceAnnotation].self,
+        from: Data(annotationJSON.utf8)
+    )
+    #expect(decodedAnnotations == annotations.entries)
+    #expect(!annotations.entries.map(\.selector).contains(profile.selectors.homeMarker))
     let schedulerStart = try #require(
         source.range(of: "const scheduleRouteUpdate = () => {")
     )
@@ -201,11 +227,19 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
             }
         """))
     #expect(!scheduler.contains("clearTimeout("))
+    #expect(scheduler.components(separatedBy: "updateHostState();").count == 3)
     #expect(source.contains("if (currentRoute !== route)"))
+    #expect(source.contains("if (currentSurface !== entry.surface)"))
     #expect(source.contains("data-codex-habitat-route"))
     #expect(source.contains("[data-testid=\\\"home-icon\\\"]"))
     #expect(!source.contains("innerText"))
     #expect(!source.contains("innerHTML"))
+    #expect(!source.contains("textContent;"))
+    #expect(!source.contains(".href"))
+    #expect(!source.contains("prompt"))
+    #expect(!source.contains("response"))
+    #expect(!source.contains("project"))
+    #expect(!source.contains("user"))
     #expect(source.contains("blocked()"))
     #expect(!source.contains("</style><script>"))
 
@@ -227,7 +261,24 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(removalExpression.contains("removeEventListener(\"DOMContentLoaded\""))
     #expect(removalExpression.contains("clearTimeout"))
     #expect(removalExpression.contains("data-codex-habitat-route"))
+    #expect(removalExpression.contains("__codexHabitatAnnotatedSurfaces"))
+    #expect(removalExpression.contains("data-codex-habitat-surface"))
     #expect(removalExpression.contains("removeAttribute"))
+}
+
+@Test
+func annotationPlanUsesOnlyProfileSelectorsAndFixedSurfaceNames() throws {
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+
+    let plan = HostSurfaceAnnotationPlan(profile: profile)
+
+    #expect(!plan.entries.isEmpty)
+    #expect(Set(plan.entries.map(\.selector)).isSubset(of: Set(profile.selectors.allSelectors)))
+    #expect(!plan.entries.map(\.selector).contains(profile.selectors.homeMarker))
+    #expect(Set(plan.entries.map(\.surface)).isSubset(of: Set(HostSurfaceName.allCases)))
+    #expect(plan.entries.map(\.selector).count == Set(plan.entries.map(\.selector)).count)
 }
 
 @Test
@@ -236,8 +287,22 @@ func reinstallingAStyleReplacesThePreviousNavigationBootstrap() async throws {
     let transport = StubCDPTransport(listData: Data("[]".utf8))
     let client = CDPClient(port: 55_000, transport: transport)
 
-    try await client.installStyle("body { color: red; }", homeMarker: "main", on: target)
-    try await client.installStyle("body { color: blue; }", homeMarker: "main", on: target)
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+    let annotations = HostSurfaceAnnotationPlan(profile: profile)
+    try await client.installStyle(
+        "body { color: red; }",
+        homeMarker: "main",
+        annotations: annotations,
+        on: target
+    )
+    try await client.installStyle(
+        "body { color: blue; }",
+        homeMarker: "main",
+        annotations: annotations,
+        on: target
+    )
 
     #expect(transport.messages.count == 5)
     let methods = try transport.messages.map { message in
@@ -259,11 +324,15 @@ func reinstallingAStyleReplacesThePreviousNavigationBootstrap() async throws {
 func healthSnapshotAndScreenshotAreDecodedFromCDPValues() async throws {
     let target = validTarget()
     let snapshot = LayoutHealthSnapshot(
+        appShellVisible: true,
         sidebarVisible: true,
         mainSurfaceVisible: true,
+        headerVisible: true,
         composerVisible: true,
         composerAcceptsPointerEvents: true,
+        composerHitTestable: true,
         threadCanScroll: true,
+        requiredSurfaceAnnotationsPresent: true,
         popoversWithinViewport: true,
         controlsWithinViewport: true,
         horizontalOverflowPixels: 0
