@@ -164,7 +164,17 @@
         "taskStrength": {"type": "number", "minimum": 0.10, "maximum": 0.85},
         "sidebarOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
         "headerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
-        "composerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0}
+        "composerOpacity": {"type": "number", "minimum": 0.40, "maximum": 1.0},
+        "homeArtFocus": {"$ref": "#/$defs/themeFocalPoint"},
+        "taskArtFocus": {"$ref": "#/$defs/themeFocalPoint"},
+        "homeArtScale": {"type": "number", "minimum": 1.0, "maximum": 1.35},
+        "taskArtScale": {"type": "number", "minimum": 1.0, "maximum": 1.35},
+        "taskSidebarOpacity": {"type": "number", "minimum": 0.54, "maximum": 0.90},
+        "taskHeaderOpacity": {"type": "number", "minimum": 0.54, "maximum": 0.90},
+        "homeContentOpacity": {"type": "number", "minimum": 0.40, "maximum": 0.78},
+        "taskContentOpacity": {"type": "number", "minimum": 0.60, "maximum": 0.84},
+        "homeContentWidth": {"type": "number", "minimum": 0.46, "maximum": 0.68},
+        "vignetteStrength": {"type": "number", "minimum": 0.0, "maximum": 0.70}
       }
     },
     "resource": {

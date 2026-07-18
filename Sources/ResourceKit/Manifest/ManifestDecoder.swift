@@ -49,6 +49,9 @@ private enum ManifestShapeValidator {
                 "backgroundStrength", "panelOpacity", "blurRadius", "density",
                 "homeMode", "taskMode", "chromeMaterial", "homeStrength",
                 "taskStrength", "sidebarOpacity", "headerOpacity", "composerOpacity",
+                "homeArtFocus", "taskArtFocus", "homeArtScale", "taskArtScale",
+                "taskSidebarOpacity", "taskHeaderOpacity", "homeContentOpacity",
+                "taskContentOpacity", "homeContentWidth", "vignetteStrength",
             ],
             path: "$.theme"
         )
@@ -57,6 +60,16 @@ private enum ManifestShapeValidator {
                 theme["artFocus"],
                 allowed: ["x", "y"],
                 path: "$.theme.artFocus"
+            )
+            try validateObject(
+                theme["homeArtFocus"],
+                allowed: ["x", "y"],
+                path: "$.theme.homeArtFocus"
+            )
+            try validateObject(
+                theme["taskArtFocus"],
+                allowed: ["x", "y"],
+                path: "$.theme.taskArtFocus"
             )
         }
 

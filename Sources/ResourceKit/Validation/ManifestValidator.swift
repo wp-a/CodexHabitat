@@ -158,6 +158,17 @@ public struct ManifestValidator: Sendable {
         else {
             throw ManifestValidationError.numericOutOfRange("theme.artFocus")
         }
+        for (name, focus) in [
+            ("homeArtFocus", theme.homeArtFocus),
+            ("taskArtFocus", theme.taskArtFocus),
+        ] {
+            guard focus.map({
+                $0.x.isFinite && $0.y.isFinite
+                    && (0...1).contains($0.x) && (0...1).contains($0.y)
+            }) != false else {
+                throw ManifestValidationError.numericOutOfRange("theme.\(name)")
+            }
+        }
         guard theme.backgroundStrength.isFinite,
               (0.10...0.70).contains(theme.backgroundStrength)
         else {
@@ -187,6 +198,20 @@ public struct ManifestValidator: Sendable {
             ("composerOpacity", theme.composerOpacity),
         ] {
             guard value.map({ $0.isFinite && (0.40...1.0).contains($0) }) != false else {
+                throw ManifestValidationError.numericOutOfRange("theme.\(name)")
+            }
+        }
+        for (name, value, range) in [
+            ("homeArtScale", theme.homeArtScale, 1.00...1.35),
+            ("taskArtScale", theme.taskArtScale, 1.00...1.35),
+            ("taskSidebarOpacity", theme.taskSidebarOpacity, 0.54...0.90),
+            ("taskHeaderOpacity", theme.taskHeaderOpacity, 0.54...0.90),
+            ("homeContentOpacity", theme.homeContentOpacity, 0.40...0.78),
+            ("taskContentOpacity", theme.taskContentOpacity, 0.60...0.84),
+            ("homeContentWidth", theme.homeContentWidth, 0.46...0.68),
+            ("vignetteStrength", theme.vignetteStrength, 0.00...0.70),
+        ] {
+            guard value.map({ $0.isFinite && range.contains($0) }) != false else {
                 throw ManifestValidationError.numericOutOfRange("theme.\(name)")
             }
         }

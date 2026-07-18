@@ -146,7 +146,7 @@ resolvedTaskArtScale = taskArtScale ?? 1.0
 resolvedTaskSidebarOpacity = taskSidebarOpacity ?? max(resolvedSidebarOpacity, 0.68)
 resolvedTaskHeaderOpacity = taskHeaderOpacity ?? max(resolvedHeaderOpacity, 0.60)
 resolvedHomeContentOpacity = homeContentOpacity ?? min(panelOpacity, 0.66)
-resolvedTaskContentOpacity = taskContentOpacity ?? max(panelOpacity, 0.68)
+resolvedTaskContentOpacity = taskContentOpacity ?? min(max(panelOpacity, 0.68), 0.84)
 resolvedHomeContentWidth = homeContentWidth ?? 0.56
 resolvedVignetteStrength = vignetteStrength ?? 0.34
 ```

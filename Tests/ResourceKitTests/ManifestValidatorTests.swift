@@ -66,6 +66,16 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
     #expect(manifest.theme?.resolvedSidebarOpacity == 0.74)
     #expect(manifest.theme?.resolvedHeaderOpacity == 0.68)
     #expect(manifest.theme?.resolvedComposerOpacity == 0.82)
+    #expect(manifest.theme?.resolvedHomeArtFocus == HabitatThemeFocalPoint(x: 0.76, y: 0.38))
+    #expect(manifest.theme?.resolvedTaskArtFocus == HabitatThemeFocalPoint(x: 0.64, y: 0.30))
+    #expect(manifest.theme?.resolvedHomeArtScale == 1.18)
+    #expect(manifest.theme?.resolvedTaskArtScale == 1.08)
+    #expect(manifest.theme?.resolvedTaskSidebarOpacity == 0.76)
+    #expect(manifest.theme?.resolvedTaskHeaderOpacity == 0.70)
+    #expect(manifest.theme?.resolvedHomeContentOpacity == 0.58)
+    #expect(manifest.theme?.resolvedTaskContentOpacity == 0.72)
+    #expect(manifest.theme?.resolvedHomeContentWidth == 0.52)
+    #expect(manifest.theme?.resolvedVignetteStrength == 0.44)
 
     let legacyManifest = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
         try mutatedValidManifest {
@@ -73,6 +83,9 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
             for key in [
                 "homeMode", "taskMode", "chromeMaterial", "homeStrength",
                 "taskStrength", "sidebarOpacity", "headerOpacity", "composerOpacity",
+                "homeArtFocus", "taskArtFocus", "homeArtScale", "taskArtScale",
+                "taskSidebarOpacity", "taskHeaderOpacity", "homeContentOpacity",
+                "taskContentOpacity", "homeContentWidth", "vignetteStrength",
             ] {
                 theme.removeValue(forKey: key)
             }
@@ -84,6 +97,16 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
     #expect(legacyManifest.theme?.resolvedSidebarOpacity == 0.88)
     #expect(legacyManifest.theme?.resolvedHeaderOpacity == 0.88)
     #expect(legacyManifest.theme?.resolvedComposerOpacity == 0.88)
+    #expect(legacyManifest.theme?.resolvedHomeArtFocus == HabitatThemeFocalPoint(x: 0.72, y: 0.42))
+    #expect(legacyManifest.theme?.resolvedTaskArtFocus == HabitatThemeFocalPoint(x: 0.72, y: 0.42))
+    #expect(legacyManifest.theme?.resolvedHomeArtScale == 1.0)
+    #expect(legacyManifest.theme?.resolvedTaskArtScale == 1.0)
+    #expect(legacyManifest.theme?.resolvedTaskSidebarOpacity == 0.88)
+    #expect(legacyManifest.theme?.resolvedTaskHeaderOpacity == 0.88)
+    #expect(legacyManifest.theme?.resolvedHomeContentOpacity == 0.66)
+    #expect(legacyManifest.theme?.resolvedTaskContentOpacity == 0.84)
+    #expect(legacyManifest.theme?.resolvedHomeContentWidth == 0.56)
+    #expect(legacyManifest.theme?.resolvedVignetteStrength == 0.34)
 
     for (key, value) in [
         ("category", "unknownCategory"),
@@ -122,6 +145,22 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
         ("headerOpacity", 1.01),
         ("composerOpacity", 0.39),
         ("composerOpacity", 1.01),
+        ("homeArtScale", 0.99),
+        ("homeArtScale", 1.36),
+        ("taskArtScale", 0.99),
+        ("taskArtScale", 1.36),
+        ("taskSidebarOpacity", 0.53),
+        ("taskSidebarOpacity", 0.91),
+        ("taskHeaderOpacity", 0.53),
+        ("taskHeaderOpacity", 0.91),
+        ("homeContentOpacity", 0.39),
+        ("homeContentOpacity", 0.79),
+        ("taskContentOpacity", 0.59),
+        ("taskContentOpacity", 0.85),
+        ("homeContentWidth", 0.45),
+        ("homeContentWidth", 0.69),
+        ("vignetteStrength", -0.01),
+        ("vignetteStrength", 0.71),
     ] {
         #expect(throws: (any Error).self, "Expected \(key)=\(value) to fail") {
             try ManifestDecoder(runtimeVersion: "1.0.0").decode(
@@ -131,6 +170,22 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
                     $0["theme"] = theme
                 }
             )
+        }
+    }
+
+    for focusKey in ["homeArtFocus", "taskArtFocus"] {
+        for (axis, value) in [("x", -0.01), ("x", 1.01), ("y", -0.01), ("y", 1.01)] {
+            #expect(throws: (any Error).self, "Expected \(focusKey).\(axis)=\(value) to fail") {
+                try ManifestDecoder(runtimeVersion: "1.0.0").decode(
+                    try mutatedValidManifest {
+                        var theme = validThemeObject()
+                        var focus = theme[focusKey] as? [String: Any] ?? [:]
+                        focus[axis] = value
+                        theme[focusKey] = focus
+                        $0["theme"] = theme
+                    }
+                )
+            }
         }
     }
 
@@ -342,6 +397,24 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     let sidebarOpacity = try #require(themeProperties["sidebarOpacity"] as? [String: Any])
     let headerOpacity = try #require(themeProperties["headerOpacity"] as? [String: Any])
     let composerOpacity = try #require(themeProperties["composerOpacity"] as? [String: Any])
+    let homeArtFocus = try #require(themeProperties["homeArtFocus"] as? [String: Any])
+    let taskArtFocus = try #require(themeProperties["taskArtFocus"] as? [String: Any])
+    let homeArtScale = try #require(themeProperties["homeArtScale"] as? [String: Any])
+    let taskArtScale = try #require(themeProperties["taskArtScale"] as? [String: Any])
+    let taskSidebarOpacity = try #require(
+        themeProperties["taskSidebarOpacity"] as? [String: Any]
+    )
+    let taskHeaderOpacity = try #require(
+        themeProperties["taskHeaderOpacity"] as? [String: Any]
+    )
+    let homeContentOpacity = try #require(
+        themeProperties["homeContentOpacity"] as? [String: Any]
+    )
+    let taskContentOpacity = try #require(
+        themeProperties["taskContentOpacity"] as? [String: Any]
+    )
+    let homeContentWidth = try #require(themeProperties["homeContentWidth"] as? [String: Any])
+    let vignetteStrength = try #require(themeProperties["vignetteStrength"] as? [String: Any])
 
     #expect(schema["additionalProperties"] as? Bool == false)
     #expect((properties["schemaVersion"] as? [String: Any])?["const"] as? Int == 1)
@@ -368,6 +441,24 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
         #expect(field["minimum"] as? Double == 0.40)
         #expect(field["maximum"] as? Double == 1.0)
     }
+    #expect(homeArtFocus["$ref"] as? String == "#/$defs/themeFocalPoint")
+    #expect(taskArtFocus["$ref"] as? String == "#/$defs/themeFocalPoint")
+    for field in [homeArtScale, taskArtScale] {
+        #expect(field["minimum"] as? Double == 1.0)
+        #expect(field["maximum"] as? Double == 1.35)
+    }
+    for field in [taskSidebarOpacity, taskHeaderOpacity] {
+        #expect(field["minimum"] as? Double == 0.54)
+        #expect(field["maximum"] as? Double == 0.90)
+    }
+    #expect(homeContentOpacity["minimum"] as? Double == 0.40)
+    #expect(homeContentOpacity["maximum"] as? Double == 0.78)
+    #expect(taskContentOpacity["minimum"] as? Double == 0.60)
+    #expect(taskContentOpacity["maximum"] as? Double == 0.84)
+    #expect(homeContentWidth["minimum"] as? Double == 0.46)
+    #expect(homeContentWidth["maximum"] as? Double == 0.68)
+    #expect(vignetteStrength["minimum"] as? Double == 0.0)
+    #expect(vignetteStrength["maximum"] as? Double == 0.70)
 }
 
 private func validManifestData() throws -> Data {
@@ -409,5 +500,15 @@ private func validThemeObject() -> [String: Any] {
         "sidebarOpacity": 0.74,
         "headerOpacity": 0.68,
         "composerOpacity": 0.82,
+        "homeArtFocus": ["x": 0.76, "y": 0.38],
+        "taskArtFocus": ["x": 0.64, "y": 0.30],
+        "homeArtScale": 1.18,
+        "taskArtScale": 1.08,
+        "taskSidebarOpacity": 0.76,
+        "taskHeaderOpacity": 0.70,
+        "homeContentOpacity": 0.58,
+        "taskContentOpacity": 0.72,
+        "homeContentWidth": 0.52,
+        "vignetteStrength": 0.44,
     ]
 }

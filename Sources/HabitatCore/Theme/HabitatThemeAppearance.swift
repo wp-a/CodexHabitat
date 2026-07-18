@@ -91,6 +91,16 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
     public let sidebarOpacity: Double?
     public let headerOpacity: Double?
     public let composerOpacity: Double?
+    public let homeArtFocus: HabitatThemeFocalPoint?
+    public let taskArtFocus: HabitatThemeFocalPoint?
+    public let homeArtScale: Double?
+    public let taskArtScale: Double?
+    public let taskSidebarOpacity: Double?
+    public let taskHeaderOpacity: Double?
+    public let homeContentOpacity: Double?
+    public let taskContentOpacity: Double?
+    public let homeContentWidth: Double?
+    public let vignetteStrength: Double?
 
     public init(
         category: HabitatThemeCategory,
@@ -109,7 +119,17 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
         taskStrength: Double? = nil,
         sidebarOpacity: Double? = nil,
         headerOpacity: Double? = nil,
-        composerOpacity: Double? = nil
+        composerOpacity: Double? = nil,
+        homeArtFocus: HabitatThemeFocalPoint? = nil,
+        taskArtFocus: HabitatThemeFocalPoint? = nil,
+        homeArtScale: Double? = nil,
+        taskArtScale: Double? = nil,
+        taskSidebarOpacity: Double? = nil,
+        taskHeaderOpacity: Double? = nil,
+        homeContentOpacity: Double? = nil,
+        taskContentOpacity: Double? = nil,
+        homeContentWidth: Double? = nil,
+        vignetteStrength: Double? = nil
     ) {
         self.category = category
         self.styleFamily = styleFamily
@@ -128,6 +148,16 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
         self.sidebarOpacity = sidebarOpacity
         self.headerOpacity = headerOpacity
         self.composerOpacity = composerOpacity
+        self.homeArtFocus = homeArtFocus
+        self.taskArtFocus = taskArtFocus
+        self.homeArtScale = homeArtScale
+        self.taskArtScale = taskArtScale
+        self.taskSidebarOpacity = taskSidebarOpacity
+        self.taskHeaderOpacity = taskHeaderOpacity
+        self.homeContentOpacity = homeContentOpacity
+        self.taskContentOpacity = taskContentOpacity
+        self.homeContentWidth = homeContentWidth
+        self.vignetteStrength = vignetteStrength
     }
 
     public var resolvedHomeMode: HabitatThemeHomeMode { homeMode ?? .quiet }
@@ -140,4 +170,24 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
     public var resolvedSidebarOpacity: Double { sidebarOpacity ?? panelOpacity }
     public var resolvedHeaderOpacity: Double { headerOpacity ?? panelOpacity }
     public var resolvedComposerOpacity: Double { composerOpacity ?? panelOpacity }
+    public var resolvedHomeArtFocus: HabitatThemeFocalPoint { homeArtFocus ?? artFocus }
+    public var resolvedTaskArtFocus: HabitatThemeFocalPoint { taskArtFocus ?? artFocus }
+    public var resolvedHomeArtScale: Double {
+        homeArtScale ?? (resolvedHomeMode == .immersive ? 1.08 : 1.0)
+    }
+    public var resolvedTaskArtScale: Double { taskArtScale ?? 1.0 }
+    public var resolvedTaskSidebarOpacity: Double {
+        taskSidebarOpacity ?? min(max(resolvedSidebarOpacity, 0.68), 0.90)
+    }
+    public var resolvedTaskHeaderOpacity: Double {
+        taskHeaderOpacity ?? min(max(resolvedHeaderOpacity, 0.60), 0.90)
+    }
+    public var resolvedHomeContentOpacity: Double {
+        homeContentOpacity ?? min(panelOpacity, 0.66)
+    }
+    public var resolvedTaskContentOpacity: Double {
+        taskContentOpacity ?? min(max(panelOpacity, 0.68), 0.84)
+    }
+    public var resolvedHomeContentWidth: Double { homeContentWidth ?? 0.56 }
+    public var resolvedVignetteStrength: Double { vignetteStrength ?? 0.34 }
 }

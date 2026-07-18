@@ -50,7 +50,17 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
         taskStrength: 0.34,
         sidebarOpacity: 0.78,
         headerOpacity: 0.69,
-        composerOpacity: 0.92
+        composerOpacity: 0.92,
+        homeArtFocus: HabitatThemeFocalPoint(x: 0.78, y: 0.36),
+        taskArtFocus: HabitatThemeFocalPoint(x: 0.68, y: 0.30),
+        homeArtScale: 1.20,
+        taskArtScale: 1.08,
+        taskSidebarOpacity: 0.76,
+        taskHeaderOpacity: 0.70,
+        homeContentOpacity: 0.56,
+        taskContentOpacity: 0.72,
+        homeContentWidth: 0.52,
+        vignetteStrength: 0.46
     )
 
     let result = try builder.build(request, to: archive)
@@ -67,6 +77,16 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
     #expect(result.manifest.theme?.sidebarOpacity == 0.78)
     #expect(result.manifest.theme?.headerOpacity == 0.69)
     #expect(result.manifest.theme?.composerOpacity == 0.92)
+    #expect(result.manifest.theme?.homeArtFocus == HabitatThemeFocalPoint(x: 0.78, y: 0.36))
+    #expect(result.manifest.theme?.taskArtFocus == HabitatThemeFocalPoint(x: 0.68, y: 0.30))
+    #expect(result.manifest.theme?.homeArtScale == 1.20)
+    #expect(result.manifest.theme?.taskArtScale == 1.08)
+    #expect(result.manifest.theme?.taskSidebarOpacity == 0.76)
+    #expect(result.manifest.theme?.taskHeaderOpacity == 0.70)
+    #expect(result.manifest.theme?.homeContentOpacity == 0.56)
+    #expect(result.manifest.theme?.taskContentOpacity == 0.72)
+    #expect(result.manifest.theme?.homeContentWidth == 0.52)
+    #expect(result.manifest.theme?.vignetteStrength == 0.46)
     #expect(result.manifest.license.spdx == "LicenseRef-Codex-Habitat-User-Content")
     #expect(try ArchiveInspector().inspect(archive).entries.map(\.path).sorted() == [
         "LICENSE", "background.jpg", "habitat.json", "preview.png",

@@ -165,6 +165,46 @@ private func catalogAppearanceMismatches(
     appendMismatch("theme.sidebarOpacity", expected.sidebarOpacity, actual.sidebarOpacity, to: &mismatches)
     appendMismatch("theme.headerOpacity", expected.headerOpacity, actual.headerOpacity, to: &mismatches)
     appendMismatch("theme.composerOpacity", expected.composerOpacity, actual.composerOpacity, to: &mismatches)
+    appendMismatch("theme.homeArtFocus", expected.homeArtFocus, actual.homeArtFocus, to: &mismatches)
+    appendMismatch("theme.taskArtFocus", expected.taskArtFocus, actual.taskArtFocus, to: &mismatches)
+    appendMismatch("theme.homeArtScale", expected.homeArtScale, actual.homeArtScale, to: &mismatches)
+    appendMismatch("theme.taskArtScale", expected.taskArtScale, actual.taskArtScale, to: &mismatches)
+    appendMismatch(
+        "theme.taskSidebarOpacity",
+        expected.taskSidebarOpacity,
+        actual.taskSidebarOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.taskHeaderOpacity",
+        expected.taskHeaderOpacity,
+        actual.taskHeaderOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.homeContentOpacity",
+        expected.homeContentOpacity,
+        actual.homeContentOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.taskContentOpacity",
+        expected.taskContentOpacity,
+        actual.taskContentOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.homeContentWidth",
+        expected.homeContentWidth,
+        actual.homeContentWidth,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.vignetteStrength",
+        expected.vignetteStrength,
+        actual.vignetteStrength,
+        to: &mismatches
+    )
     appendMismatch(
         "theme.resolvedHomeMode",
         expected.resolvedHomeMode,
@@ -211,6 +251,66 @@ private func catalogAppearanceMismatches(
         "theme.resolvedComposerOpacity",
         expected.resolvedComposerOpacity,
         actual.resolvedComposerOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedHomeArtFocus",
+        expected.resolvedHomeArtFocus,
+        actual.resolvedHomeArtFocus,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskArtFocus",
+        expected.resolvedTaskArtFocus,
+        actual.resolvedTaskArtFocus,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedHomeArtScale",
+        expected.resolvedHomeArtScale,
+        actual.resolvedHomeArtScale,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskArtScale",
+        expected.resolvedTaskArtScale,
+        actual.resolvedTaskArtScale,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskSidebarOpacity",
+        expected.resolvedTaskSidebarOpacity,
+        actual.resolvedTaskSidebarOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskHeaderOpacity",
+        expected.resolvedTaskHeaderOpacity,
+        actual.resolvedTaskHeaderOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedHomeContentOpacity",
+        expected.resolvedHomeContentOpacity,
+        actual.resolvedHomeContentOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedTaskContentOpacity",
+        expected.resolvedTaskContentOpacity,
+        actual.resolvedTaskContentOpacity,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedHomeContentWidth",
+        expected.resolvedHomeContentWidth,
+        actual.resolvedHomeContentWidth,
+        to: &mismatches
+    )
+    appendMismatch(
+        "theme.resolvedVignetteStrength",
+        expected.resolvedVignetteStrength,
+        actual.resolvedVignetteStrength,
         to: &mismatches
     )
     return mismatches

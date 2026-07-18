@@ -37,6 +37,16 @@ public struct ThemePackageRequest: Equatable, Sendable {
     public let sidebarOpacity: Double
     public let headerOpacity: Double
     public let composerOpacity: Double
+    public let homeArtFocus: HabitatThemeFocalPoint?
+    public let taskArtFocus: HabitatThemeFocalPoint?
+    public let homeArtScale: Double?
+    public let taskArtScale: Double?
+    public let taskSidebarOpacity: Double?
+    public let taskHeaderOpacity: Double?
+    public let homeContentOpacity: Double?
+    public let taskContentOpacity: Double?
+    public let homeContentWidth: Double?
+    public let vignetteStrength: Double?
 
     public init(
         name: String,
@@ -58,7 +68,17 @@ public struct ThemePackageRequest: Equatable, Sendable {
         taskStrength: Double,
         sidebarOpacity: Double,
         headerOpacity: Double,
-        composerOpacity: Double
+        composerOpacity: Double,
+        homeArtFocus: HabitatThemeFocalPoint? = nil,
+        taskArtFocus: HabitatThemeFocalPoint? = nil,
+        homeArtScale: Double? = nil,
+        taskArtScale: Double? = nil,
+        taskSidebarOpacity: Double? = nil,
+        taskHeaderOpacity: Double? = nil,
+        homeContentOpacity: Double? = nil,
+        taskContentOpacity: Double? = nil,
+        homeContentWidth: Double? = nil,
+        vignetteStrength: Double? = nil
     ) {
         self.name = name
         self.author = author
@@ -80,6 +100,16 @@ public struct ThemePackageRequest: Equatable, Sendable {
         self.sidebarOpacity = sidebarOpacity
         self.headerOpacity = headerOpacity
         self.composerOpacity = composerOpacity
+        self.homeArtFocus = homeArtFocus
+        self.taskArtFocus = taskArtFocus
+        self.homeArtScale = homeArtScale
+        self.taskArtScale = taskArtScale
+        self.taskSidebarOpacity = taskSidebarOpacity
+        self.taskHeaderOpacity = taskHeaderOpacity
+        self.homeContentOpacity = homeContentOpacity
+        self.taskContentOpacity = taskContentOpacity
+        self.homeContentWidth = homeContentWidth
+        self.vignetteStrength = vignetteStrength
     }
 }
 
@@ -445,6 +475,45 @@ public struct ThemePackageBuilder: Sendable {
         backgroundHash: String
     ) throws -> Data {
         let palette = request.palette
+        var theme: [String: Any] = [
+            "category": request.category.rawValue,
+            "styleFamily": request.styleFamily.rawValue,
+            "background": "background.jpg",
+            "artFocus": ["x": request.artFocus.x, "y": request.artFocus.y],
+            "safeSide": request.safeSide.rawValue,
+            "backgroundStrength": request.backgroundStrength,
+            "panelOpacity": request.panelOpacity,
+            "blurRadius": request.blurRadius,
+            "density": request.density.rawValue,
+            "homeMode": request.homeMode.rawValue,
+            "taskMode": request.taskMode.rawValue,
+            "chromeMaterial": request.chromeMaterial.rawValue,
+            "homeStrength": request.homeStrength,
+            "taskStrength": request.taskStrength,
+            "sidebarOpacity": request.sidebarOpacity,
+            "headerOpacity": request.headerOpacity,
+            "composerOpacity": request.composerOpacity,
+        ]
+        if let homeArtFocus = request.homeArtFocus {
+            theme["homeArtFocus"] = ["x": homeArtFocus.x, "y": homeArtFocus.y]
+        }
+        if let taskArtFocus = request.taskArtFocus {
+            theme["taskArtFocus"] = ["x": taskArtFocus.x, "y": taskArtFocus.y]
+        }
+        for (key, value) in [
+            ("homeArtScale", request.homeArtScale),
+            ("taskArtScale", request.taskArtScale),
+            ("taskSidebarOpacity", request.taskSidebarOpacity),
+            ("taskHeaderOpacity", request.taskHeaderOpacity),
+            ("homeContentOpacity", request.homeContentOpacity),
+            ("taskContentOpacity", request.taskContentOpacity),
+            ("homeContentWidth", request.homeContentWidth),
+            ("vignetteStrength", request.vignetteStrength),
+        ] {
+            if let value {
+                theme[key] = value
+            }
+        }
         let object: [String: Any] = [
             "schemaVersion": 1,
             "id": Self.safeID(for: request.name),
@@ -472,25 +541,7 @@ public struct ThemePackageBuilder: Sendable {
                 "attention": palette.attention,
                 "error": palette.error,
             ],
-            "theme": [
-                "category": request.category.rawValue,
-                "styleFamily": request.styleFamily.rawValue,
-                "background": "background.jpg",
-                "artFocus": ["x": request.artFocus.x, "y": request.artFocus.y],
-                "safeSide": request.safeSide.rawValue,
-                "backgroundStrength": request.backgroundStrength,
-                "panelOpacity": request.panelOpacity,
-                "blurRadius": request.blurRadius,
-                "density": request.density.rawValue,
-                "homeMode": request.homeMode.rawValue,
-                "taskMode": request.taskMode.rawValue,
-                "chromeMaterial": request.chromeMaterial.rawValue,
-                "homeStrength": request.homeStrength,
-                "taskStrength": request.taskStrength,
-                "sidebarOpacity": request.sidebarOpacity,
-                "headerOpacity": request.headerOpacity,
-                "composerOpacity": request.composerOpacity,
-            ],
+            "theme": theme,
             "assets": [[
                 "type": "image",
                 "id": "theme-background",
