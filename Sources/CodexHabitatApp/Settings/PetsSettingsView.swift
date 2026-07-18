@@ -1,6 +1,70 @@
 import PetRuntime
 import SwiftUI
 
+actor PetThumbnailStore {
+    typealias Loader = @Sendable (PetLibraryEntry) -> CGImage?
+
+    static let shared = PetThumbnailStore { pet in
+        guard let spritesheetURL = pet.spritesheetURL, let atlas = pet.atlas else {
+            return nil
+        }
+        return SpriteSheetRenderer.frame(
+            contentsOf: spritesheetURL,
+            atlas: atlas,
+            row: 0,
+            column: 0
+        )
+    }
+
+    private enum CachedResult {
+        case image(CGImage)
+        case missing
+    }
+
+    private struct Key: Hashable, Sendable {
+        let packageURL: URL
+        let spritesheetURL: URL?
+        let pixelWidth: Int?
+        let pixelHeight: Int?
+        let columns: Int?
+        let rows: Int?
+
+        init(pet: PetLibraryEntry) {
+            packageURL = pet.packageURL
+            spritesheetURL = pet.spritesheetURL
+            pixelWidth = pet.atlas?.pixelWidth
+            pixelHeight = pet.atlas?.pixelHeight
+            columns = pet.atlas?.columns
+            rows = pet.atlas?.rows
+        }
+    }
+
+    private let loader: Loader
+    private var cache: [Key: CachedResult] = [:]
+
+    init(loader: @escaping Loader) {
+        self.loader = loader
+    }
+
+    func image(for pet: PetLibraryEntry) -> CGImage? {
+        let key = Key(pet: pet)
+        if let cached = cache[key] {
+            switch cached {
+            case let .image(image):
+                return image
+            case .missing:
+                return nil
+            }
+        }
+        guard let image = loader(pet) else {
+            cache[key] = .missing
+            return nil
+        }
+        cache[key] = .image(image)
+        return image
+    }
+}
+
 struct PetsSettingsView: View {
     private enum Source: String, CaseIterable, Identifiable {
         case local = "Installed"
@@ -133,23 +197,25 @@ struct PetChoiceCard: View {
 
 private struct PetThumbnail: View {
     let pet: PetLibraryEntry
+    @State private var idleFrame: CGImage?
 
     var body: some View {
-        if let image = idleFrame {
-            Image(decorative: image, scale: 1, orientation: .up)
-                .resizable()
-                .interpolation(.none)
-                .aspectRatio(contentMode: .fit)
-        } else {
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 34, weight: .medium))
-                .foregroundStyle(.secondary)
+        Group {
+            if let image = idleFrame {
+                Image(decorative: image, scale: 1, orientation: .up)
+                    .resizable()
+                    .interpolation(.none)
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
-    }
-
-    private var idleFrame: CGImage? {
-        guard let spritesheetURL = pet.spritesheetURL, let atlas = pet.atlas else { return nil }
-        return SpriteSheetRenderer(contentsOf: spritesheetURL, atlas: atlas)
-            .frame(PetFrame(animation: .idle, row: 0, column: 0))
+        .task(id: pet.packageURL) {
+            let image = await PetThumbnailStore.shared.image(for: pet)
+            guard !Task.isCancelled else { return }
+            idleFrame = image
+        }
     }
 }

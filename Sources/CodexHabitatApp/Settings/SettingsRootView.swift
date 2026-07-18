@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsRootView: View {
     @ObservedObject var model: HabitatAppModel
+    @State private var navigation: SettingsNavigationState
     let visualQAOptions: HabitatVisualQALaunchOptions
 
     init(
@@ -9,6 +10,7 @@ struct SettingsRootView: View {
         visualQAOptions: HabitatVisualQALaunchOptions = .current
     ) {
         self.model = model
+        _navigation = State(initialValue: SettingsNavigationState(model: model))
         self.visualQAOptions = visualQAOptions
     }
 
@@ -41,7 +43,7 @@ struct SettingsRootView: View {
 
     private var settingsNavigation: some View {
         NavigationSplitView {
-            List(SettingsSection.allCases, selection: $model.selectedSettingsSection) { section in
+            List(SettingsSection.allCases, selection: $navigation.selectedSection) { section in
                 Label(L10n.text(section.title), systemImage: section.systemImage)
                     .tag(section)
                     .accessibilityIdentifier("settings.sidebar.\(section.rawValue)")
@@ -57,7 +59,7 @@ struct SettingsRootView: View {
 
     @ViewBuilder
     private var detailView: some View {
-        switch model.selectedSettingsSection {
+        switch navigation.selectedSection {
         case .habitat:
             HabitatSettingsView(model: model)
         case .pets:
@@ -71,6 +73,15 @@ struct SettingsRootView: View {
         case .privacy:
             PrivacySettingsView(model: model)
         }
+    }
+}
+
+struct SettingsNavigationState: Equatable {
+    var selectedSection: SettingsSection
+
+    @MainActor
+    init(model: HabitatAppModel) {
+        selectedSection = model.selectedSettingsSection
     }
 }
 

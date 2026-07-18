@@ -34,6 +34,23 @@ func reopeningTheRunningApplicationRequestsTheSettingsWindow() {
 }
 
 @Test @MainActor
+func settingsNavigationUsesLocalSelectionState() {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatNavigationTests-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: root),
+        petRoot: root.appending(path: "Pets")
+    )
+    model.selectedSettingsSection = .integrations
+    var navigation = SettingsNavigationState(model: model)
+
+    #expect(navigation.selectedSection == .integrations)
+    navigation.selectedSection = .pets
+    #expect(model.selectedSettingsSection == .integrations)
+}
+
+@Test @MainActor
 func settingsWindowOpensAtAStableMinimumSizeAndIsReused() {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatWindowTests-\(UUID().uuidString)", directoryHint: .isDirectory)

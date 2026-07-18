@@ -221,7 +221,7 @@ final class HabitatAppModel: ObservableObject {
     @Published private(set) var resourceOperationState = ResourceLibraryOperationState.idle
     @Published private(set) var pendingReplacementArchiveURL: URL?
     @Published private(set) var onboardingStep = OnboardingStep.habitat
-    @Published var selectedSettingsSection = SettingsSection.habitat
+    var selectedSettingsSection = SettingsSection.habitat
     @Published private(set) var isLoaded = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var launchAtLoginStatus: HabitatLaunchAtLoginStatus
