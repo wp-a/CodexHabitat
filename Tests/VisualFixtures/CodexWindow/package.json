@@ -1,0 +1,13 @@
+{
+  "name": "codex-habitat-offline-window-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:contract && npm run test:browser",
+    "test:contract": "node --test fixture-contract.test.mjs",
+    "test:browser": "node --test fixture-browser.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}

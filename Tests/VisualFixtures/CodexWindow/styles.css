@@ -1,0 +1,369 @@
+:root {
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #111315;
+  color: #f5f7f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.offline-fixture-label {
+  position: fixed;
+  z-index: 10000;
+  top: 12px;
+  right: 16px;
+  padding: 6px 9px;
+  border: 1px solid #f5c542;
+  background: #111315;
+  color: #f5c542;
+  font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
+}
+
+.fixture-window {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(240px, 27%) 1fr;
+  grid-template-rows: 44px minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  background: #17191b;
+}
+
+.fixture-titlebar {
+  z-index: 3;
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px;
+  border-bottom: 1px solid #35383c;
+  background: #202326;
+}
+
+.fixture-titlebar span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.fixture-titlebar span:nth-child(2) { background: #febc2e; }
+.fixture-titlebar span:nth-child(3) { background: #28c840; }
+
+.app-shell-left-panel {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 24px 16px 16px;
+  border-right: 1px solid #34373a;
+  background: rgb(38 41 44 / 88%);
+}
+
+.sidebar-resize-handle-line {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+}
+
+.fixture-brand {
+  margin: 0 8px 20px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+nav,
+.fixture-recents {
+  display: grid;
+  gap: 4px;
+}
+
+nav a,
+.fixture-recents a {
+  min-width: 0;
+  padding: 9px 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  color: #dfe3e6;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixture-recents {
+  margin-top: 26px;
+}
+
+.fixture-recents h2 {
+  margin: 0 12px 8px;
+  color: #8f979d;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.fixture-recents .is-selected {
+  background: #45494e;
+  color: white;
+}
+
+.fixture-account {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid #3a3e42;
+  color: #b7bdc2;
+}
+
+.main-surface {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: 64px minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: #151719;
+}
+
+.app-shell-main-content-top-fade {
+  position: absolute;
+  z-index: 3;
+  top: 64px;
+  right: 0;
+  left: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(21 23 25 / 78%), transparent);
+}
+
+.app-header-tint {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  border-bottom: 1px solid #303337;
+  background: rgb(28 30 32 / 90%);
+}
+
+.app-header-tint button,
+.fixture-suggestions button,
+.composer-surface-chrome button {
+  min-height: 34px;
+  border: 1px solid #4a4f54;
+  border-radius: 6px;
+  background: #26292c;
+  color: #f4f6f7;
+}
+
+.fixture-home {
+  align-self: center;
+  width: min(720px, calc(100% - 72px));
+  margin: 0 auto;
+  text-align: center;
+}
+
+.fixture-home [data-testid="home-icon"] {
+  margin-bottom: 22px;
+  color: #8fa4b5;
+  font-size: 44px;
+}
+
+.fixture-home h1 {
+  margin: 0;
+  font-size: 36px;
+  letter-spacing: 0;
+}
+
+.fixture-home p {
+  color: #aeb5ba;
+}
+
+.fixture-suggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.fixture-suggestions button {
+  min-height: 74px;
+  padding: 14px;
+  text-align: left;
+}
+
+.fixture-task {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.thread-scroll-container {
+  height: 100%;
+  padding: 48px max(36px, 9vw) 180px;
+  overflow: auto;
+}
+
+.fixture-message,
+.fixture-response {
+  width: min(760px, 100%);
+  margin: 0 auto 30px;
+}
+
+.fixture-message {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #3c4044;
+  border-radius: 8px;
+  background: rgb(42 45 48 / 86%);
+}
+
+.fixture-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dce5eb;
+  color: #202326;
+  font-weight: 700;
+}
+
+.fixture-message h2,
+.fixture-response h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.fixture-message p,
+.fixture-response p {
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+
+pre,
+.fixture-tool {
+  margin: 22px 0;
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid #41464a;
+  border-radius: 6px;
+  background: rgb(24 27 29 / 94%);
+}
+
+.fixture-tool p {
+  margin: 8px 0 0;
+  color: #b8c0c5;
+}
+
+.fixture-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.fixture-tool-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #41464a;
+  border-radius: 6px;
+  background: rgb(24 27 29 / 92%);
+  font-size: 12px;
+}
+
+[data-thread-scroll-footer="true"] {
+  position: relative;
+  width: min(760px, 100%);
+  height: 24px;
+  margin: 0 auto;
+}
+
+[data-thread-scroll-footer="true"] > [class~="pointer-events-none"] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to top, #151719, transparent);
+}
+
+[data-codex-composer-root] {
+  z-index: 4;
+  display: grid;
+  min-width: 0;
+}
+
+[data-radix-popper-content-wrapper] {
+  position: absolute;
+  z-index: 8;
+  top: 78px;
+  right: 24px;
+}
+
+.fixture-popover {
+  min-width: 148px;
+  padding: 12px 14px;
+  border: 1px solid #4a4f54;
+  border-radius: 6px;
+  background: rgb(43 46 49 / 96%);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 24%);
+}
+
+.composer-surface-chrome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  width: min(820px, calc(100% - 64px));
+  margin: 0 auto 28px;
+  padding: 14px;
+  border: 1px solid #4a4f54;
+  border-radius: 8px;
+  background: rgb(43 46 49 / 96%);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 24%);
+}
+
+.composer-surface-chrome label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.composer-surface-chrome textarea {
+  min-width: 0;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+}
+
+@media (max-width: 1240px) {
+  .fixture-window {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+
+  .fixture-home h1 {
+    font-size: 30px;
+  }
+}

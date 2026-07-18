@@ -240,10 +240,11 @@ actor CDPClient {
             updateSurfaces();
           };
           const scheduleRouteUpdate = () => {
+            updateRoute();
             if (globalThis.__codexHabitatRouteTimer !== undefined) {
               return;
             }
-            updateHostState();
+            updateSurfaces();
             globalThis.__codexHabitatRouteTimer = setTimeout(() => {
               delete globalThis.__codexHabitatRouteTimer;
               updateHostState();
@@ -293,6 +294,21 @@ actor CDPClient {
         })()
         """
     }
+
+#if HABITAT_OFFLINE_FIXTURE
+    static func offlineFixtureInstallerExpression(
+        css: String,
+        homeMarker: String,
+        annotations: HostSurfaceAnnotationPlan
+    ) -> String {
+        styleInstallerExpression(
+            css: css,
+            homeMarker: homeMarker,
+            annotations: annotations,
+            reportsResult: true
+        )
+    }
+#endif
 
     func removeStyle(from target: CDPTarget) async throws {
         _ = try validator.validate(target)

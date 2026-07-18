@@ -267,7 +267,7 @@ public enum BuiltInThemeCatalog {
             "#4A7059", "#20A45B", "#79D98C", "#E8F65B", "#F5A623", "#D83A4E",
             0.78, 0.48, .leading, .greenChat, .chat,
             treatment(
-                .framed, .off, .solid,
+                .framed, .ambient, .solid,
                 homeStrength: 0.62, taskStrength: 0.16,
                 homeFocus: (0.78, 0.48), taskFocus: (0.74, 0.48),
                 homeScale: 1.00, taskScale: 1.00,

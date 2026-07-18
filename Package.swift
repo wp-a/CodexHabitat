@@ -64,6 +64,9 @@ let package = Package(
             name: "CodexHabitatThemeBridge",
             dependencies: ["HabitatCore", "ResourceKit"],
             resources: [.copy("Resources")],
+            swiftSettings: [
+                .define("HABITAT_OFFLINE_FIXTURE", .when(configuration: .debug)),
+            ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("ImageIO"),

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-offline-theme-fixture="true" data-codex-habitat-route="home">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Habitat Offline Window Fixture</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="offline-fixture-label" role="note">OFFLINE THEME FIXTURE</div>
+    <div id="root" class="fixture-window" data-fixture-surface="app-shell">
+      <div class="fixture-titlebar" data-fixture-surface="titlebar" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <aside class="app-shell-left-panel">
+        <div class="sidebar-resize-handle-line" aria-hidden="true"></div>
+        <div class="fixture-brand">Workspace</div>
+        <nav aria-label="Fixture navigation">
+          <a href="#new">New task</a>
+          <a href="#queue">Queue</a>
+          <a href="#library">Library</a>
+        </nav>
+        <section class="fixture-recents" aria-label="Recent fixtures">
+          <h2>Recent</h2>
+          <a class="is-selected" href="#selected" aria-current="page">Window composition</a>
+          <a href="#one">Surface contrast</a>
+          <a href="#two">Route transition</a>
+        </section>
+        <div class="fixture-account">Local fixture</div>
+      </aside>
+      <main class="main-surface">
+        <div class="app-shell-main-content-top-fade" aria-hidden="true"></div>
+        <header class="app-header-tint">
+          <button type="button" aria-label="Toggle sidebar">&#9776;</button>
+          <div class="fixture-header-title">Window composition</div>
+          <button type="button">Inspect</button>
+        </header>
+
+        <section class="fixture-home" role="main" data-fixture-route="home" data-fixture-surface="home-content">
+          <div data-testid="home-icon" aria-hidden="true">&#9671;</div>
+          <h1>What should this workspace explore?</h1>
+          <p>Fixed synthetic content keeps every theme comparison deterministic.</p>
+          <div class="group/home-suggestions fixture-suggestions" data-fixture-surface="home-suggestions">
+            <button type="button">Trace a boundary</button>
+            <button type="button">Review a change</button>
+            <button type="button">Build a component</button>
+            <button type="button">Test a workflow</button>
+          </div>
+        </section>
+
+        <section class="fixture-task" data-fixture-route="task" hidden>
+          <div class="thread-scroll-container" tabindex="0">
+            <article class="fixture-message" data-fixture-surface="message">
+              <div class="fixture-avatar" aria-hidden="true">U</div>
+              <div>
+                <h2>Fixture request</h2>
+                <p>Keep the working surface readable while the scene remains visible.</p>
+              </div>
+            </article>
+            <article class="fixture-response" data-content-search-unit-key="fixture-response">
+              <h2>Fixture response</h2>
+              <p>The representative thread contains neutral synthetic text, a code surface, and a tool result.</p>
+              <pre data-fixture-surface="code"><code>scene.route = "task"
+surface.opacity = 0.72
+assert(scene.isContinuous)</code></pre>
+              <section class="fixture-tool" data-fixture-surface="tool">
+                <strong>Local verification</strong>
+                <p>Three bounded surfaces inspected. No network was used.</p>
+              </section>
+              <section class="fixture-tool-grid" aria-label="Synthetic tool surfaces">
+                <div data-testid="exec-shell-body">Command output</div>
+                <div data-testid="dynamic-tool-call-group-body">Tool result</div>
+                <div data-testid="pending-mcp-tool-calls-body">Pending result</div>
+              </section>
+              <p>The remaining lines provide deterministic scroll depth for layout checks.</p>
+              <p>Typography, spacing, and material hierarchy stay constant between captures.</p>
+              <p>Theme-specific output is injected by the offline exporter in a later stage.</p>
+            </article>
+            <div data-thread-scroll-footer="true" aria-hidden="true">
+              <div class="pointer-events-none"></div>
+            </div>
+          </div>
+        </section>
+
+        <div data-codex-composer-root>
+          <footer class="composer-surface-chrome">
+            <label for="fixture-composer">Message</label>
+            <textarea id="fixture-composer" rows="3" placeholder="Synthetic fixture input"></textarea>
+            <button type="submit" aria-label="Submit fixture input">&#8593;</button>
+          </footer>
+        </div>
+        <div data-radix-popper-content-wrapper="">
+          <div class="fixture-popover">Fixture menu</div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

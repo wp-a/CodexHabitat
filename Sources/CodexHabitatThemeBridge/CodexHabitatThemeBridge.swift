@@ -99,6 +99,12 @@ enum CodexHabitatThemeBridge {
                     try await Task.sleep(for: .seconds(2))
                 }
                 try? await coordinator.restore(bundleURL: bundleURL)
+#if HABITAT_OFFLINE_FIXTURE
+            case "offline-fixture":
+                let options = try OfflineThemeFixtureCommand.parse(arguments: arguments)
+                try OfflineThemeFixtureCommand.bundled().run(options: options)
+                print("offline fixture written: \(options.outputURL.path)")
+#endif
             default:
                 printUsage()
                 Foundation.exit(64)
@@ -174,7 +180,11 @@ enum CodexHabitatThemeBridge {
     }
 
     private static func printUsage() {
+#if HABITAT_OFFLINE_FIXTURE
+        print("usage: CodexHabitatThemeBridge verify [app] | start --authorized [app] | status | stop | apply --authorized --theme <id> [--screenshot <png>] [--app <app>] | watch --theme <id> --parent-pid <pid> [--app <app>] | restore [--app <app>] | offline-fixture --profile-version <version> --output <local.json>")
+#else
         print("usage: CodexHabitatThemeBridge verify [app] | start --authorized [app] | status | stop | apply --authorized --theme <id> [--screenshot <png>] [--app <app>] | watch --theme <id> --parent-pid <pid> [--app <app>] | restore [--app <app>]")
+#endif
     }
 
     private static func value(after flag: String, in arguments: [String]) -> String? {

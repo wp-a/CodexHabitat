@@ -139,6 +139,10 @@ grep -F -- '--remote-debugging-address=127.0.0.1' "$helper_strings" >/dev/null \
 if grep -F -- '--remote-debugging-address=0.0.0.0' "$helper_strings" >/dev/null; then
     fail "helper contains a wildcard CDP address"
 fi
+if grep -F -- 'offline-fixture' "$helper_strings" >/dev/null \
+    || grep -F -- 'offline-theme-fixture-payload-v1' "$helper_strings" >/dev/null; then
+    fail "debug-only offline fixture command leaked into release helper"
+fi
 pass "release paths and CDP isolation"
 
 updates_enabled="$(/usr/libexec/PlistBuddy -c 'Print :HabitatUpdatesEnabled' "$PLIST")"

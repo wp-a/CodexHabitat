@@ -1,3 +1,6 @@
+#if HABITAT_OFFLINE_FIXTURE
+import CryptoKit
+#endif
 import Foundation
 import HabitatCore
 
@@ -242,6 +245,14 @@ struct ThemeCompiler {
         }
         return try ThemeCompiler(template: String(contentsOf: url, encoding: .utf8))
     }
+
+#if HABITAT_OFFLINE_FIXTURE
+    var templateFingerprint: String {
+        SHA256.hash(data: Data(template.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+#endif
 
     func compile(theme: BridgeTheme, profile: CompatibilityProfile) throws -> String {
         let colors: [(String, String)] = [

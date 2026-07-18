@@ -40,7 +40,7 @@
     "safeSide": "leading",
     "styleFamily": "greenChat",
     "homeMode": "framed",
-    "taskMode": "off",
+    "taskMode": "ambient",
     "chromeMaterial": "solid",
     "homeStrength": 0.62,
     "taskStrength": 0.16,

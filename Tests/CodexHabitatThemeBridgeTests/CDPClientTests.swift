@@ -198,6 +198,18 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(source.components(separatedBy: "new MutationObserver").count - 1 == 2)
     #expect(source.components(separatedBy: "setTimeout(").count - 1 == 1)
     #expect(source.contains("attributes: false"))
+    let scheduleStart = try #require(source.range(of: "const scheduleRouteUpdate = () => {"))
+    let scheduleEnd = try #require(
+        source.range(of: "const install = () => {", range: scheduleStart.upperBound..<source.endIndex)
+    )
+    let scheduleSource = source[scheduleStart.lowerBound..<scheduleEnd.lowerBound]
+    let immediateRouteUpdate = try #require(scheduleSource.range(of: "updateRoute();"))
+    let pendingTimerGuard = try #require(
+        scheduleSource.range(of: "if (globalThis.__codexHabitatRouteTimer !== undefined)")
+    )
+    let surfaceUpdate = try #require(scheduleSource.range(of: "updateSurfaces();"))
+    #expect(immediateRouteUpdate.lowerBound < pendingTimerGuard.lowerBound)
+    #expect(surfaceUpdate.lowerBound > pendingTimerGuard.lowerBound)
     let annotationAssignment = try #require(
         source.split(separator: "\n").first { $0.contains("const surfaceEntries = ") }
     )
@@ -227,7 +239,7 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
             }
         """))
     #expect(!scheduler.contains("clearTimeout("))
-    #expect(scheduler.components(separatedBy: "updateHostState();").count == 3)
+    #expect(scheduler.components(separatedBy: "updateHostState();").count == 2)
     #expect(source.contains("if (currentRoute !== route)"))
     #expect(source.contains("if (currentSurface !== entry.surface)"))
     #expect(source.contains("data-codex-habitat-route"))
