@@ -66,14 +66,26 @@ actor CDPClient {
         return mainPages
     }
 
-    func installStyle(_ css: String, on target: CDPTarget) async throws {
+    func installStyle(
+        _ css: String,
+        homeMarker: String,
+        on target: CDPTarget
+    ) async throws {
         _ = try validator.validate(target)
-        let expression = Self.styleInstallerExpression(css: css, reportsResult: true)
+        let expression = Self.styleInstallerExpression(
+            css: css,
+            homeMarker: homeMarker,
+            reportsResult: true
+        )
         _ = try await evaluate(expression, on: target)
         _ = try await command(
             method: "Page.addScriptToEvaluateOnNewDocument",
             parameters: [
-                "source": Self.styleInstallerExpression(css: css, reportsResult: false),
+                "source": Self.styleInstallerExpression(
+                    css: css,
+                    homeMarker: homeMarker,
+                    reportsResult: false
+                ),
             ],
             target: target
         )
@@ -91,11 +103,18 @@ actor CDPClient {
 
     private static func styleInstallerExpression(
         css: String,
+        homeMarker: String,
         reportsResult: Bool
     ) -> String {
         let cssLiteral = javaScriptString(css)
+        let homeMarkerLiteral = javaScriptString(homeMarker)
         return """
         (() => {
+          const homeMarker = \(homeMarkerLiteral);
+          const updateRoute = () => {
+            const route = document.querySelector(homeMarker) ? "home" : "task";
+            document.documentElement.setAttribute("data-codex-habitat-route", route);
+          };
           const install = () => {
             const id = "codex-habitat-theme-style";
             let style = document.getElementById(id);
@@ -106,12 +125,22 @@ actor CDPClient {
             }
             style.textContent = \(cssLiteral);
             document.documentElement.setAttribute("data-codex-habitat-theme", "1");
+            updateRoute();
             globalThis.__codexHabitatThemeObserver?.disconnect();
             const observer = new MutationObserver(() => {
               if (!document.getElementById(id)) install();
             });
             observer.observe(document.documentElement, { childList: true, subtree: true });
             globalThis.__codexHabitatThemeObserver = observer;
+            globalThis.__codexHabitatRouteObserver?.disconnect();
+            const routeObserver = new MutationObserver(updateRoute);
+            routeObserver.observe(document.documentElement, {
+              childList: true,
+              subtree: true,
+              attributes: false,
+              characterData: false,
+            });
+            globalThis.__codexHabitatRouteObserver = routeObserver;
             return { installed: true };
           };
           if (document.readyState === "loading") {
@@ -129,8 +158,11 @@ actor CDPClient {
         (() => {
           globalThis.__codexHabitatThemeObserver?.disconnect();
           delete globalThis.__codexHabitatThemeObserver;
+          globalThis.__codexHabitatRouteObserver?.disconnect();
+          delete globalThis.__codexHabitatRouteObserver;
           document.getElementById("codex-habitat-theme-style")?.remove();
           document.documentElement.removeAttribute("data-codex-habitat-theme");
+          document.documentElement.removeAttribute("data-codex-habitat-route");
           return { removed: true };
         })()
         """
@@ -223,7 +255,11 @@ actor CDPClient {
 
 protocol CDPControlling: Sendable {
     func listPageTargets() async throws -> [CDPTarget]
-    func installStyle(_ css: String, on target: CDPTarget) async throws
+    func installStyle(
+        _ css: String,
+        homeMarker: String,
+        on target: CDPTarget
+    ) async throws
     func isStyleInstalled(on target: CDPTarget) async throws -> Bool
     func removeStyle(from target: CDPTarget) async throws
     func healthSnapshot(

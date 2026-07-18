@@ -7,6 +7,8 @@ struct CompatibilitySelectors: Codable, Equatable, Sendable {
     let composer: String
     let threadScroll: String
     let popover: String
+    let header: String
+    let homeMarker: String
 }
 
 struct CompatibilityProfile: Codable, Equatable, Sendable {
@@ -47,6 +49,8 @@ struct CompatibilityProfileStore {
                 profile.selectors.composer,
                 profile.selectors.threadScroll,
                 profile.selectors.popover,
+                profile.selectors.header,
+                profile.selectors.homeMarker,
             ] {
                 try Self.validateSelector(selector)
             }

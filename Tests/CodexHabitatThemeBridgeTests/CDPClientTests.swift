@@ -142,7 +142,11 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     let client = CDPClient(port: 55_000, transport: transport)
     let css = "html::before { content: \"</style><script>blocked()</script>\"; }"
 
-    try await client.installStyle(css, on: target)
+    try await client.installStyle(
+        css,
+        homeMarker: "[data-testid=\"home-icon\"]",
+        on: target
+    )
     try await client.removeStyle(from: target)
 
     #expect(transport.messages.count == 3)
@@ -174,6 +178,11 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     let source = try #require(bootstrapParams["source"] as? String)
     #expect(source.contains("MutationObserver"))
     #expect(source.contains("codex-habitat-theme-style"))
+    #expect(source.contains("__codexHabitatRouteObserver"))
+    #expect(source.contains("data-codex-habitat-route"))
+    #expect(source.contains("[data-testid=\\\"home-icon\\\"]"))
+    #expect(!source.contains("innerText"))
+    #expect(!source.contains("innerHTML"))
     #expect(source.contains("blocked()"))
     #expect(!source.contains("</style><script>"))
 
@@ -181,7 +190,10 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
         JSONSerialization.jsonObject(with: transport.messages[2]) as? [String: Any]
     )
     let removalParams = try #require(removal["params"] as? [String: Any])
-    #expect((removalParams["expression"] as? String)?.contains("removeAttribute") == true)
+    let removalExpression = try #require(removalParams["expression"] as? String)
+    #expect(removalExpression.contains("__codexHabitatRouteObserver"))
+    #expect(removalExpression.contains("data-codex-habitat-route"))
+    #expect(removalExpression.contains("removeAttribute"))
 }
 
 @Test

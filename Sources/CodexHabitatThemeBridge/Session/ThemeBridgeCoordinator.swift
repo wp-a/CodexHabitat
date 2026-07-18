@@ -90,7 +90,11 @@ actor ThemeBridgeCoordinator {
             client = ready.client
             var reports: [LayoutHealthReport] = []
             for target in ready.targets {
-                try await ready.client.installStyle(css, on: target)
+                try await ready.client.installStyle(
+                    css,
+                    homeMarker: profile.selectors.homeMarker,
+                    on: target
+                )
                 installedTargets.append(target)
                 let snapshot = try await ready.client.healthSnapshot(
                     on: target,
@@ -189,7 +193,11 @@ actor ThemeBridgeCoordinator {
             ), healthCheck.evaluate(snapshot).passed else {
                 continue
             }
-            try await client.installStyle(css, on: target)
+            try await client.installStyle(
+                css,
+                homeMarker: profile.selectors.homeMarker,
+                on: target
+            )
             let report = healthCheck.evaluate(
                 try await client.healthSnapshot(on: target, check: healthCheck)
             )

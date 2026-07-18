@@ -20,17 +20,45 @@ func bundledProfileCompilesOnlyHostSelectorsApprovedTokensAndLocalBlobArt() thro
     #expect(css.contains("aside.app-shell-left-panel"))
     #expect(css.contains("main.main-surface"))
     #expect(css.contains(".composer-surface-chrome"))
+    #expect(profile.selectors.homeMarker == "[data-testid=\"home-icon\"]")
     #expect(css.contains(definition.palette.panelAlt))
     #expect(css.contains(definition.palette.secondary))
     #expect(css.contains(definition.palette.highlight))
     #expect(css.contains("blob:app://codex/habitat-art-1"))
     #expect(css.contains("habitat-style-family: gameCinematic"))
-    #expect(css.contains("background-position: center, center, 76% 42%"))
+    #expect(css.contains("--habitat-art-position: 76% 42%"))
+    #expect(css.contains("--habitat-tinted-blur-radius: 5.5px"))
+    #expect(!css.contains("* 0.55"))
     #expect(!css.contains("soft-light"))
     #expect(!css.contains("{{"))
     #expect(!css.contains("@import"))
     #expect(!css.contains("https://"))
     #expect(!css.contains("http://"))
+}
+
+@Test
+func fourPrototypesCompileDistinctRouteAwareWindowTreatments() throws {
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31251")
+    )
+    let identifiers = ["workbench", "retro-messenger", "arcade-signal", "quiet-garden"]
+    let styles = try identifiers.map { identifier in
+        let theme = try #require(BridgeTheme.builtIn(id: identifier))
+        let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+        #expect(css.contains("data-codex-habitat-route=\"home\""))
+        #expect(css.contains("data-codex-habitat-route=\"task\""))
+        #expect(css.contains("--habitat-home-strength"))
+        #expect(css.contains("--habitat-task-strength"))
+        #expect(css.contains("--habitat-sidebar-opacity"))
+        #expect(css.contains("--habitat-header-opacity"))
+        #expect(css.contains("--habitat-composer-opacity"))
+        #expect(css.contains("habitat-home-mode: \(theme.appearance.homeMode.rawValue)"))
+        #expect(css.contains("habitat-task-mode: \(theme.appearance.taskMode.rawValue)"))
+        #expect(css.contains("habitat-chrome-material: \(theme.appearance.chromeMaterial.rawValue)"))
+        return css
+    }
+
+    #expect(Set(styles).count == identifiers.count)
 }
 
 @Test

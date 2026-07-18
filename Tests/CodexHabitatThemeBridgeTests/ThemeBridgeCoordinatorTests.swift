@@ -21,6 +21,7 @@ func successfulApplyRestartsOnceChecksLayoutAndWritesPrivateScreenshot() async t
     #expect(fixture.restarter.normalLaunches.isEmpty)
     #expect(fixture.session.startCount == 1)
     #expect(fixture.client.installedTargets == [fixture.target])
+    #expect(fixture.client.installedHomeMarkers == ["[data-testid=\"home-icon\"]"])
     #expect(try Data(contentsOf: screenshotURL) == fixture.client.screenshot)
     let attributes = try FileManager.default.attributesOfItem(atPath: screenshotURL.path)
     #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
@@ -385,6 +386,7 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     let screenshot: Data
     var snapshotsByTargetID: [String: LayoutHealthSnapshot] = [:]
     var installedTargets: [CDPTarget] = []
+    var installedHomeMarkers: [String] = []
     var removedTargets: [CDPTarget] = []
     var styledTargetIDs: Set<String> = []
 
@@ -395,8 +397,13 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     }
 
     func listPageTargets() async throws -> [CDPTarget] { targets }
-    func installStyle(_ css: String, on target: CDPTarget) async throws {
+    func installStyle(
+        _ css: String,
+        homeMarker: String,
+        on target: CDPTarget
+    ) async throws {
         installedTargets.append(target)
+        installedHomeMarkers.append(homeMarker)
         styledTargetIDs.insert(target.id)
     }
     func isStyleInstalled(on target: CDPTarget) async throws -> Bool {

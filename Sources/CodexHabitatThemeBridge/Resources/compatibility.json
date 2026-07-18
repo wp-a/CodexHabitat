@@ -10,7 +10,9 @@
         "mainSurface": "main.main-surface",
         "composer": ".composer-surface-chrome",
         "threadScroll": ".thread-scroll-container",
-        "popover": "[data-radix-popper-content-wrapper]"
+        "popover": "[data-radix-popper-content-wrapper]",
+        "header": "main.main-surface > header.app-header-tint",
+        "homeMarker": "[data-testid=\"home-icon\"]"
       }
     },
     {
@@ -22,7 +24,9 @@
         "mainSurface": "main.main-surface",
         "composer": ".composer-surface-chrome",
         "threadScroll": ".thread-scroll-container",
-        "popover": "[data-radix-popper-content-wrapper]"
+        "popover": "[data-radix-popper-content-wrapper]",
+        "header": "main.main-surface > header.app-header-tint",
+        "homeMarker": "[data-testid=\"home-icon\"]"
       }
     }
   ]

@@ -39,6 +39,14 @@ struct BridgeThemeAppearance: Codable, Equatable, Sendable {
     let panelOpacity: Double
     let blurRadius: Double
     let density: HabitatThemeDensity
+    let homeMode: HabitatThemeHomeMode
+    let taskMode: HabitatThemeTaskMode
+    let chromeMaterial: HabitatThemeChromeMaterial
+    let homeStrength: Double
+    let taskStrength: Double
+    let sidebarOpacity: Double
+    let headerOpacity: Double
+    let composerOpacity: Double
 
     init(_ appearance: HabitatThemeAppearance) {
         styleFamily = appearance.styleFamily
@@ -48,6 +56,14 @@ struct BridgeThemeAppearance: Codable, Equatable, Sendable {
         panelOpacity = appearance.panelOpacity
         blurRadius = appearance.blurRadius
         density = appearance.density
+        homeMode = appearance.resolvedHomeMode
+        taskMode = appearance.resolvedTaskMode
+        chromeMaterial = appearance.resolvedChromeMaterial
+        homeStrength = appearance.resolvedHomeStrength
+        taskStrength = appearance.resolvedTaskStrength
+        sidebarOpacity = appearance.resolvedSidebarOpacity
+        headerOpacity = appearance.resolvedHeaderOpacity
+        composerOpacity = appearance.resolvedComposerOpacity
     }
 
     static let workbench = BridgeThemeAppearance(
@@ -137,6 +153,8 @@ struct BridgeThemeDecoder {
                 allowed: [
                     "styleFamily", "artFocus", "safeSide", "backgroundStrength",
                     "panelOpacity", "blurRadius", "density",
+                    "homeMode", "taskMode", "chromeMaterial", "homeStrength",
+                    "taskStrength", "sidebarOpacity", "headerOpacity", "composerOpacity",
                 ],
                 prefix: "appearance."
             )
@@ -239,7 +257,6 @@ struct ThemeCompiler {
         let artVeil = Self.cssPercent((1 - theme.appearance.backgroundStrength) * 100)
         let routeVeil = Self.cssPercent((1 - theme.appearance.backgroundStrength * 0.46) * 100)
         let panelOpacity = Self.cssPercent(theme.appearance.panelOpacity * 100)
-        let direction = theme.appearance.safeSide == .leading ? "to right" : "to left"
         let densitySpacing = theme.appearance.density == .compact ? "8px" : "12px"
 
         var result = template
@@ -261,14 +278,35 @@ struct ThemeCompiler {
             "art-veil": artVeil,
             "route-veil": routeVeil,
             "panel-opacity": panelOpacity,
-            "safe-scrim-direction": direction,
+            "home-strength": Self.cssPercent(theme.appearance.homeStrength * 100),
+            "task-strength": Self.cssPercent(theme.appearance.taskStrength * 100),
+            "home-veil": Self.cssPercent((1 - theme.appearance.homeStrength) * 100),
+            "task-veil": Self.cssPercent((1 - theme.appearance.taskStrength) * 100),
+            "sidebar-opacity": Self.cssPercent(theme.appearance.sidebarOpacity * 100),
+            "header-opacity": Self.cssPercent(theme.appearance.headerOpacity * 100),
+            "composer-opacity": Self.cssPercent(theme.appearance.composerOpacity * 100),
+            "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "blur-radius": Self.cssNumber(theme.appearance.blurRadius) + "px",
+            "tinted-blur-radius": Self.cssNumber(theme.appearance.blurRadius * 0.55) + "px",
             "density-spacing": densitySpacing,
             "sidebar": profile.selectors.sidebar,
             "main": profile.selectors.mainSurface,
             "composer": profile.selectors.composer,
             "thread": profile.selectors.threadScroll,
             "popover": profile.selectors.popover,
+            "header": profile.selectors.header,
+            "home-treatment": Self.homeTreatment(
+                for: theme.appearance.homeMode,
+                profile: profile
+            ),
+            "task-treatment": Self.taskTreatment(
+                for: theme.appearance.taskMode,
+                profile: profile
+            ),
+            "chrome-treatment": Self.chromeTreatment(
+                for: theme.appearance.chromeMaterial,
+                profile: profile
+            ),
             "style-treatment": Self.styleTreatment(
                 for: theme.appearance.styleFamily,
                 profile: profile
@@ -285,6 +323,131 @@ struct ThemeCompiler {
             throw ThemeCompilationError.unsafeTemplate
         }
         return result
+    }
+
+    static func homeTreatment(
+        for mode: HabitatThemeHomeMode,
+        profile: CompatibilityProfile
+    ) -> String {
+        let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"]"
+        let body = "\(root) body"
+        let main = "\(root) \(profile.selectors.mainSurface)"
+        return switch mode {
+        case .immersive:
+            """
+            /* habitat-home-mode: immersive */
+            \(body) {
+              background-image: var(--habitat-art-background);
+              background-position: var(--habitat-art-position);
+              background-repeat: no-repeat;
+              background-size: cover;
+            }
+            \(main) {
+              background-color: transparent;
+              background-image: var(--habitat-safe-scrim), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent));
+              border-radius: 0;
+            }
+            """
+        case .framed:
+            """
+            /* habitat-home-mode: framed */
+            \(main) {
+              border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent);
+              border-right: 0;
+              border-bottom: 0;
+              border-radius: 16px 0 0 0;
+              box-shadow: -10px 0 32px color-mix(in srgb, var(--habitat-surface) 26%, transparent);
+            }
+            """
+        case .quiet:
+            """
+            /* habitat-home-mode: quiet */
+            \(main) {
+              border-radius: 10px 0 0 0;
+              box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-text) 8%, transparent);
+            }
+            """
+        }
+    }
+
+    static func taskTreatment(
+        for mode: HabitatThemeTaskMode,
+        profile: CompatibilityProfile
+    ) -> String {
+        let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
+        let body = "\(root) body"
+        let main = "\(root) \(profile.selectors.mainSurface)"
+        return switch mode {
+        case .ambient:
+            """
+            /* habitat-task-mode: ambient */
+            \(body) {
+              background-image: var(--habitat-art-background);
+              background-position: var(--habitat-art-position);
+              background-repeat: no-repeat;
+              background-size: cover;
+            }
+            \(main) {
+              background-color: transparent;
+              background-image: var(--habitat-safe-scrim), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent));
+            }
+            """
+        case .banner:
+            """
+            /* habitat-task-mode: banner */
+            \(main) {
+              background-image: linear-gradient(to bottom, transparent 0 34%, var(--habitat-surface) 76% 100%), var(--habitat-safe-scrim), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent)), var(--habitat-art-background);
+              background-position: center, center, center, var(--habitat-art-position);
+              background-repeat: no-repeat;
+              background-size: 100% 100%, 100% 100%, 100% 100%, cover;
+            }
+            """
+        case .off:
+            """
+            /* habitat-task-mode: off */
+            \(main) {
+              background-color: var(--habitat-surface);
+              background-image: none;
+            }
+            """
+        }
+    }
+
+    static func chromeTreatment(
+        for material: HabitatThemeChromeMaterial,
+        profile: CompatibilityProfile
+    ) -> String {
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let selectors = [
+            "\(root) \(profile.selectors.sidebar)",
+            "\(root) \(profile.selectors.header)",
+            "\(root) \(profile.selectors.composer)",
+            "\(root) \(profile.selectors.popover)",
+        ].joined(separator: ",\n")
+        return switch material {
+        case .solid:
+            """
+            /* habitat-chrome-material: solid */
+            \(selectors) {
+              backdrop-filter: none;
+            }
+            """
+        case .tinted:
+            """
+            /* habitat-chrome-material: tinted */
+            \(selectors) {
+              backdrop-filter: blur(var(--habitat-tinted-blur-radius)) saturate(1.04);
+            }
+            """
+        case .glass:
+            """
+            /* habitat-chrome-material: glass */
+            \(selectors) {
+              backdrop-filter: blur(var(--habitat-blur-radius)) saturate(1.16);
+              box-shadow: inset 0 1px 0 color-mix(in srgb, white 34%, transparent), 0 12px 30px color-mix(in srgb, var(--habitat-surface) 18%, transparent);
+            }
+            """
+        }
     }
 
     static func styleTreatment(
@@ -377,6 +540,32 @@ struct ThemeCompiler {
         }
         guard appearance.blurRadius.isFinite, (0...24).contains(appearance.blurRadius) else {
             throw ThemeCompilationError.invalidAppearance("blurRadius")
+        }
+        for (name, value) in [
+            ("homeStrength", appearance.homeStrength),
+            ("taskStrength", appearance.taskStrength),
+        ] where !value.isFinite || !(0.10...0.85).contains(value) {
+            throw ThemeCompilationError.invalidAppearance(name)
+        }
+        for (name, value) in [
+            ("sidebarOpacity", appearance.sidebarOpacity),
+            ("headerOpacity", appearance.headerOpacity),
+            ("composerOpacity", appearance.composerOpacity),
+        ] where !value.isFinite || !(0.40...1.0).contains(value) {
+            throw ThemeCompilationError.invalidAppearance(name)
+        }
+    }
+
+    private static func safeScrim(for safeSide: HabitatThemeSafeSide) -> String {
+        switch safeSide {
+        case .leading:
+            "linear-gradient(to right, var(--habitat-surface) 0%, color-mix(in srgb, var(--habitat-surface) 88%, transparent) 38%, transparent 76%)"
+        case .trailing:
+            "linear-gradient(to left, var(--habitat-surface) 0%, color-mix(in srgb, var(--habitat-surface) 88%, transparent) 38%, transparent 76%)"
+        case .center:
+            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) 90%, transparent) 0 24%, transparent 74%)"
+        case .none:
+            "linear-gradient(transparent, transparent)"
         }
     }
 
