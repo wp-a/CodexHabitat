@@ -190,6 +190,36 @@ func themePetPairingsAreValidatedPersistedAndRestoredWhenSelectingThemes() async
 }
 
 @Test @MainActor
+func futureSettingsSchemaRemainsReadOnlyDuringTheAppSession() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatFutureSettings-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let settingsRoot = root.appending(path: "Settings")
+    let settingsURL = settingsRoot.appending(path: "Settings.json")
+    let futureData = Data(
+        """
+        {
+          "schemaVersion": 999,
+          "selectedThemeID": "future-theme",
+          "futureSetting": { "mustNotBeDropped": true }
+        }
+        """.utf8
+    )
+    try FileManager.default.createDirectory(at: settingsRoot, withIntermediateDirectories: true)
+    try futureData.write(to: settingsURL)
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: settingsRoot),
+        petRoot: root.appending(path: "Pets")
+    )
+
+    await model.load()
+    model.setScale(1.25)
+    await model.flushSettings()
+
+    #expect(try Data(contentsOf: settingsURL) == futureData)
+}
+
+@Test @MainActor
 func installedResourceThemesCanBeSelectedAndUninstallFallsBack() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatResourceThemeTests-\(UUID().uuidString)", directoryHint: .isDirectory)

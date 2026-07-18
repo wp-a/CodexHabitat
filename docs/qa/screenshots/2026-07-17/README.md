@@ -22,10 +22,10 @@ selected states, intact previews, visible actions, and no incoherent overlap.
 
 ## Compact Overlay
 
-- [`overlay-expanded.png`](overlay-expanded.png): 324 x 144 at 100% scale.
-- [`overlay-collapsed.png`](overlay-collapsed.png): 136 x 144 at 100% scale.
-- [`overlay-scale-075.png`](overlay-scale-075.png): 243 x 108 at 75% scale.
-- [`overlay-scale-150.png`](overlay-scale-150.png): 486 x 216 at 150% scale.
+- [`overlay-expanded.png`](overlay-expanded.png): visible content from the expanded 100% state.
+- [`overlay-collapsed.png`](overlay-collapsed.png): visible content from the collapsed 100% state.
+- [`overlay-scale-075.png`](overlay-scale-075.png): visible content from the 75% state.
+- [`overlay-scale-150.png`](overlay-scale-150.png): visible content from the 150% state.
 
 The pet-side marker is an original blue paw extracted from the repository's
 deterministic visual fixture and assembled into a temporary QA-only animation
@@ -33,6 +33,9 @@ sheet. It is not a bundled pet and contains no character or third-party IP.
 The collapsed capture contains only the pet region, confirming there is no
 transparent widget rail left to intercept the mouse. Across the scale captures,
 the compact Chinese Token labels remain visible without collision.
+These PNG bounds reflect visible-content capture cropping, so exact physical
+window dimensions are established by AppKit frame tests and runtime window
+inspection rather than inferred from screenshot pixel dimensions.
 
 Five post-warmup `top` samples averaged 0.58% CPU and approximately 54 MB for
 the expanded overlay. The collapsed overlay averaged 0.42% CPU and

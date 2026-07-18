@@ -126,6 +126,29 @@ func decoderIgnoresUnknownFields() async throws {
 }
 
 @Test
+func futureSettingsSchemaFailsClosed() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 999,
+              "selectedThemeID": "future-theme",
+              "futureSetting": { "mustNotBeDropped": true }
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        await #expect(throws: HabitatSettingsError.unsupportedSchema(999)) {
+            _ = try await store.load()
+        }
+        #expect(try Data(contentsOf: root.appending(path: "Settings.json")) == data)
+    }
+}
+
+@Test
 func schemaZeroMigratesWithThemeBridgeDisabled() async throws {
     try await withTemporarySettingsRoot { root in
         let store = SettingsStore(root: root)

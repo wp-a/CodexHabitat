@@ -234,6 +234,7 @@ final class HabitatAppModel: ObservableObject {
     private let resourceLibraryRoot: URL?
     private let launchAtLoginController: any HabitatLaunchAtLoginControlling
     private var saveTask: Task<Void, Never>?
+    private var settingsPersistenceEnabled = true
 
     var requiresOnboarding: Bool { !settings.onboardingCompleted }
     var selectedTheme: HabitatThemeDescriptor {
@@ -292,6 +293,10 @@ final class HabitatAppModel: ObservableObject {
         guard !isLoaded else { return }
         do {
             settings = try await settingsStore.load()
+        } catch HabitatSettingsError.unsupportedSchema {
+            settings = .default
+            settingsPersistenceEnabled = false
+            errorMessage = "Settings were created by a newer Habitat version and are read-only."
         } catch {
             settings = .default
             errorMessage = "Settings could not be loaded. Defaults are active."
@@ -639,6 +644,7 @@ final class HabitatAppModel: ObservableObject {
     func flushSettings() async {
         saveTask?.cancel()
         saveTask = nil
+        guard settingsPersistenceEnabled else { return }
         do {
             try await settingsStore.save(settings)
         } catch {
@@ -653,6 +659,10 @@ final class HabitatAppModel: ObservableObject {
 
     private func scheduleSave() {
         saveTask?.cancel()
+        guard settingsPersistenceEnabled else {
+            saveTask = nil
+            return
+        }
         let snapshot = settings
         let store = settingsStore
         saveTask = Task { [weak self] in

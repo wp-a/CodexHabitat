@@ -27,6 +27,10 @@ public struct OverlayPosition: Codable, Equatable, Sendable {
     }
 }
 
+public enum HabitatSettingsError: Error, Equatable, Sendable {
+    case unsupportedSchema(Int)
+}
+
 public struct HabitatSettings: Codable, Equatable, Sendable {
     public static let currentSchemaVersion = 5
     private static let themeBridgeSchemaVersion = 1
@@ -99,6 +103,9 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         let defaults = HabitatSettings.default
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let storedSchemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
+        guard storedSchemaVersion <= HabitatSettings.currentSchemaVersion else {
+            throw HabitatSettingsError.unsupportedSchema(storedSchemaVersion)
+        }
 
         schemaVersion = HabitatSettings.currentSchemaVersion
         selectedPetID = try container.decodeIfPresent(String.self, forKey: .selectedPetID)
