@@ -21,6 +21,15 @@ func builtInCatalogHasTwentyFourStableThemes() {
 }
 
 @Test
+func builtInDisplayNamesAvoidProtectedProductNames() throws {
+    #expect(BuiltInThemeCatalog.all.allSatisfy {
+        !$0.name.localizedCaseInsensitiveContains("win95")
+    })
+    #expect(try #require(BuiltInThemeCatalog.definition(id: "win95-workbench")).name ==
+        "Classic Desktop Workbench")
+}
+
+@Test
 func fourPrototypeThemesHaveMateriallyDifferentRouteTreatments() throws {
     let identifiers = ["workbench", "retro-messenger", "arcade-signal", "quiet-garden"]
     let signatures = try identifiers.map { identifier in

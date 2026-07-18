@@ -135,7 +135,7 @@ Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop
 Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original crimson industrial hangar with angular armored bay doors, service gantries, warning lamps, and matte metal floor panels. Subject: red mechanical structures and teal maintenance light concentrated on the right, with no vehicle or character. Style/medium: cinematic game environment concept art. Composition/framing: 16:10 landscape, quiet charcoal negative space on the left 40 percent for controls, dramatic detailed hangar on the right. Lighting/mood: warning red with clear warm highlights and cool balance. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: recognizable robots, weapons, emblems, and protected designs.
 ```
 
-## Win95 Workbench (`win95-workbench`)
+## Classic Desktop Workbench (`win95-workbench`)
 
 - Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/win95-workbench-source.jpeg` (temporary, not packaged).
 - Background: `Sources/CodexHabitatApp/Resources/Themes/win95-workbench/background.jpg`; `1600 x 1000`; `377324` bytes; SHA-256 `44913195ae7af55fb79e59b3e3c687fb387843369cc6943a12d7f12081b9c36a`.

@@ -77,6 +77,7 @@ func allBuiltInManifestsMatchTheCanonicalCatalog() throws {
     #expect(descriptors.count == BuiltInThemeCatalog.all.count)
     for definition in BuiltInThemeCatalog.all {
         let descriptor = try #require(descriptors.first { $0.id == definition.id })
+        #expect(descriptor.name == definition.name)
         #expect(catalogPaletteMismatches(definition: definition, descriptor: descriptor).isEmpty)
         #expect(catalogAppearanceMismatches(
             expected: definition.appearance(background: "background.jpg"),

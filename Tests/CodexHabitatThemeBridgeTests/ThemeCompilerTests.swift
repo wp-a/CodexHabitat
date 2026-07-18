@@ -308,6 +308,21 @@ func framedSceneScalesOnlyArtworkAndKeepsItsFrameStable() throws {
 }
 
 @Test
+func trailingHomeContentKeepsAVisibleViewportInset() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "retro-messenger"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let homeContent = try #require(profile.selectors.homeContent)
+    let rule = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"] \(homeContent)",
+        in: css
+    )
+
+    #expect(rule.contains("margin-inline-start: auto"))
+    #expect(rule.contains("margin-inline-end: clamp(16px, 2.5vw, 32px)"))
+}
+
+@Test
 func routeArtworkScaleUsesTheRouteFocusAsItsTransformOrigin() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "night-shift"))

@@ -1054,9 +1054,9 @@ struct ThemeCompiler {
     private static func homeContentLayout(for safeSide: HabitatThemeSafeSide) -> String {
         switch safeSide {
         case .leading:
-            "margin-inline-start: 0; margin-inline-end: auto;"
+            "margin-inline-start: clamp(16px, 2.5vw, 32px); margin-inline-end: auto;"
         case .trailing:
-            "margin-inline-start: auto; margin-inline-end: 0;"
+            "margin-inline-start: auto; margin-inline-end: clamp(16px, 2.5vw, 32px);"
         case .center, .none:
             "margin-inline-start: auto; margin-inline-end: auto;"
         }

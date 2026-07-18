@@ -644,6 +644,16 @@ async function assertCoreBounds(page, selectors, routeName) {
     });
     assert(inViewport, `${selectorKey} is clipped or outside the viewport`);
   }
+  if (routeName === "home") {
+    const suggestionsInset = await page.locator(selectors.homeSuggestions).evaluate((node) => {
+      const controls = Array.from(node.querySelectorAll("button, a, [role=button]"));
+      return controls.length > 0 && controls.every((control) => {
+        const rect = control.getBoundingClientRect();
+        return rect.left >= 12 && rect.right <= innerWidth - 12;
+      });
+    });
+    assert(suggestionsInset, "home suggestion controls touch or cross the viewport edge");
+  }
 }
 
 async function measureArtworkPixelDelta(page, themedScreenshot) {

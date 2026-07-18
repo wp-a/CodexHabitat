@@ -330,7 +330,7 @@ public enum BuiltInThemeCatalog {
             )
         ),
         theme(
-            "win95-workbench", "Win95 Workbench", "Pixel-sharp controls and workshop gray.",
+            "win95-workbench", "Classic Desktop Workbench", "Pixel-sharp controls and workshop gray.",
             "macwindow", "#C0C0C0", "#E7E7E7", "#9C9C9C", "#101010",
             "#4D4D4D", "#0000A8", "#008080", "#FFFF00", "#D66A00", "#C00024",
             0.82, 0.55, .leading, .classicDesktop, .classic,
