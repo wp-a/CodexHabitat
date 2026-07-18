@@ -137,7 +137,7 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
 public enum BuiltInThemeCatalog {
     public static let all: [BuiltInThemeDefinition] = [
         theme(
-            "workbench", "Workbench Turbo", "Electric tools and hot metal panels.",
+            "workbench", "Cathedral Foundry", "Charcoal iron, aged brass, and restrained furnace light.",
             "wrench.and.screwdriver.fill", "#171A21", "#242936", "#30384A", "#F7FBFF",
             "#AEB9C9", "#FF7A18", "#18D6C8", "#FFE04B", "#FFB020", "#FF4058",
             0.78, 0.48, .leading, .gameCinematic, .utility,
@@ -153,7 +153,7 @@ public enum BuiltInThemeCatalog {
             0.76, 0.42, .leading, .gameCinematic, .dark
         ),
         theme(
-            "arcade-signal", "Arcade Overdrive", "Cabinet lights and score-chasing energy.",
+            "arcade-signal", "Arcade Signal", "Magenta, cyan, and yellow signals after dark.",
             "gamecontroller.fill", "#121023", "#251A46", "#38225F", "#FFF8F0",
             "#C7B8D8", "#FF2D95", "#2DE2E6", "#FFF13D", "#FF9F1C", "#FF3B55",
             0.74, 0.50, .leading, .arcade, .game,
@@ -163,7 +163,7 @@ public enum BuiltInThemeCatalog {
             )
         ),
         theme(
-            "quiet-garden", "Pixel Meadow", "Bright pixel flora and fresh open air.",
+            "quiet-garden", "Quiet Garden", "Morning glass, living greens, and calm daylight.",
             "leaf.fill", "#12251D", "#21432E", "#32613D", "#F5FFE8",
             "#B8D5AF", "#72E06A", "#35C9D0", "#FFF06A", "#FFB43A", "#FF5364",
             0.78, 0.46, .leading, .cozyWorld, .cozy,

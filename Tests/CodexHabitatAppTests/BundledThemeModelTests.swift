@@ -49,6 +49,9 @@ func bundledPrototypeManifestsPreserveTheirDistinctTreatments() throws {
     let themes = try identifiers.map { identifier in
         try #require(HabitatThemeDescriptor.builtIn.first(where: { $0.id == identifier }))
     }
+    #expect(themes.map(\.name) == [
+        "Cathedral Foundry", "Retro Messenger 2007", "Arcade Signal", "Quiet Garden",
+    ])
     let signatures = themes.map { theme in
         let appearance = theme.appearance
         return [
