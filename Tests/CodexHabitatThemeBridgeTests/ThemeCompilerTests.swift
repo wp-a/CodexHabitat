@@ -286,6 +286,67 @@ func taskSceneKeepsArtVisibleAcrossTheTranscript() throws {
 }
 
 @Test
+func immersiveHomeLetsTheContinuousSceneOwnLargeSurfaces() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"]"
+    let homeContent = try #require(profile.selectors.homeContent)
+
+    let contentRules = try cssRuleBodies(selector: "\(root) \(homeContent)", in: css)
+    let headerRules = try cssRuleBodies(selector: "\(root) \(profile.selectors.header)", in: css)
+
+    #expect(contentRules.contains { rule in
+        rule.contains("background-color: transparent")
+            && rule.contains("background-image: none")
+            && rule.contains("backdrop-filter: none")
+    })
+    #expect(headerRules.contains { rule in
+        rule.contains("background-color: transparent")
+            && rule.contains("border-bottom-color: transparent")
+            && rule.contains("box-shadow: none")
+    })
+}
+
+@Test
+func taskModesUseRouteSpecificReadingScrimsInsteadOfOneOpaqueTranscriptSlab() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
+    let selector = "\(root) \(profile.selectors.threadScroll)"
+
+    let ambientCSS = try ThemeCompiler.bundled().compile(
+        theme: try #require(BridgeTheme.builtIn(id: "workbench")),
+        profile: profile
+    )
+    let ambientRules = try cssRuleBodies(selector: selector, in: ambientCSS)
+    #expect(ambientCSS.contains("--habitat-task-reading-scrim:"))
+    #expect(ambientRules.contains { rule in
+        rule.contains("background-color: transparent")
+            && rule.contains("background-image: var(--habitat-task-reading-scrim)")
+    })
+
+    let bannerCSS = try ThemeCompiler.bundled().compile(
+        theme: try #require(BridgeTheme.builtIn(id: "arcade-signal")),
+        profile: profile
+    )
+    let bannerRules = try cssRuleBodies(selector: selector, in: bannerCSS)
+    #expect(bannerRules.contains { rule in
+        rule.contains("background-color: transparent")
+            && rule.contains("background-image: linear-gradient(to bottom")
+    })
+
+    let offCSS = try ThemeCompiler.bundled().compile(
+        theme: try #require(BridgeTheme.builtIn(id: "quiet-garden")),
+        profile: profile
+    )
+    let offRules = try cssRuleBodies(selector: selector, in: offCSS)
+    #expect(offRules.contains { rule in
+        rule.contains("background-color: color-mix(in srgb, var(--habitat-surface) 96%, transparent)")
+            && rule.contains("background-image: none")
+    })
+}
+
+@Test
 func framedSceneScalesOnlyArtworkAndKeepsItsFrameStable() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "retro-messenger"))
@@ -642,15 +703,20 @@ private func normalizedStyleRecipe(_ recipe: String) -> String {
 }
 
 private func cssRuleBody(selector: String, in css: String) throws -> String {
+    try #require(cssRuleBodies(selector: selector, in: css).first)
+}
+
+private func cssRuleBodies(selector: String, in css: String) throws -> [String] {
     let escaped = NSRegularExpression.escapedPattern(for: selector)
     let expression = try NSRegularExpression(
         pattern: escaped + #"\s*\{([^}]*)\}"#,
         options: .dotMatchesLineSeparators
     )
     let range = NSRange(css.startIndex..<css.endIndex, in: css)
-    let match = try #require(expression.firstMatch(in: css, range: range))
-    let bodyRange = try #require(Range(match.range(at: 1), in: css))
-    return String(css[bodyRange])
+    return try expression.matches(in: css, range: range).map { match in
+        let bodyRange = try #require(Range(match.range(at: 1), in: css))
+        return String(css[bodyRange])
+    }
 }
 
 private func copyBuiltInAsInstalledTheme(

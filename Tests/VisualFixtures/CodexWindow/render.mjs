@@ -178,12 +178,17 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 fullPage: false,
                 type: "png",
               });
-              const artworkPixelDelta = routeName === "task" && !taskModeOff
+              const artworkPixelDelta = routeName === "home" || !taskModeOff
                 ? await measureArtworkPixelDelta(page, screenshotBuffer)
                 : 0;
-              if (routeName === "task" && !taskModeOff) {
+              if (routeName === "home") {
                 assert(
-                  artworkPixelDelta >= 0.005,
+                  artworkPixelDelta >= 0.02,
+                  `${theme.id}/${viewport.id} home artwork pixel delta ${artworkPixelDelta} is too low`,
+                );
+              } else if (!taskModeOff) {
+                assert(
+                  artworkPixelDelta >= 0.04,
                   `${theme.id}/${viewport.id} task artwork pixel delta ${artworkPixelDelta} is too low`,
                 );
               }

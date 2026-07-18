@@ -66,8 +66,18 @@ test(
     );
     assert.ok(
       result.scenes
+        .filter(({ route }) => route === "home")
+        .every(({ artworkPixelDelta }) => artworkPixelDelta >= 0.02),
+    );
+    assert.ok(
+      result.scenes
         .filter(({ route, taskModeOff }) => route === "task" && !taskModeOff)
-        .every(({ artworkPixelDelta }) => artworkPixelDelta >= 0.005),
+        .every(({ artworkPixelDelta }) => artworkPixelDelta >= 0.04),
+    );
+    assert.ok(
+      result.scenes
+        .filter(({ route, taskModeOff }) => route === "task" && taskModeOff)
+        .every(({ artworkPixelDelta }) => artworkPixelDelta === 0),
     );
     assert.ok(
       result.scenes

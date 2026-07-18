@@ -357,6 +357,7 @@ struct ThemeCompiler {
             "home-content-width": Self.cssPercent(theme.appearance.homeContentWidth * 100),
             "vignette-strength": Self.cssPercent(theme.appearance.vignetteStrength * 100),
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
+            "task-reading-scrim": Self.taskReadingScrim(for: theme.appearance.safeSide),
             "blur-radius": Self.cssNumber(theme.appearance.blurRadius) + "px",
             "tinted-blur-radius": Self.cssNumber(theme.appearance.blurRadius * 0.55) + "px",
             "density-spacing": densitySpacing,
@@ -422,7 +423,7 @@ struct ThemeCompiler {
             }
             \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(article, [role="article"]) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
+              background-color: transparent;
               border-color: color-mix(in srgb, var(--habitat-accent) 30%, transparent);
             }
             """,
@@ -452,7 +453,8 @@ struct ThemeCompiler {
         if let transcript = profile.selectors.taskTranscript {
             rules.append("""
             \(root)[data-codex-habitat-route="task"] \(transcript) {
-              background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent);
+              background-color: transparent;
+              background-image: none;
               backdrop-filter: none;
             }
             """)
@@ -525,6 +527,17 @@ struct ThemeCompiler {
         let scene = "\(root) \(appShell)::before"
         let overlay = "\(root) \(appShell)::after"
         let main = "\(root) \(profile.selectors.mainSurface)"
+        let header = "\(root) \(profile.selectors.header)"
+        let immersiveHomeContent = profile.selectors.homeContent.map { homeContent in
+            """
+            \(root) \(homeContent) {
+              background-color: transparent;
+              background-image: none;
+              backdrop-filter: none;
+              box-shadow: none;
+            }
+            """
+        } ?? ""
         return switch mode {
         case .immersive:
             """
@@ -549,6 +562,13 @@ struct ThemeCompiler {
               background-image: none;
               border-radius: 0;
             }
+            \(header) {
+              background-color: transparent;
+              border-bottom-color: transparent;
+              backdrop-filter: none;
+              box-shadow: none;
+            }
+            \(immersiveHomeContent)
             """
         case .framed:
             """
@@ -610,6 +630,22 @@ struct ThemeCompiler {
         let scene = "\(root) \(appShell)::before"
         let overlay = "\(root) \(appShell)::after"
         let main = "\(root) \(profile.selectors.mainSurface)"
+        let readingSurfaces = [profile.selectors.threadScroll, profile.selectors.taskTranscript]
+            .compactMap { $0 }
+            .reduce(into: [String]()) { result, selector in
+                if !result.contains(selector) {
+                    result.append(selector)
+                }
+            }
+        func readingSurfaceRules(_ declarations: String) -> String {
+            readingSurfaces.map { selector in
+                """
+                \(root) \(selector) {
+                \(declarations)
+                }
+                """
+            }.joined(separator: "\n")
+        }
         return switch mode {
         case .ambient:
             """
@@ -633,6 +669,13 @@ struct ThemeCompiler {
               background-color: transparent;
               background-image: none;
             }
+            \(readingSurfaceRules("""
+              background-color: transparent;
+              background-image: var(--habitat-task-reading-scrim);
+              background-repeat: no-repeat;
+              background-size: 100% 100%;
+              backdrop-filter: none;
+            """))
             """
         case .banner:
             """
@@ -660,8 +703,15 @@ struct ThemeCompiler {
             }
             \(main) {
               background-color: transparent;
-              background-image: linear-gradient(to bottom, transparent 0 34%, color-mix(in srgb, var(--habitat-surface) 92%, transparent) 76% 100%);
+              background-image: none;
             }
+            \(readingSurfaceRules("""
+              background-color: transparent;
+              background-image: linear-gradient(to bottom, transparent 0 30%, color-mix(in srgb, var(--habitat-surface) 72%, transparent) 64%, color-mix(in srgb, var(--habitat-surface) 94%, transparent) 100%);
+              background-repeat: no-repeat;
+              background-size: 100% 100%;
+              backdrop-filter: none;
+            """))
             """
         case .off:
             """
@@ -684,6 +734,11 @@ struct ThemeCompiler {
               background-color: color-mix(in srgb, var(--habitat-surface) 96%, transparent);
               background-image: none;
             }
+            \(readingSurfaceRules("""
+              background-color: color-mix(in srgb, var(--habitat-surface) 96%, transparent);
+              background-image: none;
+              backdrop-filter: none;
+            """))
             """
         }
     }
@@ -1048,6 +1103,19 @@ struct ThemeCompiler {
             "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 0 24%, transparent 74%)"
         case .none:
             "linear-gradient(transparent, transparent)"
+        }
+    }
+
+    private static func taskReadingScrim(for safeSide: HabitatThemeSafeSide) -> String {
+        switch safeSide {
+        case .leading:
+            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 28%, color-mix(in srgb, var(--habitat-surface) 38%, transparent) 58%, transparent 84%)"
+        case .trailing:
+            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 28%, color-mix(in srgb, var(--habitat-surface) 38%, transparent) 58%, transparent 84%)"
+        case .center:
+            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 26%, color-mix(in srgb, var(--habitat-surface) 36%, transparent) 60%, transparent 88%)"
+        case .none:
+            "linear-gradient(color-mix(in srgb, var(--habitat-surface) 34%, transparent), color-mix(in srgb, var(--habitat-surface) 34%, transparent))"
         }
     }
 
