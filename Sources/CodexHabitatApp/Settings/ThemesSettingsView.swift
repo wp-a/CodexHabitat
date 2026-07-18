@@ -177,7 +177,6 @@ struct ThemesSettingsView: View {
                 }
             }
         }
-        .onAppear(perform: model.refreshResources)
         .task {
             guard opensThemeStudioForVisualQA, themeStudioModel == nil else { return }
             await Task.yield()

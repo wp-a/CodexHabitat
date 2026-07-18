@@ -60,7 +60,7 @@ func userLaunchOpensSettingsWhileLoginLaunchStaysQuiet() {
 }
 
 @Test
-func mainBundleConfigurationDeclaresAStandardVisibleBuildFiveApp() throws {
+func mainBundleConfigurationDeclaresAStandardVisibleBuildSixApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -71,7 +71,7 @@ func mainBundleConfigurationDeclaresAStandardVisibleBuildFiveApp() throws {
     )
 
     #expect(plist["LSUIElement"] == nil)
-    #expect(plist["CFBundleVersion"] as? String == "5")
+    #expect(plist["CFBundleVersion"] as? String == "6")
 }
 
 @Test @MainActor
@@ -105,6 +105,22 @@ func settingsNavigationUsesLocalSelectionState() {
     #expect(navigation.selectedSection == .integrations)
     navigation.selectedSection = .pets
     #expect(model.selectedSettingsSection == .integrations)
+}
+
+@Test
+func themeGalleryDoesNotRefreshTheEntireResourceLibraryOnAppearance() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemesSettingsView.swift"
+        ),
+        encoding: .utf8
+    )
+
+    #expect(!source.contains(".onAppear(perform: model.refreshResources)"))
 }
 
 @Test @MainActor

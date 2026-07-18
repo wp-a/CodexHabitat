@@ -169,6 +169,33 @@ func desktopUsesASelectedInstalledThemeDescriptor() {
 }
 
 @Test @MainActor
+func changingOnlyTheThemeReusesTheLoadedPetRenderer() throws {
+    let testsRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let petRoot = testsRoot.appending(path: "PetRuntimeTests/Fixtures", directoryHint: .isDirectory)
+    let pet = try #require(
+        PetLibrary(root: petRoot).discover().first(where: { $0.manifest?.id == "test-pet" })
+    )
+    var rendererLoadCount = 0
+    let controller = HabitatDesktopController { url, atlas in
+        rendererLoadCount += 1
+        return SpriteSheetRenderer(contentsOf: url, atlas: atlas)
+    }
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.selectedPetID = "test-pet"
+
+    controller.apply(settings: settings, pets: [pet], isVisible: true)
+    #expect(rendererLoadCount == 1)
+
+    settings.selectedThemeID = "night-shift"
+    controller.apply(settings: settings, pets: [pet], isVisible: true)
+
+    #expect(rendererLoadCount == 1)
+}
+
+@Test @MainActor
 func desktopConsumesResourcePetRenderingAndScale() throws {
     let testsRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

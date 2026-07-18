@@ -13,6 +13,23 @@ struct HabitatPetAsset {
     let presentation: HabitatPetPresentation
 }
 
+private struct HabitatPetAssetSource: Equatable {
+    let entry: PetLibraryEntry
+    let presentation: HabitatPetPresentation
+    let fileSize: Int?
+    let modificationDate: Date?
+
+    init(entry: PetLibraryEntry, presentation: HabitatPetPresentation) {
+        self.entry = entry
+        self.presentation = presentation
+        let attributes = entry.spritesheetURL.flatMap {
+            try? FileManager.default.attributesOfItem(atPath: $0.path)
+        }
+        fileSize = (attributes?[.size] as? NSNumber)?.intValue
+        modificationDate = attributes?[.modificationDate] as? Date
+    }
+}
+
 @MainActor
 final class HabitatOverlayPresentation: ObservableObject {
     @Published var isWidgetRailExpanded = true {
@@ -27,6 +44,8 @@ final class HabitatOverlayPresentation: ObservableObject {
 
 @MainActor
 final class HabitatDesktopController: ObservableObject {
+    typealias PetRendererLoader = (URL, PetAtlasMetadata) -> SpriteSheetRenderer
+
     private var overlay: OverlayController?
     private let presentation = HabitatOverlayPresentation()
     @Published private(set) var widgetModel = WidgetRailModel()
@@ -41,6 +60,9 @@ final class HabitatDesktopController: ObservableObject {
     private var renderedThemeID: String?
     private var renderedScale: Double?
     private var renderedReduceMotion: Bool?
+    private let petRendererLoader: PetRendererLoader
+    private var cachedPetAssetSource: HabitatPetAssetSource?
+    private var cachedPetAsset: HabitatPetAsset?
     private var storedClickThrough = false
     private var storedPositionLocked = false
 
@@ -64,7 +86,13 @@ final class HabitatDesktopController: ObservableObject {
     var panelFrame: CGRect { overlay?.panel.frame ?? .zero }
     var dragRegionFrame: CGRect { overlay?.dragRegionFrame ?? .zero }
 
-    init(isWidgetRailExpanded: Bool = true) {
+    init(
+        isWidgetRailExpanded: Bool = true,
+        petRendererLoader: @escaping PetRendererLoader = {
+            SpriteSheetRenderer(contentsOf: $0, atlas: $1)
+        }
+    ) {
+        self.petRendererLoader = petRendererLoader
         presentation.isWidgetRailExpanded = isWidgetRailExpanded
         presentation.onExpansionChange = { [weak self] _ in
             let rightEdge = self?.overlay?.panel.frame.maxX
@@ -109,7 +137,7 @@ final class HabitatDesktopController: ObservableObject {
         }
 
         let scale = min(max(settings.scale, 0.75), 1.5)
-        let petAsset = Self.asset(
+        let petAsset = asset(
             id: settings.selectedPetID,
             pets: pets,
             presentations: petPresentations
@@ -223,7 +251,7 @@ final class HabitatDesktopController: ObservableObject {
         presentation.isWidgetRailExpanded = expanded
     }
 
-    private static func asset(
+    private func asset(
         id: String?,
         pets: [PetLibraryEntry],
         presentations: [String: HabitatPetPresentation]
@@ -233,17 +261,29 @@ final class HabitatDesktopController: ObservableObject {
               let spritesheetURL = entry.spritesheetURL,
               let atlas = entry.atlas
         else {
+            cachedPetAssetSource = nil
+            cachedPetAsset = nil
             return nil
         }
-        return HabitatPetAsset(
-            id: id,
-            renderer: SpriteSheetRenderer(contentsOf: spritesheetURL, atlas: atlas),
-            availableRows: Set(0..<min(atlas.rows, 9)),
+        let source = HabitatPetAssetSource(
+            entry: entry,
             presentation: presentations[id] ?? HabitatPetPresentation(
                 renderMode: .auto,
                 scale: 1
             )
         )
+        if source == cachedPetAssetSource {
+            return cachedPetAsset
+        }
+        let asset = HabitatPetAsset(
+            id: id,
+            renderer: petRendererLoader(spritesheetURL, atlas),
+            availableRows: Set(0..<min(atlas.rows, 9)),
+            presentation: source.presentation
+        )
+        cachedPetAssetSource = source
+        cachedPetAsset = asset
+        return asset
     }
 
     private static func scaledSize(_ size: CGSize, scale: Double) -> CGSize {
