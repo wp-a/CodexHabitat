@@ -33,6 +33,9 @@ and its original `Sat Jul 18 14:48:19 2026` start time throughout capture.
   [`gallery-anime-build8.png`](gallery-anime-build8.png), and
   [`gallery-custom-build8.png`](gallery-custom-build8.png): final Build 8 All,
   Nostalgia, Anime, and Custom filters at 1152 points.
+- [`gallery-classic-build8.png`](gallery-classic-build8.png): final installed
+  Build 8 Classic filter confirming the generic Chinese display name
+  `经典桌面工作台` fits its native card without clipping.
 - [`theme-studio-wide-sheet-build8.png`](theme-studio-wide-sheet-build8.png),
   [`theme-studio-narrow-sheet-build8.png`](theme-studio-narrow-sheet-build8.png),
   and [`theme-studio-route-controls-build8.png`](theme-studio-route-controls-build8.png):
@@ -57,7 +60,7 @@ warnings during this QA run.
 The Build 8 DMG mounted with both media and volume read-only, reported build 8
 and `Codex Habitat 0.1.0`, and passed mounted release and strict signature
 verification. Its SHA-256 is
-`f8ede090d94f79a74d88f3ec4c96e1d9a1f01ba75a4a73d31e899f3de4d20186`.
+`48783fbe7a1c7e2f906f8302ebac4b33dab939928b6b65db71a1aea8a37d4009`.
 
 Offline full-window Codex evidence for all 96 theme/route/viewport scenes is in
 [`offline-codex-window/`](offline-codex-window/README.md).
