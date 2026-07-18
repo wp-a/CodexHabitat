@@ -299,11 +299,10 @@ struct ThemeChoiceCard: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
-                ThemePreview(
-                    url: theme.previewURL,
-                    panelColor: Color(habitatHex: theme.panelHex),
-                    symbol: theme.symbol,
-                    symbolColor: palette[0]
+                ThemeTreatmentPreview(
+                    model: ThemeTreatmentPreviewModel(theme: theme),
+                    imageURL: theme.backgroundURL ?? theme.previewURL,
+                    symbol: theme.symbol
                 )
                 HStack {
                     HStack(spacing: 5) {
@@ -352,40 +351,5 @@ struct ThemeChoiceCard: View {
             Color(habitatHex: theme.attentionHex),
             Color(habitatHex: theme.errorHex),
         ]
-    }
-}
-
-private struct ThemePreview: View {
-    let url: URL?
-    let panelColor: Color
-    let symbol: String
-    let symbolColor: Color
-    @State private var image: CGImage?
-
-    var body: some View {
-        Group {
-            if let image {
-                Image(decorative: image, scale: 1, orientation: .up)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Rectangle()
-                    .fill(panelColor)
-                    .overlay {
-                        Image(systemName: symbol)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(symbolColor)
-                    }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 100)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .task(id: url) {
-            let loadedImage = await ThemePreviewStore.shared.image(at: url)
-            guard !Task.isCancelled else { return }
-            image = loadedImage
-        }
     }
 }

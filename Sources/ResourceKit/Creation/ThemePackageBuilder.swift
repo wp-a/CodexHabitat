@@ -29,6 +29,14 @@ public struct ThemePackageRequest: Equatable, Sendable {
     public let panelOpacity: Double
     public let blurRadius: Double
     public let density: HabitatThemeDensity
+    public let homeMode: HabitatThemeHomeMode
+    public let taskMode: HabitatThemeTaskMode
+    public let chromeMaterial: HabitatThemeChromeMaterial
+    public let homeStrength: Double
+    public let taskStrength: Double
+    public let sidebarOpacity: Double
+    public let headerOpacity: Double
+    public let composerOpacity: Double
 
     public init(
         name: String,
@@ -42,7 +50,15 @@ public struct ThemePackageRequest: Equatable, Sendable {
         backgroundStrength: Double,
         panelOpacity: Double,
         blurRadius: Double,
-        density: HabitatThemeDensity
+        density: HabitatThemeDensity,
+        homeMode: HabitatThemeHomeMode,
+        taskMode: HabitatThemeTaskMode,
+        chromeMaterial: HabitatThemeChromeMaterial,
+        homeStrength: Double,
+        taskStrength: Double,
+        sidebarOpacity: Double,
+        headerOpacity: Double,
+        composerOpacity: Double
     ) {
         self.name = name
         self.author = author
@@ -56,6 +72,14 @@ public struct ThemePackageRequest: Equatable, Sendable {
         self.panelOpacity = panelOpacity
         self.blurRadius = blurRadius
         self.density = density
+        self.homeMode = homeMode
+        self.taskMode = taskMode
+        self.chromeMaterial = chromeMaterial
+        self.homeStrength = homeStrength
+        self.taskStrength = taskStrength
+        self.sidebarOpacity = sidebarOpacity
+        self.headerOpacity = headerOpacity
+        self.composerOpacity = composerOpacity
     }
 }
 
@@ -460,6 +484,14 @@ public struct ThemePackageBuilder: Sendable {
                 "panelOpacity": request.panelOpacity,
                 "blurRadius": request.blurRadius,
                 "density": request.density.rawValue,
+                "homeMode": request.homeMode.rawValue,
+                "taskMode": request.taskMode.rawValue,
+                "chromeMaterial": request.chromeMaterial.rawValue,
+                "homeStrength": request.homeStrength,
+                "taskStrength": request.taskStrength,
+                "sidebarOpacity": request.sidebarOpacity,
+                "headerOpacity": request.headerOpacity,
+                "composerOpacity": request.composerOpacity,
             ],
             "assets": [[
                 "type": "image",

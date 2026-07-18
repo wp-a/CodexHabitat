@@ -32,6 +32,10 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     for key in [
         "All", "Nostalgia", "Chat", "Anime", "Games", "Cozy", "Classic", "Custom",
         "Search themes", "Create Theme", "Theme Studio", "Save Locally",
+        "Home treatment", "Task treatment", "Chrome material",
+        "Immersive", "Framed", "Quiet", "Ambient", "Banner", "Off",
+        "Solid", "Tinted", "Glass", "Center", "Home strength", "Task strength",
+        "Sidebar opacity", "Header opacity", "Composer opacity",
         "Choose a local background image.",
         "Export does not grant image rights. You confirm you may use and share this image.",
         "Theme names must be 100 characters or fewer and contain no control characters.",

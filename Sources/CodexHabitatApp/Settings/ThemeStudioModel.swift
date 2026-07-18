@@ -43,6 +43,14 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     @Published private(set) var panelOpacity = 0.88
     @Published private(set) var blurRadius = 10.0
     @Published private(set) var density = HabitatThemeDensity.comfortable
+    @Published private(set) var homeMode = HabitatThemeHomeMode.quiet
+    @Published private(set) var taskMode = HabitatThemeTaskMode.ambient
+    @Published private(set) var chromeMaterial = HabitatThemeChromeMaterial.tinted
+    @Published private(set) var homeStrength = 0.42
+    @Published private(set) var taskStrength = 0.19
+    @Published private(set) var sidebarOpacity = 0.88
+    @Published private(set) var headerOpacity = 0.88
+    @Published private(set) var composerOpacity = 0.88
     @Published private(set) var pairedPetID: String?
     @Published private(set) var state = ThemeStudioState.editing
     @Published private(set) var isDirty = false
@@ -56,6 +64,28 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     let availablePets: [ThemeStudioPetOption]
 
     private var suppressDirtyTracking = false
+
+    var previewAppearance: HabitatThemeAppearance {
+        HabitatThemeAppearance(
+            category: category,
+            styleFamily: styleFamily,
+            background: "background.jpg",
+            artFocus: artFocus,
+            safeSide: safeSide,
+            backgroundStrength: backgroundStrength,
+            panelOpacity: panelOpacity,
+            blurRadius: blurRadius,
+            density: density,
+            homeMode: homeMode,
+            taskMode: taskMode,
+            chromeMaterial: chromeMaterial,
+            homeStrength: homeStrength,
+            taskStrength: taskStrength,
+            sidebarOpacity: sidebarOpacity,
+            headerOpacity: headerOpacity,
+            composerOpacity: composerOpacity
+        )
+    }
 
     init(
         libraryRoot: URL,
@@ -139,6 +169,24 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         markDirty()
     }
 
+    func setHomeMode(_ value: HabitatThemeHomeMode) {
+        guard homeMode != value else { return }
+        homeMode = value
+        markDirty()
+    }
+
+    func setTaskMode(_ value: HabitatThemeTaskMode) {
+        guard taskMode != value else { return }
+        taskMode = value
+        markDirty()
+    }
+
+    func setChromeMaterial(_ value: HabitatThemeChromeMaterial) {
+        guard chromeMaterial != value else { return }
+        chromeMaterial = value
+        markDirty()
+    }
+
     func setPairedPetID(_ value: String?) {
         guard value == nil || availablePets.contains(where: { $0.id == value }) else { return }
         guard pairedPetID != value else { return }
@@ -165,6 +213,26 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         guard blurRadius != value else { return }
         blurRadius = value
         markDirty()
+    }
+
+    func setHomeStrength(_ value: Double) {
+        setBounded(value, range: 0.10...0.85, keyPath: \ThemeStudioModel.homeStrength)
+    }
+
+    func setTaskStrength(_ value: Double) {
+        setBounded(value, range: 0.10...0.85, keyPath: \ThemeStudioModel.taskStrength)
+    }
+
+    func setSidebarOpacity(_ value: Double) {
+        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.sidebarOpacity)
+    }
+
+    func setHeaderOpacity(_ value: Double) {
+        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.headerOpacity)
+    }
+
+    func setComposerOpacity(_ value: Double) {
+        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.composerOpacity)
     }
 
     func setArtFocus(x: Double, y: Double) {
@@ -197,6 +265,14 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         panelOpacity = 0.88
         blurRadius = 10
         density = .comfortable
+        homeMode = .quiet
+        taskMode = .ambient
+        chromeMaterial = .tinted
+        homeStrength = 0.42
+        taskStrength = 0.19
+        sidebarOpacity = 0.88
+        headerOpacity = 0.88
+        composerOpacity = 0.88
         pairedPetID = nil
         state = .editing
         nameValidationMessage = nil
@@ -287,7 +363,15 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             backgroundStrength: backgroundStrength,
             panelOpacity: panelOpacity,
             blurRadius: blurRadius,
-            density: density
+            density: density,
+            homeMode: homeMode,
+            taskMode: taskMode,
+            chromeMaterial: chromeMaterial,
+            homeStrength: homeStrength,
+            taskStrength: taskStrength,
+            sidebarOpacity: sidebarOpacity,
+            headerOpacity: headerOpacity,
+            composerOpacity: composerOpacity
         )
     }
 
@@ -300,5 +384,16 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         isDirty = true
         if case .saving = state { return }
         state = .editing
+    }
+
+    private func setBounded(
+        _ value: Double,
+        range: ClosedRange<Double>,
+        keyPath: ReferenceWritableKeyPath<ThemeStudioModel, Double>
+    ) {
+        let value = min(max(value, range.lowerBound), range.upperBound)
+        guard self[keyPath: keyPath] != value else { return }
+        self[keyPath: keyPath] = value
+        markDirty()
     }
 }

@@ -41,7 +41,15 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
         backgroundStrength: 0.48,
         panelOpacity: 0.91,
         blurRadius: 12,
-        density: .comfortable
+        density: .comfortable,
+        homeMode: .framed,
+        taskMode: .banner,
+        chromeMaterial: .glass,
+        homeStrength: 0.66,
+        taskStrength: 0.34,
+        sidebarOpacity: 0.78,
+        headerOpacity: 0.69,
+        composerOpacity: 0.92
     )
 
     let result = try builder.build(request, to: archive)
@@ -50,6 +58,14 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
     #expect(result.manifest.id.wholeMatch(of: /^[a-z0-9]+([.-][a-z0-9]+)*$/) != nil)
     #expect(result.manifest.colors.accent == manual.accent)
     #expect(result.manifest.theme?.styleFamily == .fantasyAdventure)
+    #expect(result.manifest.theme?.homeMode == .framed)
+    #expect(result.manifest.theme?.taskMode == .banner)
+    #expect(result.manifest.theme?.chromeMaterial == .glass)
+    #expect(result.manifest.theme?.homeStrength == 0.66)
+    #expect(result.manifest.theme?.taskStrength == 0.34)
+    #expect(result.manifest.theme?.sidebarOpacity == 0.78)
+    #expect(result.manifest.theme?.headerOpacity == 0.69)
+    #expect(result.manifest.theme?.composerOpacity == 0.92)
     #expect(result.manifest.license.spdx == "LicenseRef-Codex-Habitat-User-Content")
     #expect(try ArchiveInspector().inspect(archive).entries.map(\.path).sorted() == [
         "LICENSE", "background.jpg", "habitat.json", "preview.png",
@@ -94,7 +110,15 @@ func themePackageBuilderKeepsHighEntropyBridgeArtWithinOneMiB() throws {
         backgroundStrength: 0.42,
         panelOpacity: 0.88,
         blurRadius: 10,
-        density: .comfortable
+        density: .comfortable,
+        homeMode: .quiet,
+        taskMode: .ambient,
+        chromeMaterial: .tinted,
+        homeStrength: 0.42,
+        taskStrength: 0.19,
+        sidebarOpacity: 0.88,
+        headerOpacity: 0.88,
+        composerOpacity: 0.88
     )
 
     _ = try builder.build(request, to: archive)

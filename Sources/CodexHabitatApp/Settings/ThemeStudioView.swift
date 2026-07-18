@@ -10,6 +10,7 @@ struct ThemeStudioView: View {
     @State private var pendingExportURL: URL?
     @State private var showsRightsConfirmation = false
     @State private var rightsAccepted = false
+    @State private var previewRoute = ThemeTreatmentPreviewRoute.home
 
     var body: some View {
         VStack(spacing: 0) {
@@ -171,7 +172,40 @@ struct ThemeStudioView: View {
             )) {
                 Text("Leading").tag(HabitatThemeSafeSide.leading)
                 Text("Trailing").tag(HabitatThemeSafeSide.trailing)
+                Text("Center").tag(HabitatThemeSafeSide.center)
+                Text("None").tag(HabitatThemeSafeSide.none)
             }
+            .pickerStyle(.segmented)
+
+            Picker("Home treatment", selection: Binding(
+                get: { model.homeMode },
+                set: { model.setHomeMode($0) }
+            )) {
+                Text("Immersive").tag(HabitatThemeHomeMode.immersive)
+                Text("Framed").tag(HabitatThemeHomeMode.framed)
+                Text("Quiet").tag(HabitatThemeHomeMode.quiet)
+            }
+            .pickerStyle(.segmented)
+
+            Picker("Task treatment", selection: Binding(
+                get: { model.taskMode },
+                set: { model.setTaskMode($0) }
+            )) {
+                Text("Ambient").tag(HabitatThemeTaskMode.ambient)
+                Text("Banner").tag(HabitatThemeTaskMode.banner)
+                Text("Off").tag(HabitatThemeTaskMode.off)
+            }
+            .pickerStyle(.segmented)
+
+            Picker("Chrome material", selection: Binding(
+                get: { model.chromeMaterial },
+                set: { model.setChromeMaterial($0) }
+            )) {
+                Text("Solid").tag(HabitatThemeChromeMaterial.solid)
+                Text("Tinted").tag(HabitatThemeChromeMaterial.tinted)
+                Text("Glass").tag(HabitatThemeChromeMaterial.glass)
+            }
+            .pickerStyle(.segmented)
 
             valueSlider(
                 "Background strength",
@@ -189,6 +223,51 @@ struct ThemeStudioView: View {
                 step: 0.01,
                 format: "%.0f%%",
                 setter: model.setPanelOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Home strength",
+                value: model.homeStrength,
+                range: 0.10...0.85,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setHomeStrength,
+                displayScale: 100
+            )
+            valueSlider(
+                "Task strength",
+                value: model.taskStrength,
+                range: 0.10...0.85,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setTaskStrength,
+                displayScale: 100
+            )
+            valueSlider(
+                "Sidebar opacity",
+                value: model.sidebarOpacity,
+                range: 0.40...1.0,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setSidebarOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Header opacity",
+                value: model.headerOpacity,
+                range: 0.40...1.0,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setHeaderOpacity,
+                displayScale: 100
+            )
+            valueSlider(
+                "Composer opacity",
+                value: model.composerOpacity,
+                range: 0.40...1.0,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: model.setComposerOpacity,
                 displayScale: 100
             )
             valueSlider(
@@ -260,19 +339,32 @@ struct ThemeStudioView: View {
 
     @ViewBuilder
     private var preview: some View {
-        if let sourceImageURL = model.sourceImageURL,
-           let image = NSImage(contentsOf: sourceImageURL) {
-            Image(nsImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 300, height: 188)
-                .overlay {
-                    Color(habitatHex: model.color(for: .surface) ?? "#101820")
-                        .opacity(1 - model.backgroundStrength)
-                        .allowsHitTesting(false)
+        if let sourceImageURL = model.sourceImageURL, model.palette != nil {
+            VStack(spacing: 7) {
+                ThemeTreatmentPreview(
+                    model: ThemeTreatmentPreviewModel(
+                        appearance: model.previewAppearance,
+                        surfaceHex: model.color(for: .surface) ?? "#101820",
+                        panelHex: model.color(for: .panel) ?? "#182633",
+                        panelAltHex: model.color(for: .panelAlt) ?? "#24384A",
+                        textHex: model.color(for: .text) ?? "#F4FAFF",
+                        accentHex: model.color(for: .accent) ?? "#16C6D9"
+                    ),
+                    imageURL: sourceImageURL,
+                    symbol: "paintpalette.fill",
+                    route: previewRoute,
+                    height: 160
+                )
+                .frame(width: 300)
+
+                Picker("Preview route", selection: $previewRoute) {
+                    Text("Home").tag(ThemeTreatmentPreviewRoute.home)
+                    Text("Task").tag(ThemeTreatmentPreviewRoute.task)
                 }
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 170)
+            }
         } else {
             ZStack {
                 Color.secondary.opacity(0.08)
