@@ -70,6 +70,10 @@ checked, dimension and pixel bounded, oriented, downsampled, and re-encoded.
 The generated package uses `LicenseRef-Codex-Habitat-User-Content` so saving a
 theme never grants rights the user does not hold. Imports cannot contain CSS,
 JavaScript, selectors, commands, URLs, symlinks, or undeclared files.
+Installed custom themes can be reopened as strongly typed drafts, optionally
+paired with a local pet, and replaced only after an explicit collision
+confirmation. PNG, JPEG, and WebP filename extensions are case-insensitive;
+the decoded signature and all image bounds remain mandatory.
 
 ## Build and run
 

@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 283 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, theme-navigation resource isolation, pet-renderer reuse, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 291 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, theme-navigation resource isolation, off-main pet renderer construction, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `d47bd0d958a1f99ce4a485d95cacc7fbb5bda1eb729c0baf6792e16f40beacf9`.
+- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `b37d9588539027ba7a9588387ccd2065b42e959dc706fc72dddbe34c2c607be8`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -31,14 +31,14 @@ explicit user action.
 - [x] All 24 bundled theme packages have unique IDs and hashes, 800 x 500 previews, and nine materially distinct host-owned style families. Cathedral Foundry, Retro Messenger 2007, Arcade Signal, and Quiet Garden use validated 2560 x 1440 prototype backgrounds; the other twenty retain validated 1600 x 1000 backgrounds.
 - [x] All, Nostalgia, Anime, and Custom gallery filters plus Theme Studio at narrow and wide settings widths pass native screenshot review without blank previews, clipping, or overlap.
 - [x] Installed Pets and Themes pages pass native screenshot review with decoded thumbnails/previews, stable card geometry, and no blank or overlapping content.
-- [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input and typed controls, including home/task treatment, safe side, chrome material, independent route strength, and sidebar/header/composer opacity; it re-encodes bounded art and installs/exports through the validated package path with a user-content rights notice.
+- [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input (including uppercase extensions) and typed controls, including home/task treatment, safe side, chrome material, independent route strength, and sidebar/header/composer opacity; installed custom themes reopen as complete typed drafts, optional pet pairings persist, and slug collisions require explicit replacement confirmation.
 - [x] Build 7 polished-prototype gallery, Retro Messenger framed preview at 1040 points, and Theme Studio route controls at a 760-point parent pass original-resolution screenshot review; evidence is in `docs/qa/screenshots/2026-07-18/`.
 - [x] Overlay does not activate the app and can be made click-through.
 - [x] Menu-bar connection state and Pomodoro/countdown controls render without clipping and share live timer state with the overlay.
 - [x] Simplified Chinese settings and the default status/latest-request Token/context/recent-60-second-output/quota overlay pass native screenshot review without overlap.
 - [x] At 100% scale the physical overlay is 136 x 144 collapsed and 324 x 144 expanded; the right edge remains fixed and the collapsed window has no transparent mouse-blocking rail.
 - [x] Resource packs support validated import, explicit replacement, export, and uninstall from native settings.
-- [x] Whole-pet live dragging moved the packaged overlay from `+1138,+481` to `+948,+319`; position lock and per-display relative placement persist through settings schema v4.
+- [x] Whole-pet live dragging moved the packaged overlay from `+1138,+481` to `+948,+319`; position lock, per-display relative placement, and theme-pet pairings persist through settings schema v5.
 - [x] Launch-at-login uses `SMAppService.mainApp`; registration, rollback, and stored-state reconciliation are covered by tests.
 - [x] Reduce Motion removes the pet refresh timer.
 - [x] Hiding Habitat pauses local session polling and the pet refresh timer; showing it resumes both.
@@ -53,6 +53,7 @@ explicit user action.
 - [x] Pet refresh is capped at 8 Hz active; resting, offline, and Reduce Motion are static.
 - [x] Sprite frames are cropped once and reused by subsequent redraws.
 - [x] Pet sprites decode only the requested thumbnail frame off the main thread and cache both successful and missing results.
+- [x] Selecting a different pet builds and precrops its immutable renderer off the main actor, keeps the current pet visible until publication, and discards cancelled stale results during rapid switching.
 - [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
 - [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Build 7 prototype gallery and narrow Theme Studio QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
