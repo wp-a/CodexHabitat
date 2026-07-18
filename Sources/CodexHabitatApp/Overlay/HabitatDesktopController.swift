@@ -38,6 +38,26 @@ private struct HabitatDesktopApplication {
     let themes: [HabitatThemeDescriptor]
 }
 
+private actor HabitatPetRendererWorker {
+    private let loader: @Sendable (URL, PetAtlasMetadata) -> SpriteSheetRenderer
+
+    init(
+        loader: @escaping @Sendable (URL, PetAtlasMetadata) -> SpriteSheetRenderer
+    ) {
+        self.loader = loader
+    }
+
+    func load(
+        contentsOf url: URL,
+        atlas: PetAtlasMetadata
+    ) -> SpriteSheetRenderer? {
+        guard !Task.isCancelled else { return nil }
+        let renderer = loader(url, atlas)
+        guard !Task.isCancelled else { return nil }
+        return renderer
+    }
+}
+
 @MainActor
 final class HabitatOverlayPresentation: ObservableObject {
     @Published var isWidgetRailExpanded = true {
@@ -68,7 +88,7 @@ final class HabitatDesktopController: ObservableObject {
     private var renderedThemeID: String?
     private var renderedScale: Double?
     private var renderedReduceMotion: Bool?
-    private let petRendererLoader: PetRendererLoader
+    private let petRendererWorker: HabitatPetRendererWorker
     private var cachedPetAssetSource: HabitatPetAssetSource?
     private var cachedPetAsset: HabitatPetAsset?
     private var pendingPetAssetSource: HabitatPetAssetSource?
@@ -103,7 +123,7 @@ final class HabitatDesktopController: ObservableObject {
             SpriteSheetRenderer(contentsOf: $0, atlas: $1)
         }
     ) {
-        self.petRendererLoader = petRendererLoader
+        petRendererWorker = HabitatPetRendererWorker(loader: petRendererLoader)
         presentation.isWidgetRailExpanded = isWidgetRailExpanded
         presentation.onExpansionChange = { [weak self] _ in
             let rightEdge = self?.overlay?.panel.frame.maxX
@@ -315,17 +335,12 @@ final class HabitatDesktopController: ObservableObject {
     ) {
         cancelPendingPetAssetLoad()
         pendingPetAssetSource = source
-        let loader = petRendererLoader
+        let worker = petRendererWorker
         petRendererLoadTask = Task { [weak self] in
-            let rendererTask = Task.detached(priority: .userInitiated) {
-                loader(spritesheetURL, atlas)
-            }
-            let renderer = await withTaskCancellationHandler {
-                await rendererTask.value
-            } onCancel: {
-                rendererTask.cancel()
-            }
-            guard !Task.isCancelled,
+            guard let renderer = await worker.load(
+                contentsOf: spritesheetURL,
+                atlas: atlas
+            ), !Task.isCancelled,
                   let self,
                   self.pendingPetAssetSource == source
             else {

@@ -284,6 +284,58 @@ func switchingBackBeforeAQueuedRendererFinishesDiscardsTheStaleSelection() async
 }
 
 @Test @MainActor
+func switchingAgainWhileARendererIsBlockedSerializesTheNextLoad() async {
+    let gate = RendererLoadGate(blockedPetID: "second-pet")
+    let controller = HabitatDesktopController { url, atlas in
+        gate.load(url: url, atlas: atlas)
+    }
+    let firstPet = desktopTestPet(id: "first-pet")
+    let secondPet = desktopTestPet(id: "second-pet")
+    let thirdPet = desktopTestPet(id: "third-pet")
+    let pets = [firstPet, secondPet, thirdPet]
+    let presentations = [
+        "first-pet": HabitatPetPresentation(renderMode: .smooth, scale: 1),
+        "second-pet": HabitatPetPresentation(renderMode: .pixelated, scale: 1),
+        "third-pet": HabitatPetPresentation(renderMode: .auto, scale: 1),
+    ]
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.selectedPetID = "first-pet"
+    controller.apply(
+        settings: settings,
+        pets: pets,
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForPetRenderMode(.smooth, in: controller)
+
+    settings.selectedPetID = "second-pet"
+    controller.apply(
+        settings: settings,
+        pets: pets,
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForRendererLoad(of: "second-pet", in: gate)
+
+    settings.selectedPetID = "third-pet"
+    controller.apply(
+        settings: settings,
+        pets: pets,
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await allowPendingRendererLoadsToStart()
+
+    #expect(!gate.hasStarted("third-pet"))
+    gate.releaseBlockedLoad()
+    await waitForRendererLoadCompletion(of: "second-pet", in: gate)
+    await waitForPetRenderMode(.auto, in: controller)
+
+    #expect(gate.loadedPetIDs == ["first-pet", "second-pet", "third-pet"])
+}
+
+@Test @MainActor
 func desktopConsumesResourcePetRenderingAndScale() async throws {
     let testsRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -413,6 +465,12 @@ private func waitForRendererLoadCompletion(
     in gate: RendererLoadGate
 ) async {
     for _ in 0..<1_000 where !gate.hasCompleted(petID) {
+        await Task.yield()
+    }
+}
+
+private func allowPendingRendererLoadsToStart() async {
+    for _ in 0..<1_000 {
         await Task.yield()
     }
 }
