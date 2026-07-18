@@ -15,28 +15,30 @@
 **Files:**
 - Modify: `Tests/HabitatCoreTests/BuiltInThemeCatalogTests.swift`
 - Modify: `Tests/CodexHabitatAppTests/BundledThemeModelTests.swift`
-- Create: `scripts/sync-built-in-theme-manifests.swift`
 - Modify: `Sources/CodexHabitatApp/Resources/Themes/*/habitat.json`
 
-**Step 1: Write a failing canonical-manifest synchronizer test**
+**Step 1: Write a failing canonical-manifest comparison test**
 
-Add a test that requires the synchronizer to exist, runs it with `--check`, and
-then decodes every packaged built-in manifest to compare every palette and
-resolved appearance field to `BuiltInThemeCatalog` rather than only checking
-IDs and hashes.
+Add a test helper that compares every palette and resolved appearance field to
+`BuiltInThemeCatalog` rather than only checking IDs and hashes. Add one test for
+all packaged manifests and one deliberately changed in-memory appearance that
+proves the helper reports the exact changed field.
 
 ```swift
 @Test
-func canonicalBuiltInManifestSynchronizerReportsNoDrift() throws {
-    let result = try runManifestSynchronizer("--check")
-    #expect(result.status == 0)
-    #expect(result.stdout.isEmpty)
+func allBuiltInManifestsMatchTheCanonicalCatalog() throws {
     #expect(BuiltInThemeCatalog.all.count == 24)
     for definition in BuiltInThemeCatalog.all {
         let manifest = try packagedManifest(id: definition.id)
-        let theme = try #require(manifest.resources.themes.first)
-        #expect(theme.appearance == definition.appearance(background: "background.jpg"))
+        #expect(catalogMismatches(definition, manifest).isEmpty)
     }
+}
+
+@Test
+func canonicalComparisonReportsAppearanceDrift() throws {
+    let definition = try #require(BuiltInThemeCatalog.definition(id: "workbench"))
+    let changed = manifestCopy(id: "workbench", taskStrength: 0.11)
+    #expect(catalogMismatches(definition, changed) == ["theme.taskStrength"])
 }
 ```
 
@@ -45,29 +47,26 @@ func canonicalBuiltInManifestSynchronizerReportsNoDrift() throws {
 Run:
 
 ```bash
-swift test --filter canonicalBuiltInManifestSynchronizerReportsNoDrift
+swift test --filter 'allBuiltInManifestsMatchTheCanonicalCatalog|canonicalComparisonReportsAppearanceDrift'
 ```
 
-Expected: FAIL because the canonical synchronizer does not exist.
+Expected: compile failure because the exhaustive comparison helper does not exist.
 
-**Step 3: Add a deterministic manifest synchronizer**
+**Step 3: Implement the exhaustive comparison helper**
 
-Create a Swift script that reads the canonical catalog, preserves each package's
-identity, assets, license, and widget declarations, and rewrites only palette
-and appearance values in stable sorted JSON. It must refuse unknown built-in
-directories, missing catalog IDs, non-bundled licenses, or asset changes.
-
-The script must support `--check` and `--write`. `--check` exits nonzero and
-prints only the out-of-sync theme IDs. It must never touch images or hashes.
+Decode manifests through the public `ManifestDecoder`. Compare the complete
+palette and every stored and resolved appearance field. Return stable field
+paths so a mismatch identifies exactly what must change. The helper must not
+normalize away missing optional values that change resolved behavior.
 
 **Step 4: Synchronize the current catalog and verify GREEN**
 
-Run the script once with `--write`, inspect that it changed only palette and
-appearance JSON when needed, then run the test again.
+Update current manifests only if the exhaustive test reports a real mismatch,
+using structured JSON editing and preserving identity, assets, hashes, license,
+pets, and widgets. Then rerun the focused tests.
 
 ```bash
-swift scripts/sync-built-in-theme-manifests.swift --write
-swift test --filter canonicalBuiltInManifestSynchronizerReportsNoDrift
+swift test --filter 'allBuiltInManifestsMatchTheCanonicalCatalog|canonicalComparisonReportsAppearanceDrift'
 ```
 
 Expected: PASS. Do not add placeholder treatments in this task; Task 3 adds the
@@ -78,7 +77,6 @@ separate failing requirement that all built-ins declare explicit scenes.
 ```bash
 git add Tests/HabitatCoreTests/BuiltInThemeCatalogTests.swift \
   Tests/CodexHabitatAppTests/BundledThemeModelTests.swift \
-  scripts/sync-built-in-theme-manifests.swift \
   Sources/CodexHabitatApp/Resources/Themes
 git commit -m "test: lock canonical built-in manifests"
 ```
@@ -219,20 +217,17 @@ Target bands:
 | retro framed/desktop | 0.68-0.82 | 0.36-0.48 | 0.54-0.70 | 0.68-0.80 | 0.90-0.96 |
 | light quiet/framed | 0.52-0.72 | 0.10-0.38 | 0.60-0.76 | 0.72-0.84 | 0.92-0.98 |
 
-**Step 4: Synchronize generated manifest appearance**
+**Step 4: Update manifest appearance from the canonical catalog**
 
-```bash
-swift scripts/sync-built-in-theme-manifests.swift --write
-swift scripts/sync-built-in-theme-manifests.swift --check
-```
-
-Expected: the first command updates only appearance/palette JSON; the second
-exits 0 with no output.
+Update only each manifest's `colors` and `theme` objects through structured JSON
+editing. Preserve identity, assets, hashes, license, pets, and widgets. The
+exhaustive Task 1 test is the drift gate; do not introduce a second catalog in
+a standalone script.
 
 **Step 5: Run focused tests and verify GREEN**
 
 ```bash
-swift test --filter 'BuiltInThemeCatalogTests|BundledThemeModelTests|BundledResourcesTests'
+swift test --filter 'BuiltInThemeCatalogTests|BundledThemeModelTests|BundledResourcesTests|allBuiltInManifestsMatchTheCanonicalCatalog'
 ```
 
 Expected: PASS.
