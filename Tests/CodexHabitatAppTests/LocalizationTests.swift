@@ -1,3 +1,4 @@
+import Foundation
 import HabitatCore
 import Testing
 @testable import CodexHabitatApp
@@ -46,6 +47,25 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     for category in HabitatThemeCategory.allCases {
         #expect(localization.text(category.localizationKey) != category.localizationKey)
     }
+}
+
+@Test
+func themeStudioSliderTitlesUseDynamicLocalization() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = repositoryRoot
+        .appendingPathComponent("Sources/CodexHabitatApp/Settings/ThemeStudioView.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+    let sliderStart = try #require(source.range(of: "private func valueSlider("))
+    let sliderEnd = try #require(source.range(
+        of: "private func colorBinding",
+        range: sliderStart.upperBound..<source.endIndex
+    ))
+    let sliderImplementation = source[sliderStart.lowerBound..<sliderEnd.lowerBound]
+
+    #expect(sliderImplementation.contains("Text(L10n.text(title))"))
 }
 
 @Test

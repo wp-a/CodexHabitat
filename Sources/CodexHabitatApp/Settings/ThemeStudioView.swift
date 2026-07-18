@@ -407,7 +407,7 @@ struct ThemeStudioView: View {
         displayScale: Double = 1
     ) -> some View {
         HStack(spacing: 12) {
-            Text(title)
+            Text(L10n.text(title))
                 .frame(width: 138, alignment: .leading)
             Slider(
                 value: Binding(get: { value }, set: { setter($0) }),
