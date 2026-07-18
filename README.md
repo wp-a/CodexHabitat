@@ -31,10 +31,12 @@ timers work offline and do not require an account.
 - Shared menu-bar timer controls, explicit connection health, pet context
   actions, and position locking.
 - Twenty-four original built-in themes across nine host-owned style families,
-  with searchable All, Nostalgia, Anime, and Custom gallery views.
+  with route-aware home/task treatments and searchable All, Nostalgia, Anime,
+  and Custom gallery views.
 - A local Theme Studio that imports a single PNG, JPEG, or WebP image, exposes
-  only typed appearance controls, and saves or exports a validated
-  `.habitat-pack` without applying it to Codex.
+  only typed home/task, material, safe-area, strength, opacity, focal-point, and
+  palette controls, and saves or exports a validated `.habitat-pack` without
+  applying it to Codex.
 - Clipboard export to the native `codex-theme-v1` import shape verified in the
   locally installed Codex build, without writing Codex preferences.
 - Explicit opt-in Petdex browsing; only license-declared, hash-verified Habitat
@@ -52,14 +54,16 @@ timers work offline and do not require an account.
 
 ## Themes
 
-The built-in library includes four distinct nostalgic desktop directions,
-Retro Messenger 2007, Green Chat Desktop, Cyber Cafe Neon, and Win95
-Workbench, alongside high-saturation game, cozy, anime-energy, fantasy,
-cinematic, pixel, and sports directions. Every theme has original local bitmap
-art and one of nine compiler-owned style families; families change geometry,
-borders, texture, and scrims rather than only swapping colors.
+The built-in library includes four polished route-aware prototypes: Cathedral
+Foundry, Retro Messenger 2007, Arcade Signal, and Quiet Garden. They use
+independent home/task art strength, safe areas, focal points, and separate
+sidebar, header, and composer materials. Twenty additional original themes
+cover nostalgic desktop, game, cozy, anime-energy, fantasy, cinematic, pixel,
+and sports directions. Every theme has original local bitmap art and one of
+nine compiler-owned style families; families change geometry, borders,
+material, density, and scrims rather than only swapping colors.
 
-![Twenty-four-theme native gallery](docs/qa/screenshots/2026-07-17/gallery-all.png)
+![Route-aware native theme prototypes](docs/qa/screenshots/2026-07-18/gallery-prototypes.png)
 
 Theme Studio accepts local, single-frame images only. Input is signature
 checked, dimension and pixel bounded, oriented, downsampled, and re-encoded.
@@ -127,8 +131,8 @@ After a successful apply, the helper watches for new verified `app://` page
 targets while Habitat is running. Quitting Habitat restores the official
 appearance and closes the recorded debugging session.
 
-The current compatibility profile supports Codex versions from `26.707.0`
-through, but not including, `26.708.0`. Unknown versions fail closed. See the
+The current compatibility profiles support `26.707.0` to `<26.708.0` and
+`26.715.0` to `<26.716.0`. Unknown and intervening versions fail closed. See the
 [`CDP compatibility matrix`](docs/qa/cdp-compatibility-matrix.md) and use
 **Settings > Privacy > Restore Official Appearance** for recovery.
 
@@ -145,6 +149,7 @@ hash mismatches are rejected before atomic installation.
 - [`macOS v1 QA checklist`](docs/qa/macos-v1-checklist.md)
 - [`Codex runtime compatibility`](docs/qa/codex-runtime-compatibility.md)
 - [`native theme and overlay screenshots`](docs/qa/screenshots/2026-07-17/README.md)
+- [`polished theme prototype screenshots`](docs/qa/screenshots/2026-07-18/README.md)
 - [`theme asset provenance`](docs/qa/theme-asset-provenance.md)
 - [`visual reference notes`](Tests/VisualReferences/README.md)
 - [`other asset provenance`](docs/asset-provenance.md)

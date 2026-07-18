@@ -19,7 +19,7 @@ the model.
 
 Manual review checked every contact-sheet image plus original-resolution high-risk nostalgia, anime-energy, classic-desktop, and block-world outputs. Review criteria: no text, logos, people, faces, characters, creatures, mascots, trademarked symbols, proprietary interface icons, screenshots, copied compositions, or recognizable franchise designs; calm leading safe side; distinct trailing focal region. `block-frontier` draft 1 was rejected because its grass blocks, square clouds, and wooden outpost were too close to familiar cubic-sandbox conventions. Only the independently generated polygonal v2 is packaged.
 
-## Workbench Turbo (`workbench`) — refreshed prototype
+## Cathedral Foundry (`workbench`) — refreshed prototype
 
 - Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/workbench-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `208555` bytes; SHA-256 `a0139f041758f19fb3291dbb06a4be1290059792b49f072af3534544b52c2850`.
 - Background: `Sources/CodexHabitatApp/Resources/Themes/workbench/background.jpg`; `2560 x 1440`; `419678` bytes; SHA-256 `4bb92d4a6808b17443ee3ce7cae1cfae8150df1427045db1180563f10b213800`.
@@ -43,7 +43,7 @@ Use case: stylized-concept. Asset type: full-window desktop theme background. Pr
 Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original midnight operations room with deep indigo walls, violet instrument housings, cyan edge lights, and a glass observation window. Subject: luminous control machinery concentrated on the right side. Style/medium: cinematic game environment painting with rich material detail. Composition/framing: 16:10 landscape, quiet dark negative space on the left 40 percent for native app headings, saturated focal region on the right. Lighting/mood: nocturnal violet and cyan, calm but energetic. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: empty gradient-only background, bokeh blobs, protected symbols, and visual noise in the safe side.
 ```
 
-## Arcade Overdrive (`arcade-signal`) — refreshed prototype
+## Arcade Signal (`arcade-signal`) — refreshed prototype
 
 - Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/arcade-signal-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `158185` bytes; SHA-256 `f81db2871918c5c3a9a434e8d674acc213368754f59369f78d8bc2c597085050`.
 - Background: `Sources/CodexHabitatApp/Resources/Themes/arcade-signal/background.jpg`; `2560 x 1440`; `302173` bytes; SHA-256 `82ce85a8eafd5579ef111c13bbfd56a6d397405b4d861575b915dd22d9ed9771`.
