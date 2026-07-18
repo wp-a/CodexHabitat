@@ -8,6 +8,7 @@ import Testing
 @Test
 func bundledThemeDescriptorsExposeValidatedTokensAndPreviews() throws {
     let themes = HabitatThemeDescriptor.builtIn
+    let prototypeIDs = Set(["workbench", "retro-messenger", "arcade-signal", "quiet-garden"])
 
     #expect(themes.count == 24)
     #expect(themes.map(\.id) == BuiltInThemeCatalog.all.map(\.id))
@@ -24,11 +25,21 @@ func bundledThemeDescriptorsExposeValidatedTokensAndPreviews() throws {
         let backgroundURL = try #require(theme.backgroundURL)
         #expect(try imageDimensions(previewURL) == CGSize(width: 800, height: 500))
         let backgroundSize = try imageDimensions(backgroundURL)
-        #expect(backgroundSize.width >= 1_600)
-        #expect(backgroundSize.height >= 1_000)
-        #expect(backgroundHashes.insert(try sha256(backgroundURL)).inserted)
+        if prototypeIDs.contains(theme.id) {
+            #expect(backgroundSize == CGSize(width: 2_560, height: 1_440))
+        } else {
+            #expect(backgroundSize.width >= 1_600)
+            #expect(backgroundSize.height >= 1_000)
+        }
+        #expect(try decodedImage(backgroundURL) != nil)
+        #expect(try decodedImage(previewURL) != nil)
+        #expect(try Data(contentsOf: backgroundURL).count <= 1_048_576)
+        #expect(try Data(contentsOf: previewURL).count <= 1_048_576)
+        let backgroundHash = try sha256(backgroundURL)
+        #expect(backgroundHashes.insert(backgroundHash).inserted)
         #expect(previewHashes.insert(try sha256(previewURL)).inserted)
         #expect(theme.appearance.background == "background.jpg")
+        #expect(try manifestBackgroundHash(themeID: theme.id) == backgroundHash)
     }
 }
 
@@ -68,4 +79,25 @@ private func imageDimensions(_ url: URL) throws -> CGSize {
 
 private func sha256(_ url: URL) throws -> String {
     SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
+}
+
+private func decodedImage(_ url: URL) throws -> CGImage? {
+    let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+    return CGImageSourceCreateImageAtIndex(source, 0, nil)
+}
+
+private func manifestBackgroundHash(themeID: String) throws -> String {
+    let directory = "Resources/Themes/\(themeID)"
+    let url = try #require(PackagedResourceLocator.url(
+        forResource: "habitat",
+        withExtension: "json",
+        subdirectory: directory,
+        packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
+    ))
+    let object = try #require(
+        JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+    )
+    let assets = try #require(object["assets"] as? [[String: Any]])
+    let background = try #require(assets.first { $0["path"] as? String == "background.jpg" })
+    return try #require(background["sha256"] as? String).lowercased()
 }

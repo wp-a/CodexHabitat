@@ -2,22 +2,33 @@
 
 Generated: 2026-07-17
 
+Prototype refresh: 2026-07-18
+
 All twenty-four built-in backgrounds were generated with the project-approved `imagegen` CLI fallback using `gpt-image-2` through the user-configured image endpoint `https://api.wpironman.top/v1`. Each job requested `1600 x 1008`, medium quality, JPEG output, and a separate rights-safe prompt. The endpoint returned `1586 x 992`; project assets were normalized with macOS `sips` to `1600 x 1000` JPEG and `800 x 500` PNG preview files.
 
 The user-provided messenger screenshot was inspected locally for era, hierarchy, and spacing only. It was not supplied to the image model, edited, copied, or bundled. No third-party artwork or downloaded image is present in these theme directories.
 
+On 2026-07-18, `workbench`, `retro-messenger`, `arcade-signal`, and
+`quiet-garden` were regenerated as the approved polished prototypes. These four
+jobs used the same user-configured OpenAI-compatible endpoint class with
+`gpt-image-2`, high quality, and a requested `2560 x 1440` JPEG output. The
+endpoint returned `1672 x 941`; Pillow `ImageOps.fit` performed an aspect-fill
+normalization to `2560 x 1440` without stretching, then derived an `800 x 500`
+preview. No Dream Skin image, QQ screenshot, or other image input was sent to
+the model.
+
 Manual review checked every contact-sheet image plus original-resolution high-risk nostalgia, anime-energy, classic-desktop, and block-world outputs. Review criteria: no text, logos, people, faces, characters, creatures, mascots, trademarked symbols, proprietary interface icons, screenshots, copied compositions, or recognizable franchise designs; calm leading safe side; distinct trailing focal region. `block-frontier` draft 1 was rejected because its grass blocks, square clouds, and wooden outpost were too close to familiar cubic-sandbox conventions. Only the independently generated polygonal v2 is packaged.
 
-## Workbench Turbo (`workbench`)
+## Workbench Turbo (`workbench`) — refreshed prototype
 
-- Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/workbench-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/workbench/background.jpg`; `1600 x 1000`; `470862` bytes; SHA-256 `ba6a94d47c10713391c684fd7732beb03a4d8809a2e45a3b96e5a26e5a330190`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/workbench/preview.png`; `800 x 500`; `637549` bytes; SHA-256 `bf06cd612c81eea292cc55ad9517dc4bef36b8bb6d2ec68fc103b03af1e82b6e`.
+- Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/workbench-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `208555` bytes; SHA-256 `a0139f041758f19fb3291dbb06a4be1290059792b49f072af3534544b52c2850`.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/workbench/background.jpg`; `2560 x 1440`; `419678` bytes; SHA-256 `4bb92d4a6808b17443ee3ce7cae1cfae8150df1427045db1180563f10b213800`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/workbench/preview.png`; `800 x 500`; `394723` bytes; SHA-256 `f8ad6270bb5e9f32c7bd053ef642f2f32619560c9ff6ee23c3bd8604381e361b`.
 - Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
 - Final prompt:
 
 ```text
-Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original high-saturation industrial workshop control bay with warm metal panels, teal utility lights, compact machinery, cables, and a wide rear wall. Subject: layered tools and glowing work surfaces on the right side only. Style/medium: polished game environment concept art, tactile painted materials. Composition/framing: 16:10 landscape, calm low-detail negative space on the left 40 percent for native app controls, strong focal depth on the right. Lighting/mood: electric orange and teal work light, crisp readable contrast. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: empty gradient-only background, bokeh blobs, protected symbols, and visual noise in the safe side.
+Use case: stylized-concept. Asset type: full-window desktop theme background. Primary request: an original cathedral-scale industrial foundry interior built from charcoal iron beams, aged brass rails, dark stone floor plates, and restrained amber furnace light; environment only. Composition/framing: 16:9 landscape, preserve the left 42 percent as calm low-detail iron shadow for readable native controls, place the strongest architectural depth, brass machinery, and warm light on the right; continuous environment that remains useful under wide cover crops. Style/medium: polished cinematic environment concept art with tactile metal and stone, sophisticated rather than illustrative. Lighting/mood: controlled warm work light against deep charcoal, high contrast without crushed detail. Constraints: pure background artwork, no text, letters, numbers, logos, trademarks, people, faces, bodies, characters, creatures, mascots, screens, interface panels, copied UI, watermark, weapons, heraldry, religious symbols, recognizable franchise motifs, or copied composition. Avoid: orange-dominated palette, bokeh blobs, floating decorative orbs, excessive smoke, clutter in the left safe area.
 ```
 
 ## Neon Night Shift (`night-shift`)
@@ -32,40 +43,40 @@ Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop
 Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original midnight operations room with deep indigo walls, violet instrument housings, cyan edge lights, and a glass observation window. Subject: luminous control machinery concentrated on the right side. Style/medium: cinematic game environment painting with rich material detail. Composition/framing: 16:10 landscape, quiet dark negative space on the left 40 percent for native app headings, saturated focal region on the right. Lighting/mood: nocturnal violet and cyan, calm but energetic. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: empty gradient-only background, bokeh blobs, protected symbols, and visual noise in the safe side.
 ```
 
-## Arcade Overdrive (`arcade-signal`)
+## Arcade Overdrive (`arcade-signal`) — refreshed prototype
 
-- Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/arcade-signal-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/arcade-signal/background.jpg`; `1600 x 1000`; `298658` bytes; SHA-256 `d5fd1660ff42f6dc4433c8efd214002ff8cdf8c84b4265a0a88f14bbf07c4223`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/arcade-signal/preview.png`; `800 x 500`; `457345` bytes; SHA-256 `52b0f85d8c9dcfa4528c0651bfb40166893762fd1e9bf34dc4b4a9baad8ee09c`.
+- Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/arcade-signal-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `158185` bytes; SHA-256 `f81db2871918c5c3a9a434e8d674acc213368754f59369f78d8bc2c597085050`.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/arcade-signal/background.jpg`; `2560 x 1440`; `302173` bytes; SHA-256 `82ce85a8eafd5579ef111c13bbfd56a6d397405b4d861575b915dd22d9ed9771`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/arcade-signal/preview.png`; `800 x 500`; `338447` bytes; SHA-256 `6962d157d926b13529c640049d4e80f191bd17ebfb6f60edc27e684b602f8d4f`.
 - Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
 - Final prompt:
 
 ```text
-Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original after-hours arcade hall with abstract cabinet silhouettes, patterned floor panels, chunky cables, and colored marquee shapes with no writing. Subject: saturated magenta, cyan, and yellow light clusters on the right. Style/medium: polished retro-futurist game environment art. Composition/framing: 16:10 landscape, calm darker floor and wall space on the left 40 percent for controls, visual energy on the right. Lighting/mood: high-saturation cabinet glow with crisp edges. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: empty gradient-only background, bokeh blobs, protected symbols, and visual noise in the safe side.
+Use case: stylized-concept. Asset type: full-window desktop theme background. Primary request: an original after-hours arcade-inspired environment made from abstract geometric light machines, navy structural bays, crisp magenta and cyan signal rails, and restrained yellow attention lights; no recognizable cabinets and environment only. Composition/framing: 16:9 landscape, preserve the left 42 percent as calm low-detail navy space for readable native controls, place luminous machine geometry and energetic perspective on the right, keep the scene continuous under wide cover crops. Style/medium: premium graphic game-environment concept art with sharp edges, tactile dark materials, and disciplined saturation. Lighting/mood: electric magenta-cyan contrast with precise yellow cues, deep navy shadows, energetic but organized. Constraints: no text, letters, numbers, scores, marquees, logos, trademarks, people, faces, bodies, characters, creatures, mascots, recognizable arcade cabinets, screens, game UI, copied interface, watermark, protected symbols, recognizable franchise motifs, or copied composition. Avoid: bokeh blobs, neon signs, cyberpunk city clichés, purple-only palette, visual noise in the left safe area.
 ```
 
-## Pixel Meadow (`quiet-garden`)
+## Quiet Garden (`quiet-garden`) — refreshed prototype
 
-- Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/quiet-garden-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/quiet-garden/background.jpg`; `1600 x 1000`; `371390` bytes; SHA-256 `22d6f7c80605fb1241afce0f926ac6ebf482aab1301e74b34258759b6b1f378e`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/quiet-garden/preview.png`; `800 x 500`; `491333` bytes; SHA-256 `5bee2662bf1d64f3da8364c2e9792258530ab7474dbbacacf3250673cc879af6`.
+- Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/quiet-garden-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `297860` bytes; SHA-256 `42c24794c32e1e458b1f42c69f4777675555990a4359c72e40e9cdf73a33870d`.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/quiet-garden/background.jpg`; `2560 x 1440`; `566265` bytes; SHA-256 `cf09ab799889c8ae58eb1a7046e42e72cee60b0c788294c16147dcb30ccc14ef`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/quiet-garden/preview.png`; `800 x 500`; `535341` bytes; SHA-256 `50f56e3c3c1f3ee1b26dd52ccac2d4218b8609ceb8c5d980f4023a64fcaab490`.
 - Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
 - Final prompt:
 
 ```text
-Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original luminous pixel-inspired meadow with layered grasses, broad leaves, stepping stones, and a distant greenhouse-like shelter, rendered as crisp painted shapes rather than a screenshot. Subject: fresh green foliage and small aqua highlights on the right. Style/medium: cheerful stylized game environment illustration. Composition/framing: 16:10 landscape, quiet pale green negative space on the left 40 percent for native controls, detailed focal meadow on the right. Lighting/mood: bright morning light, saturated leaf greens, welcoming. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: empty gradient-only background, bokeh blobs, protected symbols, and visual noise in the safe side.
+Use case: stylized-concept. Asset type: full-window desktop theme background. Primary request: an original morning conservatory with elegant greenhouse ribs, frosted glass partitions, living green foliage, pale stone paths, and soft white-green daylight; environment only. Composition/framing: 16:9 landscape, preserve the left 42 percent as calm airy pale glass and low-detail daylight for readable native controls, place the greenhouse structure, layered leaves, and sunlit focal depth on the right, keep the scene continuous under wide cover crops. Style/medium: refined natural environment painting with realistic materials and quiet editorial polish, not storybook illustration. Lighting/mood: fresh morning light, balanced greens, clean whites, subtle natural shadow, serene and focused. Constraints: no text, letters, numbers, signs, logos, trademarks, people, faces, bodies, characters, creatures, animals, mascots, branded objects, cottage-game replicas, screens, copied UI, watermark, recognizable franchise motifs, or copied composition. Avoid: beige-dominated palette, fantasy cottages, decorative bokeh orbs, excessive flowers, visual clutter in the left safe area.
 ```
 
-## Retro Messenger 2007 (`retro-messenger`)
+## Retro Messenger 2007 (`retro-messenger`) — refreshed prototype
 
-- Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/retro-messenger-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/background.jpg`; `1600 x 1000`; `238586` bytes; SHA-256 `89ab98ef0f1f53f0b018e0fc702928c63c482aa6367b6c6375c454bf5bea1133`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/preview.png`; `800 x 500`; `350152` bytes; SHA-256 `4e240e4f23d144ded5e690f20a929e25e4cd7d43af00e2d895e1fd5e1e1db5e6`.
+- Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/retro-messenger-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `173668` bytes; SHA-256 `d902ef61b93d188e25df83688213e42751c2cd6a2f5a9f2a716ea2d4775cc8c2`.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/background.jpg`; `2560 x 1440`; `337042` bytes; SHA-256 `1f065e839dcca18cb7a923bca94d5b5414438b9b67d0c51ce5de53b928971dc9`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/preview.png`; `800 x 500`; `332532` bytes; SHA-256 `5e305c259773bbd1e20abb7d630d68721257663f3bfe5e6123231c46e0ce1b84`.
 - Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
 - Final prompt:
 
 ```text
-Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop: an original mid-2000s desktop communication workspace as an abstract environmental composition, with glossy sky-blue glass title bands, compact toolbar rhythm, beveled grouped side rails, a pale central message surface, and a thin bottom status strip; this must be atmosphere and architecture, not a readable interface screenshot. Subject: reflective blue chrome and soft white panel depth on the right. Style/medium: polished nostalgic desktop concept art. Composition/framing: 16:10 landscape, calm pale negative space on the left 40 percent for native app controls, glossy focal chrome on the right. Lighting/mood: clean daylight blue glass, restrained highlight. Constraints: no text, letters, numbers, logos, trademarks, people, faces, characters, creatures, mascots, flags, copied interface, screenshot, watermark, or recognizable franchise design. Avoid: any messenger branding, proprietary icons, profile portraits, chat bubbles with writing, or copied composition.
+Use case: stylized-concept. Asset type: full-window desktop theme background. Primary request: an original early-2000s blue-glass communication workspace expressed only through architecture and materials: layered cobalt translucent glass frames, pale aqua light wells, brushed silver rails, compact beveled structures, and a bright airy central depth; environment only. Composition/framing: 16:9 landscape, preserve the left 42 percent as calm low-detail deep-blue glass and soft pale light for readable native controls, cluster the most luminous glass architecture on the right, maintain a continuous scene under wide cover crops. Style/medium: polished retro-futurist environment rendering with restrained one-pixel-like highlights and authentic 2007-era material rhythm, not an interface mockup. Lighting/mood: clear cool daylight, cobalt and aqua glass with small silver highlights. Constraints: no text, letters, numbers, logos, trademarks, messenger brands, proprietary icons, contacts, portraits, people, faces, bodies, characters, creatures, mascots, computer screens, application windows, chat bubbles, copied UI, watermark, or copied composition. Avoid: recognizable messaging software layouts, logos, desktop screenshots, one-note blue wash, bokeh blobs, clutter in the left safe area.
 ```
 
 ## Green Chat Desktop (`green-chat-desk`)

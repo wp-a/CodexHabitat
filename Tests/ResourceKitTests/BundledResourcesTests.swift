@@ -13,6 +13,7 @@ func bundledThemesUseThePublicValidatorAndLocalAccessibleAssets() throws {
     var discoveredIDs: [String] = []
     var backgroundHashes: Set<String> = []
     var previewHashes: Set<String> = []
+    let prototypeIDs = Set(["workbench", "retro-messenger", "arcade-signal", "quiet-garden"])
 
     for id in expectedIDs {
         let directory = themesRoot.appending(path: id, directoryHint: .isDirectory)
@@ -41,7 +42,10 @@ func bundledThemesUseThePublicValidatorAndLocalAccessibleAssets() throws {
             return image
         }.first)
         #expect(try imageDimensions(previewURL) == CGSize(width: 800, height: 500))
-        #expect(try imageDimensions(backgroundURL) == CGSize(width: 1_600, height: 1_000))
+        let expectedBackgroundSize = prototypeIDs.contains(id)
+            ? CGSize(width: 2_560, height: 1_440)
+            : CGSize(width: 1_600, height: 1_000)
+        #expect(try imageDimensions(backgroundURL) == expectedBackgroundSize)
         #expect(try Data(contentsOf: backgroundURL).count <= 1_048_576)
         #expect(try sha256(backgroundURL) == backgroundAsset.sha256.lowercased())
         #expect(backgroundHashes.insert(try sha256(backgroundURL)).inserted)
