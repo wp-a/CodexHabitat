@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 273 tests including versioned CDP profiles, fail-closed target validation, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 275 tests including versioned CDP profiles, fail-closed target validation, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, theme-navigation resource isolation, pet-renderer reuse, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final `Codex-Habitat-0.1.0.dmg` passes mounted-bundle `verify-release` and strict/deep signature checks; SHA-256 is `abb174b6211488bef9bdd3157124633e100931d74a6f594e990a1adf97b4555b`.
+- [x] Final build 6 `Codex-Habitat-0.1.0.dmg` mounts read-only and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `f9b39db281157a71636eadda0690f05bb1995b2f100059dd5f4a1f4b647d56a8`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -25,7 +25,7 @@ explicit user action.
 
 - [x] Onboarding completes in exactly three steps without an account.
 - [x] Settings minimum window is 760 x 520 and all pages scroll without overlap.
-- [x] Build 5 is a standard visible macOS app with no `LSUIElement`; a normal cold launch from `/Applications/Codex Habitat.app` opens Settings with `background only = false` while login-item presentation remains covered by Apple-event policy tests.
+- [x] Build 6 is a standard visible macOS app with no `LSUIElement`; a normal cold launch from `/Applications/Codex Habitat.app` opens Settings with `background only = false` while login-item presentation remains covered by Apple-event policy tests.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] All 24 bundled theme packages have unique IDs and hashes, validated 1600 x 1000 backgrounds, 800 x 500 previews, and nine materially distinct host-owned style families.
@@ -53,7 +53,7 @@ explicit user action.
 - [x] Sprite frames are cropped once and reused by subsequent redraws.
 - [x] Pet sprites decode only the requested thumbnail frame off the main thread and cache both successful and missing results.
 - [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
-- [x] Three paced native Settings runs measured Integrations -> Pets at 0.15-0.21 s and Integrations -> Themes at 0.14-0.18 s, including AppleScript process startup; post-launch logs contained zero SwiftUI publication or layout-recursion warnings.
+- [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Packaged idle CPU averaged 0.191% over 150 two-second `top` samples; 144/150 were below 1%.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
 - [x] Post-enhancement static regression averaged 0.037% CPU over 30 one-second samples; all samples were below 1% and final memory was 21 MB.
