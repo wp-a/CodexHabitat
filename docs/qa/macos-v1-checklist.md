@@ -1,13 +1,13 @@
 # macOS v1 QA Checklist
 
-Last updated: 2026-07-17 on macOS 26.4, arm64, Xcode 26.6.
+Last updated: 2026-07-18 on macOS 26.4, arm64, Xcode 26.6.
 
 Legend: `[x]` verified, `[ ]` still requires release hardware, credentials, or
 explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 257 tests including theme protocol, image bounds, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 267 tests including theme protocol, image bounds, thumbnail cache invalidation, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final `Codex-Habitat-0.1.0.dmg` passes mounted-bundle `verify-release` and strict/deep signature checks; SHA-256 is `a3871bc5c35eab01c4d01a60ec90b777ef5499ca6a4db4dc5f7292f95f3e19a6`.
+- [x] Final `Codex-Habitat-0.1.0.dmg` passes mounted-bundle `verify-release` and strict/deep signature checks; SHA-256 is `7b8b1f809946bcef71d65468b9af8111a2e27a6627aa619c0012ea8a8b0b8848`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -25,10 +25,12 @@ explicit user action.
 
 - [x] Onboarding completes in exactly three steps without an account.
 - [x] Settings minimum window is 760 x 520 and all pages scroll without overlap.
+- [x] Build 2 is a standard visible macOS app with no `LSUIElement`; a normal cold launch from `/Applications/Codex Habitat.app` opens Settings with `background only = false` while login-item presentation remains covered by Apple-event policy tests.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] All 24 bundled theme packages have unique IDs and hashes, validated 1600 x 1000 backgrounds, 800 x 500 previews, and nine materially distinct host-owned style families.
 - [x] All, Nostalgia, Anime, and Custom gallery filters plus Theme Studio at narrow and wide settings widths pass native screenshot review without blank previews, clipping, or overlap.
+- [x] Installed Pets and Themes pages pass native screenshot review with decoded thumbnails/previews, stable card geometry, and no blank or overlapping content.
 - [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input and typed controls; it re-encodes bounded art and installs/exports through the validated package path with a user-content rights notice.
 - [x] Overlay does not activate the app and can be made click-through.
 - [x] Menu-bar connection state and Pomodoro/countdown controls render without clipping and share live timer state with the overlay.
@@ -49,6 +51,9 @@ explicit user action.
 - [x] A 100-update snapshot burst coalesces to the newest buffered value.
 - [x] Pet refresh is capped at 8 Hz active; resting, offline, and Reduce Motion are static.
 - [x] Sprite frames are cropped once and reused by subsequent redraws.
+- [x] Pet sprites decode only the requested thumbnail frame off the main thread and cache both successful and missing results.
+- [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
+- [x] Three paced native Settings runs measured Integrations -> Pets at 0.15-0.21 s and Integrations -> Themes at 0.14-0.18 s, including AppleScript process startup; post-launch logs contained zero SwiftUI publication or layout-recursion warnings.
 - [x] Packaged idle CPU averaged 0.191% over 150 two-second `top` samples; 144/150 were below 1%.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
 - [x] Post-enhancement static regression averaged 0.037% CPU over 30 one-second samples; all samples were below 1% and final memory was 21 MB.
