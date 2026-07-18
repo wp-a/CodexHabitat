@@ -28,8 +28,8 @@
   },
   "theme": {
     "artFocus": {
-      "x": 0.78000000000000003,
-      "y": 0.46000000000000002
+      "x": 0.82,
+      "y": 0.46
     },
     "background": "background.jpg",
     "backgroundStrength": 0.41999999999999998,
@@ -39,14 +39,30 @@
     "homeMode": "quiet",
     "taskMode": "off",
     "chromeMaterial": "glass",
-    "homeStrength": 0.48,
+    "homeStrength": 0.56,
     "taskStrength": 0.10,
-    "sidebarOpacity": 0.72,
+    "sidebarOpacity": 0.70,
     "headerOpacity": 0.64,
-    "composerOpacity": 0.78,
+    "composerOpacity": 0.98,
     "panelOpacity": 0.88,
     "safeSide": "leading",
-    "styleFamily": "cozyWorld"
+    "styleFamily": "cozyWorld",
+    "homeArtFocus": {
+      "x": 0.82,
+      "y": 0.46
+    },
+    "taskArtFocus": {
+      "x": 0.76,
+      "y": 0.47
+    },
+    "homeArtScale": 1.00,
+    "taskArtScale": 1.00,
+    "taskSidebarOpacity": 0.88,
+    "taskHeaderOpacity": 0.86,
+    "homeContentOpacity": 0.72,
+    "taskContentOpacity": 0.84,
+    "homeContentWidth": 0.62,
+    "vignetteStrength": 0.10
   },
   "assets": [
     {

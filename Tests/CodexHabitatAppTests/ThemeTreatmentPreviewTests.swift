@@ -17,12 +17,16 @@ func fourPrototypeThemesResolveDistinctCompletePreviewTreatments() throws {
     #expect(workbench.taskMode == .ambient)
     #expect(workbench.chromeMaterial == .tinted)
     #expect(workbench.safeSide == .leading)
-    #expect(workbench.homeStrength == 0.72)
-    #expect(workbench.taskStrength == 0.30)
-    #expect(workbench.sidebarOpacity == 0.92)
-    #expect(workbench.headerOpacity == 0.66)
-    #expect(workbench.composerOpacity == 0.90)
+    #expect(workbench.homeStrength == 0.85)
+    #expect(workbench.taskStrength == 0.56)
+    #expect(workbench.sidebarOpacity == 0.54)
+    #expect(workbench.headerOpacity == 0.20)
+    #expect(workbench.composerOpacity == 0.96)
     #expect(workbench.density == .comfortable)
+
+    let retroMessenger = models[1]
+    #expect(retroMessenger.homeMode == .framed)
+    #expect(retroMessenger.safeSide == .trailing)
 
     let quietGarden = models[3]
     #expect(quietGarden.surfaceHex == "#F4FAF2")

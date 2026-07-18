@@ -28,17 +28,41 @@
   },
   "theme": {
     "artFocus": {
-      "x": 0.78000000000000003,
-      "y": 0.45000000000000001
+      "x": 0.82,
+      "y": 0.55
     },
     "background": "background.jpg",
     "backgroundStrength": 0.41999999999999998,
-    "blurRadius": 10,
+    "blurRadius": 0,
     "category": "classic",
-    "density": "comfortable",
+    "density": "compact",
     "panelOpacity": 0.88,
     "safeSide": "leading",
-    "styleFamily": "classicDesktop"
+    "styleFamily": "classicDesktop",
+    "homeMode": "framed",
+    "taskMode": "ambient",
+    "chromeMaterial": "solid",
+    "homeStrength": 0.68,
+    "taskStrength": 0.28,
+    "sidebarOpacity": 0.76,
+    "headerOpacity": 0.74,
+    "composerOpacity": 0.98,
+    "homeArtFocus": {
+      "x": 0.82,
+      "y": 0.55
+    },
+    "taskArtFocus": {
+      "x": 0.78,
+      "y": 0.54
+    },
+    "homeArtScale": 1.00,
+    "taskArtScale": 1.00,
+    "taskSidebarOpacity": 0.86,
+    "taskHeaderOpacity": 0.84,
+    "homeContentOpacity": 0.76,
+    "taskContentOpacity": 0.82,
+    "homeContentWidth": 0.56,
+    "vignetteStrength": 0.04
   },
   "assets": [
     {

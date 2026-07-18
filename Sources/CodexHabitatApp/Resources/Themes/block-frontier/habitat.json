@@ -28,24 +28,48 @@
   },
   "theme": {
     "artFocus": {
-      "x": 0.77000000000000002,
-      "y": 0.47999999999999998
+      "x": 0.22,
+      "y": 0.47
     },
     "background": "background.jpg",
     "backgroundStrength": 0.41999999999999998,
-    "blurRadius": 10,
+    "blurRadius": 2,
     "category": "pixelGame",
-    "density": "comfortable",
+    "density": "compact",
     "panelOpacity": 0.88,
-    "safeSide": "leading",
-    "styleFamily": "pixelWorld"
+    "safeSide": "trailing",
+    "styleFamily": "pixelWorld",
+    "homeMode": "framed",
+    "taskMode": "banner",
+    "chromeMaterial": "solid",
+    "homeStrength": 0.74,
+    "taskStrength": 0.34,
+    "sidebarOpacity": 0.66,
+    "headerOpacity": 0.56,
+    "composerOpacity": 0.98,
+    "homeArtFocus": {
+      "x": 0.22,
+      "y": 0.47
+    },
+    "taskArtFocus": {
+      "x": 0.28,
+      "y": 0.49
+    },
+    "homeArtScale": 1.04,
+    "taskArtScale": 1.02,
+    "taskSidebarOpacity": 0.84,
+    "taskHeaderOpacity": 0.76,
+    "homeContentOpacity": 0.64,
+    "taskContentOpacity": 0.80,
+    "homeContentWidth": 0.54,
+    "vignetteStrength": 0.12
   },
   "assets": [
     {
       "type": "image",
       "id": "theme-background",
       "path": "background.jpg",
-      "sha256": "208d411cb59baa8a22ddcc645490a05be6c84efca95dcaf23a1fbb9b55345a12",
+      "sha256": "b1b698f2c35d3c229b2f050703db66fa667fb79f4f38f197e1b51218609f7515",
       "rendering": "smooth"
     }
   ],

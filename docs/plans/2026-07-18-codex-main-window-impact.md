@@ -224,6 +224,13 @@ editing. Preserve identity, assets, hashes, license, pets, and widgets. The
 exhaustive Task 1 test is the drift gate; do not introduce a second catalog in
 a standalone script.
 
+Implementation note (2026-07-18): image review established that all 24 generated
+backgrounds originally placed detail on the right. To satisfy the approved
+leading/trailing scene requirement without lying about the safe area, five
+text-free originals are horizontally mirrored with `sips`; their preview,
+manifest hash, and provenance entries are updated together. No source prompt,
+identity, license, pet, widget, or third-party material changes.
+
 **Step 5: Run focused tests and verify GREEN**
 
 ```bash

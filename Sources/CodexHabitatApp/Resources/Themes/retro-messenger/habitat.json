@@ -28,8 +28,8 @@
   },
   "theme": {
     "artFocus": {
-      "x": 0.80000000000000004,
-      "y": 0.41999999999999998
+      "x": 0.20,
+      "y": 0.42
     },
     "background": "background.jpg",
     "backgroundStrength": 0.41999999999999998,
@@ -39,21 +39,37 @@
     "homeMode": "framed",
     "taskMode": "banner",
     "chromeMaterial": "glass",
-    "homeStrength": 0.64,
-    "taskStrength": 0.34,
-    "sidebarOpacity": 0.78,
-    "headerOpacity": 0.72,
-    "composerOpacity": 0.84,
+    "homeStrength": 0.72,
+    "taskStrength": 0.36,
+    "sidebarOpacity": 0.62,
+    "headerOpacity": 0.54,
+    "composerOpacity": 0.94,
     "panelOpacity": 0.88,
-    "safeSide": "leading",
-    "styleFamily": "retroMessenger"
+    "safeSide": "trailing",
+    "styleFamily": "retroMessenger",
+    "homeArtFocus": {
+      "x": 0.20,
+      "y": 0.42
+    },
+    "taskArtFocus": {
+      "x": 0.24,
+      "y": 0.43
+    },
+    "homeArtScale": 1.02,
+    "taskArtScale": 1.00,
+    "taskSidebarOpacity": 0.78,
+    "taskHeaderOpacity": 0.70,
+    "homeContentOpacity": 0.60,
+    "taskContentOpacity": 0.76,
+    "homeContentWidth": 0.50,
+    "vignetteStrength": 0.18
   },
   "assets": [
     {
       "type": "image",
       "id": "theme-background",
       "path": "background.jpg",
-      "sha256": "1f065e839dcca18cb7a923bca94d5b5414438b9b67d0c51ce5de53b928971dc9",
+      "sha256": "0ae022878cfbd7ca0c56902bb1ddcd039732ab71be0472a971aeac166d7f572c",
       "rendering": "smooth"
     }
   ],

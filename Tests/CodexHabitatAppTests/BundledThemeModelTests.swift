@@ -106,7 +106,17 @@ func canonicalComparisonReportsAppearanceDrift() throws {
         taskStrength: 0.11,
         sidebarOpacity: expected.sidebarOpacity,
         headerOpacity: expected.headerOpacity,
-        composerOpacity: expected.composerOpacity
+        composerOpacity: expected.composerOpacity,
+        homeArtFocus: expected.homeArtFocus,
+        taskArtFocus: expected.taskArtFocus,
+        homeArtScale: expected.homeArtScale,
+        taskArtScale: expected.taskArtScale,
+        taskSidebarOpacity: expected.taskSidebarOpacity,
+        taskHeaderOpacity: expected.taskHeaderOpacity,
+        homeContentOpacity: expected.homeContentOpacity,
+        taskContentOpacity: expected.taskContentOpacity,
+        homeContentWidth: expected.homeContentWidth,
+        vignetteStrength: expected.vignetteStrength
     )
 
     #expect(catalogAppearanceMismatches(expected: expected, actual: changed) == [

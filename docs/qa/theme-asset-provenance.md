@@ -17,6 +17,14 @@ normalization to `2560 x 1440` without stretching, then derived an `800 x 500`
 preview. No Dream Skin image, QQ screenshot, or other image input was sent to
 the model.
 
+On 2026-07-18, five original, text-free built-ins were deterministically mirrored
+horizontally with macOS `sips` so the library includes honest trailing content
+safe areas instead of declaring a safe side that overlaps the artwork. The
+derived assets are `retro-messenger`, `grand-ocean-crew`,
+`hero-training-campus`, `spirit-lantern-town`, and `block-frontier`; their source
+prompts and raw generated files are unchanged. Background and preview hashes
+below describe the packaged mirrored derivatives.
+
 Manual review checked every contact-sheet image plus original-resolution high-risk nostalgia, anime-energy, classic-desktop, and block-world outputs. Review criteria: no text, logos, people, faces, characters, creatures, mascots, trademarked symbols, proprietary interface icons, screenshots, copied compositions, or recognizable franchise designs; calm leading safe side; distinct trailing focal region. `block-frontier` draft 1 was rejected because its grass blocks, square clouds, and wooden outpost were too close to familiar cubic-sandbox conventions. Only the independently generated polygonal v2 is packaged.
 
 ## Cathedral Foundry (`workbench`) — refreshed prototype
@@ -70,9 +78,9 @@ Use case: stylized-concept. Asset type: full-window desktop theme background. Pr
 ## Retro Messenger 2007 (`retro-messenger`) — refreshed prototype
 
 - Source: 2026-07-18; `gpt-image-2`; OpenAI-compatible CLI fallback through `https://api.wpironman.top/v1`; high quality; requested `2560 x 1440`; raw output `output/imagegen/theme-prototypes/retro-messenger-source.jpeg` (temporary, not packaged); actual `1672 x 941`; `173668` bytes; SHA-256 `d902ef61b93d188e25df83688213e42751c2cd6a2f5a9f2a716ea2d4775cc8c2`.
-- Background: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/background.jpg`; `2560 x 1440`; `337042` bytes; SHA-256 `1f065e839dcca18cb7a923bca94d5b5414438b9b67d0c51ce5de53b928971dc9`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/preview.png`; `800 x 500`; `332532` bytes; SHA-256 `5e305c259773bbd1e20abb7d630d68721257663f3bfe5e6123231c46e0ce1b84`.
-- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/background.jpg`; `2560 x 1440`; `405071` bytes; SHA-256 `0ae022878cfbd7ca0c56902bb1ddcd039732ab71be0472a971aeac166d7f572c`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/retro-messenger/preview.png`; `800 x 500`; `409729` bytes; SHA-256 `5847def443974ae53c20312b504a9a2f67d6712fc0d04173dfc908af5f056a1f`.
+- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; mirrored trailing safe side and leading focal region verified.
 - Final prompt:
 
 ```text
@@ -202,9 +210,9 @@ Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop
 ## Grand Ocean Crew (`grand-ocean-crew`)
 
 - Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/grand-ocean-crew-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/grand-ocean-crew/background.jpg`; `1600 x 1000`; `415005` bytes; SHA-256 `3f37b854a4c88a30fd80fa80a6587d8fd09b395f51b7134bec4ab6909f9b3dff`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/grand-ocean-crew/preview.png`; `800 x 500`; `604475` bytes; SHA-256 `4a60618aaf82079c86683801fb5e8c9a9f1eef4cc8dfb855d3aceb730679d288`.
-- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/grand-ocean-crew/background.jpg`; `1600 x 1000`; `356976` bytes; SHA-256 `88d3ebc966ec2c7546843e079bc7d25cd04e52737b4e1b7afe6e1145577ba0fc`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/grand-ocean-crew/preview.png`; `800 x 500`; `602936` bytes; SHA-256 `f263a7466db2f90c5476d6d4aceb93eb83b387dd8a320e269a154a84bb7989ff`.
+- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; mirrored trailing safe side and leading focal region verified.
 - Final prompt:
 
 ```text
@@ -250,9 +258,9 @@ Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop
 ## Hero Training Campus (`hero-training-campus`)
 
 - Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/hero-training-campus-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/hero-training-campus/background.jpg`; `1600 x 1000`; `327833` bytes; SHA-256 `ece9f0d292a7ec606b55d8732553f18d5fc78d3779032cf4627ea2874660e2f2`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/hero-training-campus/preview.png`; `800 x 500`; `467643` bytes; SHA-256 `347f80142bc6a145861511854fb95a6ca7680948dcf618d064c3abebb604b74b`.
-- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/hero-training-campus/background.jpg`; `1600 x 1000`; `280585` bytes; SHA-256 `68df5fb32a675bd707ef540aeddb2a3b7ea2ebf34fc9d49a08b58a82215a2703`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/hero-training-campus/preview.png`; `800 x 500`; `472509` bytes; SHA-256 `e54d40b31b02a9a856fd6d0b305ec570b4e965ff11541655ffcbfe008d839a8d`.
+- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; mirrored trailing safe side and leading focal region verified.
 - Final prompt:
 
 ```text
@@ -274,9 +282,9 @@ Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop
 ## Spirit Lantern Town (`spirit-lantern-town`)
 
 - Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/spirit-lantern-town-source.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/spirit-lantern-town/background.jpg`; `1600 x 1000`; `390317` bytes; SHA-256 `7bdba4fdaabf4c17b35e6a0cca10e6068afa2a27e9d8ff313e4903165bc56db1`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/spirit-lantern-town/preview.png`; `800 x 500`; `569144` bytes; SHA-256 `67b7e79972ce48dd9bed4c5ce45384d3cd4ea27f1439be397f9bbd4b262edb26`.
-- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/spirit-lantern-town/background.jpg`; `1600 x 1000`; `334978` bytes; SHA-256 `caec06131fefbec6ead5939f2bd689566df6d8e6b839092dbd57a3b7100b568b`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/spirit-lantern-town/preview.png`; `800 x 500`; `572526` bytes; SHA-256 `011167a73d48a8f245d88f63fdd23bf127dbb2f47f1a22408635b9888c8ccbc6`.
+- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; mirrored trailing safe side and leading focal region verified.
 - Final prompt:
 
 ```text
@@ -286,9 +294,9 @@ Use case: stylized-concept. Asset type: desktop theme background. Scene/backdrop
 ## Block Frontier (`block-frontier`)
 
 - Source: `gpt-image-2`, CLI fallback, medium quality, requested `1600 x 1008`, raw output `output/imagegen/habitat-themes/block-frontier-v2.jpeg` (temporary, not packaged).
-- Background: `Sources/CodexHabitatApp/Resources/Themes/block-frontier/background.jpg`; `1600 x 1000`; `324771` bytes; SHA-256 `208d411cb59baa8a22ddcc645490a05be6c84efca95dcaf23a1fbb9b55345a12`.
-- Preview: `Sources/CodexHabitatApp/Resources/Themes/block-frontier/preview.png`; `800 x 500`; `501929` bytes; SHA-256 `1c86f84f52a7dc0775991c2496926158ed665776d3ebb6cbbfcd0cb4aa153ae6`.
-- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; leading safe side and trailing focal region verified.
+- Background: `Sources/CodexHabitatApp/Resources/Themes/block-frontier/background.jpg`; `1600 x 1000`; `278985` bytes; SHA-256 `b1b698f2c35d3c229b2f050703db66fa667fb79f4f38f197e1b51218609f7515`.
+- Preview: `Sources/CodexHabitatApp/Resources/Themes/block-frontier/preview.png`; `800 x 500`; `505939` bytes; SHA-256 `063b2949fb1ede3e987b20c48849b73a3627a4e3562f8dcb2fb62c2c9fc824ec`.
+- Manual rights and content review: Pass. Original environment composition; no text or identifiable protected content; mirrored trailing safe side and leading focal region verified.
 - Selection note: v2 passed after draft 1 was rejected and excluded from packaging.
 - Final prompt:
 
