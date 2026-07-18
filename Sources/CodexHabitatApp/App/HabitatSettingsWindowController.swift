@@ -52,6 +52,6 @@ final class HabitatSettingsWindowController: NSWindowController {
     nonisolated static func activationPolicy(
         for current: NSApplication.ActivationPolicy
     ) -> NSApplication.ActivationPolicy {
-        current == .prohibited ? .accessory : current
+        .regular
     }
 }

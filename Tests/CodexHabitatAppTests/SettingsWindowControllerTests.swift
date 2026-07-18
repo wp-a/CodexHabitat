@@ -5,16 +5,73 @@ import Testing
 @testable import CodexHabitatApp
 
 @Test
-func prohibitedMenuBarPolicyPromotesToAnActivatableAccessory() {
+func settingsWindowPromotesAccessoryToRegular() {
     #expect(
-        HabitatSettingsWindowController.activationPolicy(for: .prohibited) == .accessory
+        HabitatSettingsWindowController.activationPolicy(for: .prohibited) == .regular
     )
     #expect(
         HabitatSettingsWindowController.activationPolicy(for: .regular) == .regular
     )
     #expect(
-        HabitatSettingsWindowController.activationPolicy(for: .accessory) == .accessory
+        HabitatSettingsWindowController.activationPolicy(for: .accessory) == .regular
     )
+}
+
+@Test
+func loginItemAppleEventIsDetected() throws {
+    let event = try #require(NSAppleEventDescriptor(
+        eventClass: AEEventClass(kCoreEventClass),
+        eventID: AEEventID(kAEOpenApplication),
+        targetDescriptor: nil,
+        returnID: AEReturnID(kAutoGenerateReturnID),
+        transactionID: AETransactionID(kAnyTransactionID)
+    ))
+    event.setParam(
+        NSAppleEventDescriptor(boolean: true),
+        forKeyword: AEKeyword(keyAELaunchedAsLogInItem)
+    )
+
+    #expect(HabitatLaunchContext(event: event).launchedAsLoginItem)
+    #expect(!HabitatLaunchContext(event: nil).launchedAsLoginItem)
+}
+
+@Test
+func userLaunchOpensSettingsWhileLoginLaunchStaysQuiet() {
+    #expect(HabitatLaunchPresentation.shouldShowSettings(
+        launchedAsLoginItem: false,
+        requiresOnboarding: false,
+        arguments: ["CodexHabitatApp"]
+    ))
+    #expect(!HabitatLaunchPresentation.shouldShowSettings(
+        launchedAsLoginItem: true,
+        requiresOnboarding: false,
+        arguments: ["CodexHabitatApp"]
+    ))
+    #expect(HabitatLaunchPresentation.shouldShowSettings(
+        launchedAsLoginItem: true,
+        requiresOnboarding: true,
+        arguments: ["CodexHabitatApp"]
+    ))
+    #expect(HabitatLaunchPresentation.shouldShowSettings(
+        launchedAsLoginItem: true,
+        requiresOnboarding: false,
+        arguments: ["CodexHabitatApp", "--show-settings"]
+    ))
+}
+
+@Test
+func mainBundleConfigurationDeclaresAStandardVisibleBuildTwoApp() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let data = try Data(contentsOf: repositoryRoot.appending(path: "Config/Info.plist"))
+    let plist = try #require(
+        PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+    )
+
+    #expect(plist["LSUIElement"] == nil)
+    #expect(plist["CFBundleVersion"] as? String == "2")
 }
 
 @Test @MainActor

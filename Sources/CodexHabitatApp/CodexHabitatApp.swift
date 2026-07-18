@@ -14,9 +14,32 @@ private enum HabitatAppEnvironment {
     static let updaterController = HabitatUpdaterController()
 }
 
+struct HabitatLaunchContext: Equatable {
+    let launchedAsLoginItem: Bool
+
+    init(event: NSAppleEventDescriptor?) {
+        launchedAsLoginItem = event?.paramDescriptor(
+            forKeyword: AEKeyword(keyAELaunchedAsLogInItem)
+        ) != nil
+    }
+}
+
+enum HabitatLaunchPresentation {
+    static func shouldShowSettings(
+        launchedAsLoginItem: Bool,
+        requiresOnboarding: Bool,
+        arguments: [String]
+    ) -> Bool {
+        requiresOnboarding
+            || arguments.contains("--show-settings")
+            || !launchedAsLoginItem
+    }
+}
+
 @MainActor
 final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
     private let reopenAction: () -> Void
+    private var launchContext = HabitatLaunchContext(event: nil)
 
     override init() {
         reopenAction = {
@@ -30,6 +53,15 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
     init(reopenAction: @escaping () -> Void) {
         self.reopenAction = reopenAction
         super.init()
+    }
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        launchContext = HabitatLaunchContext(
+            event: NSAppleEventManager.shared().currentAppleEvent
+        )
+        if launchContext.launchedAsLoginItem {
+            NSApplication.shared.setActivationPolicy(.accessory)
+        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -52,8 +84,11 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
                 )
                 model.setThemeBridgeEnabled(bridge.state == .active)
             }
-            let shouldShowSettings = model.requiresOnboarding
-                || CommandLine.arguments.contains("--show-settings")
+            let shouldShowSettings = HabitatLaunchPresentation.shouldShowSettings(
+                launchedAsLoginItem: self.launchContext.launchedAsLoginItem,
+                requiresOnboarding: model.requiresOnboarding,
+                arguments: CommandLine.arguments
+            )
             guard shouldShowSettings else { return }
             if let sectionFlag = CommandLine.arguments.firstIndex(
                 of: "--show-settings-section"
