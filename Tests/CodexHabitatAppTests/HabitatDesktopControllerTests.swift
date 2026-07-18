@@ -419,6 +419,8 @@ private final class RendererLoadGate: @unchecked Sendable {
     private let blockedLoad = DispatchSemaphore(value: 0)
     private var recordedPetIDs: [String] = []
     private var completedPetIDs: Set<String> = []
+    private var startedWaiters: [String: [CheckedContinuation<Void, Never>]] = [:]
+    private var completedWaiters: [String: [CheckedContinuation<Void, Never>]] = [:]
 
     init(blockedPetID: String) {
         self.blockedPetID = blockedPetID
@@ -438,16 +440,54 @@ private final class RendererLoadGate: @unchecked Sendable {
 
     func load(url: URL, atlas: PetAtlasMetadata) -> SpriteSheetRenderer {
         let petID = url.deletingLastPathComponent().lastPathComponent
-        lock.withLock { recordedPetIDs.append(petID) }
+        let startContinuations = lock.withLock {
+            recordedPetIDs.append(petID)
+            return startedWaiters.removeValue(forKey: petID) ?? []
+        }
+        startContinuations.forEach { $0.resume() }
         if petID == blockedPetID {
             blockedLoad.wait()
         }
-        lock.withLock { _ = completedPetIDs.insert(petID) }
+        let completionContinuations = lock.withLock {
+            _ = completedPetIDs.insert(petID)
+            return completedWaiters.removeValue(forKey: petID) ?? []
+        }
+        completionContinuations.forEach { $0.resume() }
         return SpriteSheetRenderer(image: nil, atlas: atlas)
     }
 
     func releaseBlockedLoad() {
         blockedLoad.signal()
+    }
+
+    func waitUntilStarted(_ petID: String) async {
+        await withCheckedContinuation { continuation in
+            let alreadyStarted = lock.withLock {
+                if recordedPetIDs.contains(petID) {
+                    return true
+                }
+                startedWaiters[petID, default: []].append(continuation)
+                return false
+            }
+            if alreadyStarted {
+                continuation.resume()
+            }
+        }
+    }
+
+    func waitUntilCompleted(_ petID: String) async {
+        await withCheckedContinuation { continuation in
+            let alreadyCompleted = lock.withLock {
+                if completedPetIDs.contains(petID) {
+                    return true
+                }
+                completedWaiters[petID, default: []].append(continuation)
+                return false
+            }
+            if alreadyCompleted {
+                continuation.resume()
+            }
+        }
     }
 }
 
@@ -455,18 +495,14 @@ private func waitForRendererLoad(
     of petID: String,
     in gate: RendererLoadGate
 ) async {
-    for _ in 0..<1_000 where !gate.hasStarted(petID) {
-        await Task.yield()
-    }
+    await gate.waitUntilStarted(petID)
 }
 
 private func waitForRendererLoadCompletion(
     of petID: String,
     in gate: RendererLoadGate
 ) async {
-    for _ in 0..<1_000 where !gate.hasCompleted(petID) {
-        await Task.yield()
-    }
+    await gate.waitUntilCompleted(petID)
 }
 
 private func allowPendingRendererLoadsToStart() async {
