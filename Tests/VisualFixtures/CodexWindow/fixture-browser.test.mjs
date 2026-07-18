@@ -48,6 +48,18 @@ test(
     assert.ok(result.scenes.every(({ horizontalOverflow }) => horizontalOverflow <= 0));
     assert.ok(
       result.scenes
+        .filter(({ route }) => route === "home")
+        .every(({ homeSuggestionMinimumViewportInset }) =>
+          homeSuggestionMinimumViewportInset >= 12),
+    );
+    assert.ok(
+      result.scenes
+        .filter(({ route }) => route === "task")
+        .every(({ homeSuggestionMinimumViewportInset }) =>
+          homeSuggestionMinimumViewportInset === null),
+    );
+    assert.ok(
+      result.scenes
         .filter(({ route }) => route === "task")
         .every(({ taskModeOff, artworkOpacity }) =>
           taskModeOff ? artworkOpacity === 0 : artworkOpacity > 0),

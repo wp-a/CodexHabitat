@@ -1,6 +1,6 @@
 # Offline Codex Window Visual QA
 
-Generated on 2026-07-18 from commit `94e77403c31733e4ea1a28b814661c40585fc3ee`.
+Generated on 2026-07-19 from commit `2186155ae4b36df66adf024694bab44a043441b9`.
 
 ## Scope
 
@@ -21,6 +21,8 @@ The evidence covers all 24 built-in themes on both `home` and `task` routes at w
 - Narrow-viewport focus-Y probe pixel delta was 0.431640625.
 - Minimum nonblank ratio was 0.9326171875.
 - Minimum visible task artwork delta was 0.019287109375.
+- Minimum Home suggestion viewport inset was 29.5 px; Retro Messenger and
+  Grand Ocean Crew measured 32 px wide and 29.5 px narrow.
 - Semantic foreground assignments and banner fades were present in every scene.
 - Surface annotations, control bounds, composer hit targets, popover bounds, and horizontal overflow checks passed in every scene.
 
