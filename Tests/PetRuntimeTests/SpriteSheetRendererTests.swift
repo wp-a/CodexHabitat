@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import PetRuntime
 
 @Test
@@ -72,6 +74,47 @@ func mismatchedOrUnreadableImagesReturnFallbackNil() throws {
     #expect(SpriteSheetRenderer(image: nil, atlas: metadata).frame(row: 0, column: 0) == nil)
 }
 
+@Test
+func singleFrameLoadingReturnsOnlyTheRequestedNormalizedCell() throws {
+    let image = try testImage(width: 8, height: 9) { context in
+        context.setFillColor(CGColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1))
+        context.fill(CGRect(x: 1, y: 8, width: 1, height: 1))
+    }
+    let url = try temporaryPNG(for: image)
+    defer { try? FileManager.default.removeItem(at: url) }
+    let atlas = PetAtlasMetadata(pixelWidth: 8, pixelHeight: 9, columns: 8, rows: 9)
+
+    let selected = try #require(SpriteSheetRenderer.frame(
+        contentsOf: url,
+        atlas: atlas,
+        row: 0,
+        column: 1
+    ))
+    let adjacent = try #require(SpriteSheetRenderer.frame(
+        contentsOf: url,
+        atlas: atlas,
+        row: 0,
+        column: 0
+    ))
+
+    #expect(selected.width == 1)
+    #expect(selected.height == 1)
+    #expect(alpha(selected, x: 0, y: 0) == 255)
+    #expect(alpha(adjacent, x: 0, y: 0) == 0)
+    #expect(SpriteSheetRenderer.frame(
+        contentsOf: url,
+        atlas: atlas,
+        row: -1,
+        column: 0
+    ) == nil)
+    #expect(SpriteSheetRenderer.frame(
+        contentsOf: url,
+        atlas: PetAtlasMetadata(pixelWidth: 16, pixelHeight: 9, columns: 8, rows: 9),
+        row: 0,
+        column: 0
+    ) == nil)
+}
+
 private func testImage(
     width: Int,
     height: Int,
@@ -100,4 +143,18 @@ private func alpha(_ image: CGImage, x: Int, y: Int) -> UInt8? {
         return nil
     }
     return bytes[y * image.bytesPerRow + x * 4 + 3]
+}
+
+private func temporaryPNG(for image: CGImage) throws -> URL {
+    let url = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatSprite-\(UUID().uuidString).png")
+    let destination = try #require(CGImageDestinationCreateWithURL(
+        url as CFURL,
+        UTType.png.identifier as CFString,
+        1,
+        nil
+    ))
+    CGImageDestinationAddImage(destination, image, nil)
+    #expect(CGImageDestinationFinalize(destination))
+    return url
 }

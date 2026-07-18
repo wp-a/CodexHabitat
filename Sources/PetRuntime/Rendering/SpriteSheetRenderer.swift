@@ -20,6 +20,38 @@ public struct SpriteSheetRenderer {
         )
     }
 
+    public static func frame(
+        contentsOf url: URL,
+        atlas: PetAtlasMetadata,
+        row: Int,
+        column: Int
+    ) -> CGImage? {
+        guard atlas.pixelWidth > 0,
+              atlas.pixelHeight > 0,
+              atlas.columns > 0,
+              atlas.rows > 0,
+              atlas.pixelWidth.isMultiple(of: atlas.columns),
+              atlas.pixelHeight.isMultiple(of: atlas.rows),
+              row >= 0,
+              row < atlas.rows,
+              column >= 0,
+              column < atlas.columns,
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              image.width == atlas.pixelWidth,
+              image.height == atlas.pixelHeight
+        else {
+            return nil
+        }
+        let rect = CGRect(
+            x: column * atlas.cellWidth,
+            y: row * atlas.cellHeight,
+            width: atlas.cellWidth,
+            height: atlas.cellHeight
+        )
+        return normalizedFrame(image: image, rect: rect, atlas: atlas)
+    }
+
     public func sourceRect(row: Int, column: Int) -> CGRect? {
         guard row >= 0,
               row < atlas.rows,
@@ -69,33 +101,43 @@ public struct SpriteSheetRenderer {
                     width: atlas.cellWidth,
                     height: atlas.cellHeight
                 )
-                guard let crop = image.cropping(to: rect),
-                      let context = CGContext(
-                        data: nil,
-                        width: atlas.cellWidth,
-                        height: atlas.cellHeight,
-                        bitsPerComponent: 8,
-                        bytesPerRow: 0,
-                        space: CGColorSpaceCreateDeviceRGB(),
-                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-                      )
-                else {
+                guard let frame = normalizedFrame(image: image, rect: rect, atlas: atlas) else {
                     return []
                 }
-                context.interpolationQuality = .none
-                context.draw(
-                    crop,
-                    in: CGRect(
-                        x: 0,
-                        y: 0,
-                        width: atlas.cellWidth,
-                        height: atlas.cellHeight
-                    )
-                )
-                guard let frame = context.makeImage() else { return [] }
                 result.append(frame)
             }
         }
         return result
+    }
+
+    private static func normalizedFrame(
+        image: CGImage,
+        rect: CGRect,
+        atlas: PetAtlasMetadata
+    ) -> CGImage? {
+        guard let crop = image.cropping(to: rect),
+              let context = CGContext(
+                data: nil,
+                width: atlas.cellWidth,
+                height: atlas.cellHeight,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              )
+        else {
+            return nil
+        }
+        context.interpolationQuality = .none
+        context.draw(
+            crop,
+            in: CGRect(
+                x: 0,
+                y: 0,
+                width: atlas.cellWidth,
+                height: atlas.cellHeight
+            )
+        )
+        return context.makeImage()
     }
 }
