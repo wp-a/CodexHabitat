@@ -27,6 +27,7 @@ actor CDPClient {
     private let validator: CDPTargetValidator
     private let transport: any CDPTransport
     private var nextCommandID = 1
+    private var bootstrapIdentifiers: [String: String] = [:]
 
     init(
         port: UInt16,
@@ -72,13 +73,21 @@ actor CDPClient {
         on target: CDPTarget
     ) async throws {
         _ = try validator.validate(target)
+        if let identifier = bootstrapIdentifiers[target.id] {
+            _ = try await command(
+                method: "Page.removeScriptToEvaluateOnNewDocument",
+                parameters: ["identifier": identifier],
+                target: target
+            )
+            bootstrapIdentifiers.removeValue(forKey: target.id)
+        }
         let expression = Self.styleInstallerExpression(
             css: css,
             homeMarker: homeMarker,
             reportsResult: true
         )
         _ = try await evaluate(expression, on: target)
-        _ = try await command(
+        let result = try await command(
             method: "Page.addScriptToEvaluateOnNewDocument",
             parameters: [
                 "source": Self.styleInstallerExpression(
@@ -89,6 +98,14 @@ actor CDPClient {
             ],
             target: target
         )
+        guard let identifier = result["identifier"] as? String,
+              !identifier.isEmpty,
+              identifier.utf8.count <= 256
+        else {
+            _ = try? await evaluate(Self.styleRemovalExpression, on: target)
+            throw CDPClientError.invalidResult
+        }
+        bootstrapIdentifiers[target.id] = identifier
     }
 
     func isStyleInstalled(on target: CDPTarget) async throws -> Bool {
@@ -113,7 +130,19 @@ actor CDPClient {
           const homeMarker = \(homeMarkerLiteral);
           const updateRoute = () => {
             const route = document.querySelector(homeMarker) ? "home" : "task";
-            document.documentElement.setAttribute("data-codex-habitat-route", route);
+            const currentRoute = document.documentElement.getAttribute("data-codex-habitat-route");
+            if (currentRoute !== route) {
+              document.documentElement.setAttribute("data-codex-habitat-route", route);
+            }
+          };
+          const scheduleRouteUpdate = () => {
+            if (globalThis.__codexHabitatRouteTimer !== undefined) {
+              clearTimeout(globalThis.__codexHabitatRouteTimer);
+            }
+            globalThis.__codexHabitatRouteTimer = setTimeout(() => {
+              delete globalThis.__codexHabitatRouteTimer;
+              updateRoute();
+            }, 120);
           };
           const install = () => {
             const id = "codex-habitat-theme-style";
@@ -133,7 +162,11 @@ actor CDPClient {
             observer.observe(document.documentElement, { childList: true, subtree: true });
             globalThis.__codexHabitatThemeObserver = observer;
             globalThis.__codexHabitatRouteObserver?.disconnect();
-            const routeObserver = new MutationObserver(updateRoute);
+            if (globalThis.__codexHabitatRouteTimer !== undefined) {
+              clearTimeout(globalThis.__codexHabitatRouteTimer);
+              delete globalThis.__codexHabitatRouteTimer;
+            }
+            const routeObserver = new MutationObserver(scheduleRouteUpdate);
             routeObserver.observe(document.documentElement, {
               childList: true,
               subtree: true,
@@ -154,20 +187,41 @@ actor CDPClient {
 
     func removeStyle(from target: CDPTarget) async throws {
         _ = try validator.validate(target)
-        let expression = """
+        var bootstrapRemovalError: (any Error)?
+        if let identifier = bootstrapIdentifiers[target.id] {
+            do {
+                _ = try await command(
+                    method: "Page.removeScriptToEvaluateOnNewDocument",
+                    parameters: ["identifier": identifier],
+                    target: target
+                )
+                bootstrapIdentifiers.removeValue(forKey: target.id)
+            } catch {
+                bootstrapRemovalError = error
+            }
+        }
+        _ = try await evaluate(Self.styleRemovalExpression, on: target)
+        if let bootstrapRemovalError {
+            throw bootstrapRemovalError
+        }
+    }
+
+    private static let styleRemovalExpression = """
         (() => {
           globalThis.__codexHabitatThemeObserver?.disconnect();
           delete globalThis.__codexHabitatThemeObserver;
           globalThis.__codexHabitatRouteObserver?.disconnect();
           delete globalThis.__codexHabitatRouteObserver;
+          if (globalThis.__codexHabitatRouteTimer !== undefined) {
+            clearTimeout(globalThis.__codexHabitatRouteTimer);
+            delete globalThis.__codexHabitatRouteTimer;
+          }
           document.getElementById("codex-habitat-theme-style")?.remove();
           document.documentElement.removeAttribute("data-codex-habitat-theme");
           document.documentElement.removeAttribute("data-codex-habitat-route");
           return { removed: true };
         })()
         """
-        _ = try await evaluate(expression, on: target)
-    }
 
     func healthSnapshot(
         on target: CDPTarget,

@@ -149,7 +149,7 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     )
     try await client.removeStyle(from: target)
 
-    #expect(transport.messages.count == 3)
+    #expect(transport.messages.count == 4)
     let install = try #require(
         JSONSerialization.jsonObject(with: transport.messages[0]) as? [String: Any]
     )
@@ -179,6 +179,11 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(source.contains("MutationObserver"))
     #expect(source.contains("codex-habitat-theme-style"))
     #expect(source.contains("__codexHabitatRouteObserver"))
+    #expect(source.contains("__codexHabitatRouteTimer"))
+    #expect(source.contains("new MutationObserver(scheduleRouteUpdate)"))
+    #expect(source.contains("setTimeout"))
+    #expect(source.contains("120"))
+    #expect(source.contains("if (currentRoute !== route)"))
     #expect(source.contains("data-codex-habitat-route"))
     #expect(source.contains("[data-testid=\\\"home-icon\\\"]"))
     #expect(!source.contains("innerText"))
@@ -186,14 +191,48 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(source.contains("blocked()"))
     #expect(!source.contains("</style><script>"))
 
-    let removal = try #require(
+    let removeBootstrap = try #require(
         JSONSerialization.jsonObject(with: transport.messages[2]) as? [String: Any]
+    )
+    #expect(removeBootstrap["method"] as? String == "Page.removeScriptToEvaluateOnNewDocument")
+    let removeBootstrapParams = try #require(removeBootstrap["params"] as? [String: Any])
+    #expect(removeBootstrapParams["identifier"] as? String == "bootstrap-1")
+
+    let removal = try #require(
+        JSONSerialization.jsonObject(with: transport.messages[3]) as? [String: Any]
     )
     let removalParams = try #require(removal["params"] as? [String: Any])
     let removalExpression = try #require(removalParams["expression"] as? String)
     #expect(removalExpression.contains("__codexHabitatRouteObserver"))
+    #expect(removalExpression.contains("__codexHabitatRouteTimer"))
+    #expect(removalExpression.contains("clearTimeout"))
     #expect(removalExpression.contains("data-codex-habitat-route"))
     #expect(removalExpression.contains("removeAttribute"))
+}
+
+@Test
+func reinstallingAStyleReplacesThePreviousNavigationBootstrap() async throws {
+    let target = validTarget()
+    let transport = StubCDPTransport(listData: Data("[]".utf8))
+    let client = CDPClient(port: 55_000, transport: transport)
+
+    try await client.installStyle("body { color: red; }", homeMarker: "main", on: target)
+    try await client.installStyle("body { color: blue; }", homeMarker: "main", on: target)
+
+    #expect(transport.messages.count == 5)
+    let methods = try transport.messages.map { message in
+        let object = try #require(
+            JSONSerialization.jsonObject(with: message) as? [String: Any]
+        )
+        return try #require(object["method"] as? String)
+    }
+    #expect(methods == [
+        "Runtime.evaluate",
+        "Page.addScriptToEvaluateOnNewDocument",
+        "Page.removeScriptToEvaluateOnNewDocument",
+        "Runtime.evaluate",
+        "Page.addScriptToEvaluateOnNewDocument",
+    ])
 }
 
 @Test
@@ -261,6 +300,8 @@ private final class StubCDPTransport: CDPTransport, @unchecked Sendable {
         let result: [String: Any]
         if method == "Page.captureScreenshot" {
             result = ["data": screenshotData.base64EncodedString()]
+        } else if method == "Page.addScriptToEvaluateOnNewDocument" {
+            result = ["identifier": "bootstrap-1"]
         } else {
             result = ["result": ["type": "object", "value": evaluatedValue]]
         }
