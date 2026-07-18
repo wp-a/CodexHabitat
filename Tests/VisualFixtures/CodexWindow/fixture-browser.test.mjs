@@ -19,6 +19,21 @@ test(
     assert.equal(result.scenes.length, EXPECTED_FIXTURE_SCENE_COUNT);
     assert.equal(result.metrics.scenes.length, EXPECTED_FIXTURE_SCENE_COUNT);
     assert.equal(result.metrics.externalRequests.length, 0);
+    assert.deepEqual(
+      {
+        viewport: result.metrics.focusYProbe.viewport,
+        scale: result.metrics.focusYProbe.scale,
+        firstFocusY: result.metrics.focusYProbe.firstFocusY,
+        secondFocusY: result.metrics.focusYProbe.secondFocusY,
+      },
+      {
+        viewport: "narrow",
+        scale: 1.08,
+        firstFocusY: 0.25,
+        secondFocusY: 0.75,
+      },
+    );
+    assert.ok(result.metrics.focusYProbe.pixelDelta > 0);
     assert.ok(result.scenes.every(({ routeLatencyMS }) => routeLatencyMS <= 120));
     assert.ok(result.scenes.every(({ styleCount }) => styleCount === 1));
     assert.ok(result.scenes.every(({ artDecoded }) => artDecoded));
@@ -28,6 +43,8 @@ test(
     assert.ok(result.scenes.every(({ surfaceAnnotationsValid }) => surfaceAnnotationsValid));
     assert.ok(result.scenes.every(({ allControlsWithinViewport }) => allControlsWithinViewport));
     assert.ok(result.scenes.every(({ routeMutationObserved }) => routeMutationObserved));
+    assert.ok(result.scenes.every(({ semanticForegroundsValid }) => semanticForegroundsValid));
+    assert.ok(result.scenes.every(({ bannerFadeValid }) => bannerFadeValid));
     assert.ok(result.scenes.every(({ horizontalOverflow }) => horizontalOverflow <= 0));
     assert.ok(
       result.scenes

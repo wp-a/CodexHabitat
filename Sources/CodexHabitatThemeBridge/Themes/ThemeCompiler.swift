@@ -296,6 +296,14 @@ struct ThemeCompiler {
         }
 
         let densitySpacing = theme.appearance.density == .compact ? "8px" : "12px"
+        let homeArtworkCrop = HabitatThemeArtworkCrop(
+            focus: theme.appearance.homeArtFocus,
+            scale: theme.appearance.homeArtScale
+        )
+        let taskArtworkCrop = HabitatThemeArtworkCrop(
+            focus: theme.appearance.taskArtFocus,
+            scale: theme.appearance.taskArtScale
+        )
 
         var result = template
         let replacements = [
@@ -311,12 +319,26 @@ struct ThemeCompiler {
             "error": theme.tokens.error,
             "color-scheme": Self.colorScheme(for: theme.tokens.surface),
             "art-background": artBackground,
-            "home-art-position-x": Self.cssPercent(theme.appearance.homeArtFocus.x * 100),
-            "home-art-position-y": Self.cssPercent(theme.appearance.homeArtFocus.y * 100),
-            "task-art-position-x": Self.cssPercent(theme.appearance.taskArtFocus.x * 100),
-            "task-art-position-y": Self.cssPercent(theme.appearance.taskArtFocus.y * 100),
-            "home-art-scale": Self.cssNumber(theme.appearance.homeArtScale),
-            "task-art-scale": Self.cssNumber(theme.appearance.taskArtScale),
+            "home-art-position-x": Self.cssPercent(homeArtworkCrop.focus.x * 100),
+            "home-art-position-y": Self.cssPercent(homeArtworkCrop.focus.y * 100),
+            "task-art-position-x": Self.cssPercent(taskArtworkCrop.focus.x * 100),
+            "task-art-position-y": Self.cssPercent(taskArtworkCrop.focus.y * 100),
+            "home-art-scale": Self.cssNumber(homeArtworkCrop.scale),
+            "task-art-scale": Self.cssNumber(taskArtworkCrop.scale),
+            "task-banner-art-inset": Self.cssPercent(Self.bannerArtworkBottomInset(
+                focusY: taskArtworkCrop.focus.y,
+                scale: taskArtworkCrop.scale
+            ) * 100),
+            "task-banner-fade-start": Self.cssPercent(Self.bannerArtworkLocalPosition(
+                focusY: taskArtworkCrop.focus.y,
+                scale: taskArtworkCrop.scale,
+                transformedPosition: 0.46
+            ) * 100),
+            "task-banner-fade-end": Self.cssPercent(Self.bannerArtworkLocalPosition(
+                focusY: taskArtworkCrop.focus.y,
+                scale: taskArtworkCrop.scale,
+                transformedPosition: 0.52
+            ) * 100),
             "home-strength": Self.cssPercent(theme.appearance.homeStrength * 100),
             "task-strength": Self.cssPercent(theme.appearance.taskStrength * 100),
             "sidebar-opacity": Self.cssPercent(theme.appearance.sidebarOpacity * 100),
@@ -384,7 +406,27 @@ struct ThemeCompiler {
         safeSide: HabitatThemeSafeSide
     ) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"]"
-        var rules: [String] = []
+        var rules: [String] = [
+            """
+            \(root) \(profile.selectors.sidebar) :where(a, button, [role="button"]) {
+              color: var(--habitat-text);
+            }
+            \(root) \(profile.selectors.sidebar) :where(h1, h2, h3, h4, h5, h6) {
+              color: var(--habitat-muted-text);
+            }
+            \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(h1, h2, h3, h4, h5, h6, strong) {
+              color: var(--habitat-text);
+            }
+            \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) p {
+              color: var(--habitat-text);
+            }
+            \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(article, [role="article"]) {
+              color: var(--habitat-text);
+              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 30%, transparent);
+            }
+            """,
+        ]
 
         if let homeContent = profile.selectors.homeContent {
             rules.append("""
@@ -393,6 +435,9 @@ struct ThemeCompiler {
               \(homeContentLayout(for: safeSide))
               background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent);
               backdrop-filter: none;
+            }
+            \(root)[data-codex-habitat-route="home"] \(homeContent) p {
+              color: var(--habitat-muted-text);
             }
             """)
         }
@@ -415,6 +460,7 @@ struct ThemeCompiler {
         if let message = profile.selectors.messageSurface {
             rules.append("""
             \(root)[data-codex-habitat-route="task"] \(message) {
+              color: var(--habitat-text);
               background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
             }
             """)
@@ -424,6 +470,7 @@ struct ThemeCompiler {
         if !protectedContent.isEmpty {
             rules.append("""
             \(scopedSelectors(protectedContent, root: "\(root)[data-codex-habitat-route=\"task\"]")) {
+              color: var(--habitat-text);
               background-color: color-mix(in srgb, var(--habitat-panel) 94%, transparent);
               border-color: color-mix(in srgb, var(--habitat-accent) 36%, transparent);
               backdrop-filter: none;
@@ -487,6 +534,7 @@ struct ThemeCompiler {
               opacity: var(--habitat-home-strength);
               background-position: var(--habitat-home-art-position);
               transform: scale(var(--habitat-home-art-scale));
+              transform-origin: var(--habitat-home-art-position);
             }
             \(overlay) {
               inset: 0;
@@ -510,6 +558,7 @@ struct ThemeCompiler {
               opacity: var(--habitat-home-strength);
               background-position: var(--habitat-home-art-position);
               transform: scale(var(--habitat-home-art-scale));
+              transform-origin: var(--habitat-home-art-position);
             }
             \(overlay) {
               inset: 16px;
@@ -533,6 +582,7 @@ struct ThemeCompiler {
               opacity: var(--habitat-home-strength);
               background-position: var(--habitat-home-art-position);
               transform: scale(var(--habitat-home-art-scale));
+              transform-origin: var(--habitat-home-art-position);
             }
             \(overlay) {
               inset: 0;
@@ -569,6 +619,7 @@ struct ThemeCompiler {
               opacity: var(--habitat-task-strength);
               background-position: var(--habitat-task-art-position);
               transform: scale(var(--habitat-task-art-scale));
+              transform-origin: var(--habitat-task-art-position);
             }
             \(overlay) {
               inset: 0;
@@ -591,7 +642,10 @@ struct ThemeCompiler {
               opacity: var(--habitat-task-strength);
               background-position: var(--habitat-task-art-position);
               transform: scale(var(--habitat-task-art-scale));
-              clip-path: inset(0 0 48% 0);
+              transform-origin: var(--habitat-task-art-position);
+              clip-path: inset(0 0 var(--habitat-task-banner-art-inset) 0);
+              -webkit-mask-image: linear-gradient(to bottom, black 0 var(--habitat-task-banner-fade-start), transparent var(--habitat-task-banner-fade-end));
+              mask-image: linear-gradient(to bottom, black 0 var(--habitat-task-banner-fade-start), transparent var(--habitat-task-banner-fade-end));
             }
             \(overlay) {
               inset: 0;
@@ -601,6 +655,8 @@ struct ThemeCompiler {
               border-radius: 0;
               box-shadow: none;
               clip-path: inset(0 0 48% 0);
+              -webkit-mask-image: linear-gradient(to bottom, black 0 46%, transparent 52%);
+              mask-image: linear-gradient(to bottom, black 0 46%, transparent 52%);
             }
             \(main) {
               background-color: transparent;
@@ -1012,6 +1068,28 @@ struct ThemeCompiler {
             guard seen.insert(selector).inserted else { return nil }
             return "\(root) \(selector)"
         }.joined(separator: ",\n")
+    }
+
+    static func bannerArtworkBottomInset(focusY: Double, scale: Double) -> Double {
+        let localVisibleBottom = bannerArtworkLocalPosition(
+            focusY: focusY,
+            scale: scale,
+            transformedPosition: 0.52
+        )
+        return min(max(1 - localVisibleBottom, 0), 1)
+    }
+
+    static func bannerArtworkLocalPosition(
+        focusY: Double,
+        scale: Double,
+        transformedPosition: Double
+    ) -> Double {
+        guard focusY.isFinite, scale.isFinite, scale > 0,
+              transformedPosition.isFinite
+        else {
+            return transformedPosition
+        }
+        return min(max(focusY + (transformedPosition - focusY) / scale, 0), 1)
     }
 
     private static func cssPercent(_ value: Double) -> String {

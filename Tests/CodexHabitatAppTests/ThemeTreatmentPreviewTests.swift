@@ -119,6 +119,41 @@ func previewSignatureChangesForEveryRouteCompositionField() {
 }
 
 @Test
+func previewModelUsesTheSharedArtworkCropPlan() {
+    let appearance = previewSceneAppearance(
+        homeArtFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.25),
+        taskArtFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.75),
+        homeArtScale: 1.08,
+        taskArtScale: 1.08
+    )
+    let model = ThemeTreatmentPreviewModel(
+        appearance: appearance,
+        surfaceHex: "#101820",
+        panelHex: "#182633",
+        panelAltHex: "#24384A",
+        textHex: "#F4FAFF",
+        accentHex: "#16C6D9"
+    )
+
+    #expect(model.homeArtworkCrop == HabitatThemeArtworkCrop(
+        focus: HabitatThemeFocalPoint(x: 0.5, y: 0.25),
+        scale: 1.08
+    ))
+    #expect(model.taskArtworkCrop == HabitatThemeArtworkCrop(
+        focus: HabitatThemeFocalPoint(x: 0.5, y: 0.75),
+        scale: 1.08
+    ))
+    #expect(abs(model.homeArtworkCrop.drawRect(
+        imageSize: HabitatThemeArtworkCrop.Size(width: 1_600, height: 1_000),
+        viewportSize: HabitatThemeArtworkCrop.Size(width: 1_180, height: 820)
+    ).y - -16.4) < 0.001)
+    #expect(abs(model.taskArtworkCrop.drawRect(
+        imageSize: HabitatThemeArtworkCrop.Size(width: 1_600, height: 1_000),
+        viewportSize: HabitatThemeArtworkCrop.Size(width: 1_180, height: 820)
+    ).y - -49.2) < 0.001)
+}
+
+@Test
 func previewRecipesAreDistinctAcrossHostOwnedStyleFamilies() {
     let recipes = HabitatThemeStyleFamily.allCases.map(ThemeTreatmentPreviewRecipe.init(styleFamily:))
 
@@ -171,6 +206,8 @@ func previewRouteMasksAndSelectedRecipeMetricMatchTheCompilerContract() throws {
     #expect(source.contains("recipe.selectedEdgeWidth"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.bannerArtworkFraction"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.frameMatteThickness"))
+    #expect(source.contains("artworkCrop.drawRect"))
+    #expect(!source.contains("* 0.26"))
 }
 
 private func previewSceneAppearance(

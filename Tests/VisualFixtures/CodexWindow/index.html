@@ -26,7 +26,7 @@
           <a href="#one">Surface contrast</a>
           <a href="#two">Route transition</a>
         </section>
-        <div class="fixture-account">Local fixture</div>
+        <button class="fixture-account" type="button">Local fixture</button>
       </aside>
       <main class="main-surface">
         <div class="app-shell-main-content-top-fade" aria-hidden="true"></div>
@@ -63,12 +63,12 @@
               <pre data-fixture-surface="code"><code>scene.route = "task"
 surface.opacity = 0.72
 assert(scene.isContinuous)</code></pre>
-              <section class="fixture-tool" data-fixture-surface="tool">
+              <section class="fixture-tool" data-fixture-surface="tool" data-testid="exec-shell-body">
                 <strong>Local verification</strong>
                 <p>Three bounded surfaces inspected. No network was used.</p>
               </section>
               <section class="fixture-tool-grid" aria-label="Synthetic tool surfaces">
-                <div data-testid="exec-shell-body">Command output</div>
+                <div>Command output</div>
                 <div data-testid="dynamic-tool-call-group-body">Tool result</div>
                 <div data-testid="pending-mcp-tool-calls-body">Pending result</div>
               </section>

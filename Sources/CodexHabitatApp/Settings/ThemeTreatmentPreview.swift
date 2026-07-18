@@ -105,10 +105,8 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
     let headerOpacity: Double
     let composerOpacity: Double
     let blurRadius: Double
-    let homeArtFocus: HabitatThemeFocalPoint
-    let taskArtFocus: HabitatThemeFocalPoint
-    let homeArtScale: Double
-    let taskArtScale: Double
+    let homeArtworkCrop: HabitatThemeArtworkCrop
+    let taskArtworkCrop: HabitatThemeArtworkCrop
     let taskSidebarOpacity: Double
     let taskHeaderOpacity: Double
     let homeContentOpacity: Double
@@ -153,10 +151,14 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
         headerOpacity = appearance.resolvedHeaderOpacity
         composerOpacity = appearance.resolvedComposerOpacity
         blurRadius = appearance.blurRadius
-        homeArtFocus = appearance.resolvedHomeArtFocus
-        taskArtFocus = appearance.resolvedTaskArtFocus
-        homeArtScale = appearance.resolvedHomeArtScale
-        taskArtScale = appearance.resolvedTaskArtScale
+        homeArtworkCrop = HabitatThemeArtworkCrop(
+            focus: appearance.resolvedHomeArtFocus,
+            scale: appearance.resolvedHomeArtScale
+        )
+        taskArtworkCrop = HabitatThemeArtworkCrop(
+            focus: appearance.resolvedTaskArtFocus,
+            scale: appearance.resolvedTaskArtScale
+        )
         taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
         taskHeaderOpacity = appearance.resolvedTaskHeaderOpacity
         homeContentOpacity = appearance.resolvedHomeContentOpacity
@@ -200,6 +202,11 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
     var chromeSoftness: Double {
         min(max(blurRadius, 0), 24) / 24
     }
+
+    var homeArtFocus: HabitatThemeFocalPoint { homeArtworkCrop.focus }
+    var taskArtFocus: HabitatThemeFocalPoint { taskArtworkCrop.focus }
+    var homeArtScale: Double { homeArtworkCrop.scale }
+    var taskArtScale: Double { taskArtworkCrop.scale }
 
     private static func point(_ value: HabitatThemeFocalPoint) -> String {
         "\(number(value.x)),\(number(value.y))"
@@ -285,16 +292,24 @@ struct ThemeTreatmentPreview: View {
         if artStrength == 0 {
             Color(habitatHex: model.surfaceHex)
         } else if let image {
-            Image(decorative: image, scale: 1, orientation: .up)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: size.width, height: size.height)
-                .scaleEffect(artScale)
-                .offset(
-                    x: (0.5 - artFocus.x) * size.width * 0.26,
-                    y: (0.5 - artFocus.y) * size.height * 0.26
+            let cropRect = artworkCrop.drawRect(
+                imageSize: HabitatThemeArtworkCrop.Size(
+                    width: Double(image.width),
+                    height: Double(image.height)
+                ),
+                viewportSize: HabitatThemeArtworkCrop.Size(
+                    width: size.width,
+                    height: size.height
                 )
-                .clipped()
+            )
+            ZStack(alignment: .topLeading) {
+                Image(decorative: image, scale: 1, orientation: .up)
+                    .resizable()
+                    .frame(width: cropRect.width, height: cropRect.height)
+                    .offset(x: cropRect.x, y: cropRect.y)
+            }
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipped()
         } else {
             Color(habitatHex: model.panelAltHex)
                 .overlay {
@@ -552,12 +567,8 @@ struct ThemeTreatmentPreview: View {
         recipe.sidebarFraction
     }
 
-    private var artFocus: HabitatThemeFocalPoint {
-        route == .home ? model.homeArtFocus : model.taskArtFocus
-    }
-
-    private var artScale: Double {
-        route == .home ? model.homeArtScale : model.taskArtScale
+    private var artworkCrop: HabitatThemeArtworkCrop {
+        route == .home ? model.homeArtworkCrop : model.taskArtworkCrop
     }
 
     private var sidebarOpacity: Double {

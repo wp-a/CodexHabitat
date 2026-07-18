@@ -28,6 +28,13 @@ const themeTemplatePath = path.join(
   repositoryRoot,
   "Sources/CodexHabitatThemeBridge/Resources/codex-theme-template.css",
 );
+const focusYProbeConfiguration = Object.freeze({
+  themeID: "workbench",
+  viewport: "narrow",
+  scale: 1.08,
+  firstFocusY: 0.25,
+  secondFocusY: 0.75,
+});
 const primaryThemeIDs = new Set([
   "retro-messenger",
   "green-chat-desk",
@@ -77,8 +84,10 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
   const browserVersion = browser.version();
   const externalRequests = [];
   const scenes = [];
+  let focusYProbe;
 
   try {
+    focusYProbe = await measureNarrowFocusYProbe(browser, payload);
     for (const viewport of FIXTURE_VIEWPORTS) {
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
@@ -125,6 +134,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
               `${theme.id} installed CSS fingerprint differs from the Swift exporter`,
             );
             const taskModeOff = installedCSS.includes("habitat-task-mode: off");
+            const taskModeBanner = installedCSS.includes("habitat-task-mode: banner");
 
             const warmupTransition = await selectFixtureRoute(
               page,
@@ -156,6 +166,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 consoleErrors,
                 pageErrors,
                 taskModeOff,
+                taskModeBanner,
               );
               assert(
                 externalRequests.length === 0,
@@ -249,6 +260,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
     playwrightVersion: metadata.version,
     chromiumVersion: browserVersion,
     externalRequests,
+    focusYProbe,
     scenes,
     contactSheets: [],
   };
@@ -262,6 +274,107 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
     );
   }
   return { scenes, metrics };
+}
+
+async function measureNarrowFocusYProbe(browser, payload) {
+  const configuration = focusYProbeConfiguration;
+  const viewport = FIXTURE_VIEWPORTS.find(({ id }) => id === configuration.viewport);
+  const theme = payload.themes.find(({ id }) => id === configuration.themeID);
+  assert(viewport, `focus y probe viewport ${configuration.viewport} is missing`);
+  assert(theme, `focus y probe theme ${configuration.themeID} is missing`);
+
+  const context = await browser.newContext({
+    viewport: { width: viewport.width, height: viewport.height },
+    deviceScaleFactor: 1,
+    locale: "en-US",
+    reducedMotion: "reduce",
+    serviceWorkers: "block",
+  });
+  const blockedRequests = [];
+  await context.route("**/*", async (route) => {
+    const url = route.request().url();
+    if (classifyFixtureRequest(url, documentURL) === "allow") {
+      await route.continue();
+    } else {
+      blockedRequests.push(url);
+      await route.abort("blockedbyclient");
+    }
+  });
+
+  try {
+    const page = await context.newPage();
+    await page.goto(documentURL, { waitUntil: "load" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const art = await decodeArtwork(page, theme.backgroundDataURL);
+    assert(art.decoded, `${theme.id} focus y probe artwork did not decode`);
+    assert(
+      art.width / art.height > viewport.width / viewport.height,
+      `${theme.id} focus y probe requires artwork wider than the narrow viewport`,
+    );
+    await page.evaluate(theme.installerExpression);
+    await page.waitForFunction(
+      () => document.documentElement.dataset.codexHabitatTheme === "1",
+    );
+    await page.addStyleTag({
+      content: `
+        .offline-fixture-label,
+        #root > * {
+          visibility: hidden !important;
+        }
+        html,
+        body,
+        html[data-codex-habitat-theme="1"] #root {
+          background: transparent !important;
+        }
+        html[data-codex-habitat-theme="1"] #root::before {
+          filter: none !important;
+          opacity: 1 !important;
+          transition: none !important;
+        }
+        html[data-codex-habitat-theme="1"] #root::after {
+          content: none !important;
+        }
+      `,
+    });
+
+    const captureAtFocusY = async (focusY) => {
+      await page.evaluate(({ scale, y }) => {
+        document.documentElement.style.setProperty("--habitat-home-art-scale", String(scale));
+        document.documentElement.style.setProperty(
+          "--habitat-home-art-position",
+          `50% ${y * 100}%`,
+        );
+      }, { scale: configuration.scale, y: focusY });
+      await page.evaluate(() => new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+      return page.locator(LATEST_PROFILE_SELECTORS.appShell).screenshot({
+        animations: "disabled",
+        type: "png",
+      });
+    };
+
+    const firstScreenshot = await captureAtFocusY(configuration.firstFocusY);
+    const secondScreenshot = await captureAtFocusY(configuration.secondFocusY);
+    const pixelDelta = await compareScreenshotPixels(page, firstScreenshot, secondScreenshot);
+    assert(blockedRequests.length === 0, `focus y probe request blocked: ${blockedRequests.join(", ")}`);
+    assert(
+      pixelDelta > 0,
+      `${theme.id}/${viewport.id} focus y pixel delta ${pixelDelta} is not greater than zero`,
+    );
+    return {
+      ...configuration,
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height,
+      artWidth: art.width,
+      artHeight: art.height,
+      firstScreenshotFingerprint: sha256(firstScreenshot),
+      secondScreenshotFingerprint: sha256(secondScreenshot),
+      pixelDelta,
+    };
+  } finally {
+    await context.close();
+  }
 }
 
 async function selectFixtureRoute(page, routeName, homeMarkerSelector) {
@@ -323,6 +436,7 @@ async function inspectFixturePage(
   consoleErrors,
   pageErrors,
   taskModeOff,
+  taskModeBanner,
 ) {
   assert(await page.locator('[data-offline-theme-fixture="true"]').count() === 1, "offline marker missing");
   assert(await page.getByText(FIXTURE_LABEL, { exact: true }).count() === 1, "offline label missing");
@@ -374,6 +488,7 @@ async function inspectFixturePage(
   assert(popoverBounds.inViewport, "popover is outside the viewport");
   assert(!popoverBounds.overlapsComposer, "popover overlaps the composer");
   await assertCoreBounds(page, selectors, routeName);
+  await assertSemanticTextColors(page, routeName);
 
   let taskCanScroll = false;
   let finalScrollTop = 0;
@@ -394,12 +509,15 @@ async function inspectFixturePage(
 
   const scene = await page.locator(selectors.appShell).evaluate((node) => {
     const artwork = getComputedStyle(node, "::before");
+    const overlay = getComputedStyle(node, "::after");
     const sidebar = getComputedStyle(document.querySelector("aside.app-shell-left-panel"));
     return {
       artworkBackground: artwork.backgroundImage,
       artworkOpacity: Number.parseFloat(artwork.opacity),
       artworkPosition: artwork.position,
       artworkSize: artwork.backgroundSize,
+      artworkMask: artwork.maskImage || artwork.webkitMaskImage,
+      overlayMask: overlay.maskImage || overlay.webkitMaskImage,
       sidebarBackdropFilter: sidebar.backdropFilter,
     };
   });
@@ -414,6 +532,11 @@ async function inspectFixturePage(
   } else {
     assert(scene.artworkOpacity > 0, "task artwork is not visible");
   }
+  const bannerFadeValid = routeName !== "task" || !taskModeBanner || (
+    scene.artworkMask.includes("linear-gradient")
+    && scene.overlayMask.includes("linear-gradient")
+  );
+  assert(bannerFadeValid, "task banner artwork does not fade into the transcript");
 
   return {
     styleCount,
@@ -423,11 +546,57 @@ async function inspectFixturePage(
     popoverOverlapsComposer: popoverBounds.overlapsComposer,
     surfaceAnnotationsValid: true,
     allControlsWithinViewport: true,
+    semanticForegroundsValid: true,
+    bannerFadeValid,
     taskCanScroll,
     finalScrollTop,
     artworkOpacity: scene.artworkOpacity,
     taskModeOff,
   };
+}
+
+async function assertSemanticTextColors(page, routeName) {
+  const failures = await page.evaluate((activeRoute) => {
+    const root = document.querySelector("#root");
+    if (!(root instanceof HTMLElement)) return ["root is missing"];
+    const resolveThemeColor = (name) => {
+      const probe = document.createElement("span");
+      probe.style.color = `var(${name})`;
+      root.appendChild(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    const text = resolveThemeColor("--habitat-text");
+    const muted = resolveThemeColor("--habitat-muted-text");
+    const checks = [
+      ["nav a:not([aria-current])", text],
+      [".fixture-recents h2", muted],
+      [".fixture-account", text],
+      [".fixture-popover", text],
+    ];
+    if (activeRoute === "home") {
+      checks.push([".fixture-home p", muted]);
+    } else {
+      checks.push(
+        [".fixture-message h2", text],
+        [".fixture-message p", text],
+        [".fixture-tool strong", text],
+        [".fixture-tool p", text],
+        [".fixture-tool-grid > div", text],
+      );
+    }
+    return checks.flatMap(([selector, expected]) => {
+      const nodes = [...document.querySelectorAll(selector)].filter((node) =>
+        node instanceof HTMLElement && !node.closest("[hidden]"));
+      if (nodes.length === 0) return [`${selector} is missing`];
+      return nodes.flatMap((node) => {
+        const actual = getComputedStyle(node).color;
+        return actual === expected ? [] : [`${selector}: ${actual}, expected ${expected}`];
+      });
+    });
+  }, routeName);
+  assert(failures.length === 0, `semantic text color mismatch: ${failures.join("; ")}`);
 }
 
 async function assertProfileSelectorCardinality(page, selectors, routeName) {

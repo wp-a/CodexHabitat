@@ -260,6 +260,12 @@ func compiledSceneSpansTheWholeWindow() throws {
     #expect(css.contains("--habitat-task-content-opacity"))
     #expect(!css.contains("--habitat-route-veil"))
     #expect(css.components(separatedBy: "var(--habitat-art-background)").count - 1 == 1)
+    let shell = try #require(profile.selectors.appShell)
+    let artwork = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"] \(shell)::before",
+        in: css
+    )
+    #expect(!artwork.contains("transition:"))
 }
 
 @Test
@@ -299,6 +305,81 @@ func framedSceneScalesOnlyArtworkAndKeepsItsFrameStable() throws {
     #expect(overlay.contains("var(--habitat-safe-scrim)"))
     #expect(!overlay.contains("transform:"))
     #expect(!overlay.contains("var(--habitat-home-strength)"))
+}
+
+@Test
+func routeArtworkScaleUsesTheRouteFocusAsItsTransformOrigin() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "night-shift"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+    let shell = try #require(profile.selectors.appShell)
+    let homeArtwork = try cssRuleBody(
+        selector: "\(root)[data-codex-habitat-route=\"home\"] \(shell)::before",
+        in: css
+    )
+    let taskArtwork = try cssRuleBody(
+        selector: "\(root)[data-codex-habitat-route=\"task\"] \(shell)::before",
+        in: css
+    )
+    let taskOverlay = try cssRuleBody(
+        selector: "\(root)[data-codex-habitat-route=\"task\"] \(shell)::after",
+        in: css
+    )
+
+    #expect(homeArtwork.contains("background-position: var(--habitat-home-art-position)"))
+    #expect(homeArtwork.contains("transform-origin: var(--habitat-home-art-position)"))
+    #expect(taskArtwork.contains("background-position: var(--habitat-task-art-position)"))
+    #expect(taskArtwork.contains("transform-origin: var(--habitat-task-art-position)"))
+    #expect(taskArtwork.contains("mask-image: linear-gradient"))
+    #expect(taskArtwork.contains("var(--habitat-task-banner-fade-start)"))
+    #expect(taskArtwork.contains("var(--habitat-task-banner-fade-end)"))
+    #expect(taskOverlay.contains("mask-image: linear-gradient(to bottom, black 0 46%, transparent 52%)"))
+}
+
+@Test
+func bannerArtworkInsetCompensatesForFocusAnchoredScale() {
+    for focusY in [0.0, 0.44, 1.0] {
+        for scale in [1.0, 1.06, 1.35] {
+            let inset = ThemeCompiler.bannerArtworkBottomInset(
+                focusY: focusY,
+                scale: scale
+            )
+            let localVisibleBottom = 1 - inset
+            let transformedVisibleBottom = focusY + scale * (localVisibleBottom - focusY)
+            #expect(abs(transformedVisibleBottom - 0.52) < 0.000_1)
+            let fadeStart = ThemeCompiler.bannerArtworkLocalPosition(
+                focusY: focusY,
+                scale: scale,
+                transformedPosition: 0.46
+            )
+            #expect(abs(focusY + scale * (fadeStart - focusY) - 0.46) < 0.000_1)
+        }
+    }
+}
+
+@Test
+func compiledSurfacesOverrideHostTextClassesWithSemanticForegrounds() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "quiet-garden"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+    let homeContent = try #require(profile.selectors.homeContent)
+
+    #expect(css.contains("\(root) \(profile.selectors.sidebar) :where(a, button, [role=\"button\"])"))
+    #expect(css.contains("\(root) \(profile.selectors.sidebar) :where(h1, h2, h3, h4, h5, h6)"))
+    #expect(css.contains("\(root)[data-codex-habitat-route=\"home\"] \(homeContent) p"))
+    #expect(css.contains("\(root)[data-codex-habitat-route=\"task\"] \(profile.selectors.threadScroll) p"))
+    #expect(css.contains("\(root) \(profile.selectors.popover) > *"))
+    #expect(css.contains("color: var(--habitat-muted-text)"))
+    #expect(!css.contains("\(profile.selectors.sidebar) > :last-child"))
+
+    let taskParagraph = try cssRuleBody(
+        selector: "\(root)[data-codex-habitat-route=\"task\"] \(profile.selectors.threadScroll) p",
+        in: css
+    )
+    #expect(taskParagraph.contains("color: var(--habitat-text)"))
+    #expect(!taskParagraph.contains("color: var(--habitat-muted-text)"))
 }
 
 @Test

@@ -14,6 +14,9 @@ html[data-codex-habitat-theme="1"] {
   --habitat-task-art-position: {{task-art-position-x}} {{task-art-position-y}};
   --habitat-home-art-scale: {{home-art-scale}};
   --habitat-task-art-scale: {{task-art-scale}};
+  --habitat-task-banner-art-inset: {{task-banner-art-inset}};
+  --habitat-task-banner-fade-start: {{task-banner-fade-start}};
+  --habitat-task-banner-fade-end: {{task-banner-fade-end}};
   --habitat-safe-scrim: {{safe-scrim}};
   --habitat-home-strength: {{home-strength}};
   --habitat-task-strength: {{task-strength}};
@@ -55,9 +58,8 @@ html[data-codex-habitat-theme="1"] {{app-shell}}::before {
   background-repeat: no-repeat;
   background-size: cover;
   transform: scale(var(--habitat-home-art-scale));
-  transform-origin: center;
+  transform-origin: var(--habitat-home-art-position);
   opacity: var(--habitat-home-strength);
-  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 /* habitat-scene-overlay */
@@ -108,6 +110,11 @@ html[data-codex-habitat-theme="1"] {{popover}} {
   box-shadow: 0 12px 34px color-mix(in srgb, var(--habitat-surface) 28%, transparent);
 }
 
+html[data-codex-habitat-theme="1"] {{popover}} > * {
+  color: var(--habitat-text);
+  background: inherit;
+}
+
 html[data-codex-habitat-theme="1"] {{composer}} {
   padding-block: var(--habitat-density-spacing);
 }
@@ -150,12 +157,6 @@ html[data-codex-habitat-theme="1"] ::selection {
 
 html[data-codex-habitat-theme="1"] :focus-visible {
   outline-color: var(--habitat-secondary);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-codex-habitat-theme="1"] {{app-shell}}::before {
-    transition: none;
-  }
 }
 
 {{surface-treatment}}
