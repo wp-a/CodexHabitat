@@ -421,11 +421,6 @@ struct ThemeCompiler {
             \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) p {
               color: var(--habitat-text);
             }
-            \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(article, [role="article"]) {
-              color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent);
-              border-color: color-mix(in srgb, var(--habitat-accent) 30%, transparent);
-            }
             """,
         ]
 
@@ -456,6 +451,15 @@ struct ThemeCompiler {
               background-color: transparent;
               background-image: none;
               backdrop-filter: none;
+            }
+            """)
+        }
+        if let userMessage = profile.selectors.userMessageSurface {
+            rules.append("""
+            \(root)[data-codex-habitat-route="task"] \(userMessage) {
+              color: var(--habitat-text);
+              background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 30%, transparent);
             }
             """)
         }
@@ -854,6 +858,7 @@ struct ThemeCompiler {
         ].compactMap { $0 }
         let contentSurfaces = [
             profile.selectors.homeSuggestions,
+            profile.selectors.userMessageSurface,
             profile.selectors.messageSurface,
             profile.selectors.codeSurface,
             profile.selectors.stickyBand,

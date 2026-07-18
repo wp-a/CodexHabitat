@@ -153,6 +153,7 @@ func staticallyVerifiedCodexLinesResolveToNarrowProfiles() throws {
     let exactBuild = try #require(store.profile(forVersion: "26.715.31925"))
     #expect(exactBuild.id == "codex-26.715.31925")
     #expect(exactBuild.selectors.appShell == "#root")
+    #expect(exactBuild.selectors.userMessageSurface == "[data-user-message-bubble]")
     #expect(exactBuild.selectors.messageSurface == "[data-content-search-unit-key]")
 }
 
@@ -291,12 +292,14 @@ func taskRequestCardsKeepAReadableIndependentSurface() throws {
     let theme = try #require(BridgeTheme.builtIn(id: "retro-messenger"))
     let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
     let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
-    let selector = "\(root) \(profile.selectors.threadScroll) :where(article, [role=\"article\"])"
+    let requestSurface = try #require(profile.selectors.userMessageSurface)
+    let selector = "\(root) \(requestSurface)"
     let rule = try cssRuleBody(selector: selector, in: css)
 
     #expect(rule.contains(
         "background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent)"
     ))
+    #expect(!css.contains("\(profile.selectors.threadScroll) :where(article"))
 }
 
 @Test

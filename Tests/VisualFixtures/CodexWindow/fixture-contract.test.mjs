@@ -203,6 +203,7 @@ function representativePayload() {
       homeSuggestions: '[class~="group/home-suggestions"]',
       selectedNavigation: "aside.app-shell-left-panel [aria-current]",
       taskTranscript: ".thread-scroll-container",
+      userMessageSurface: "[data-user-message-bubble]",
       messageSurface: "[data-content-search-unit-key]",
       codeSurface: "[data-content-search-unit-key] pre",
       toolSurfaces: [

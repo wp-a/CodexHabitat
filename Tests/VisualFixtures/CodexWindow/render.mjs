@@ -557,11 +557,14 @@ async function inspectFixturePage(
       if (slashAlpha) return Number.parseFloat(slashAlpha[1]);
       const legacyAlpha = color.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)$/);
       if (legacyAlpha) return Number.parseFloat(legacyAlpha[1]);
-      return color === "transparent" ? 0 : 1;
+      return color === "transparent" ? 0 : null;
     })
     : null;
   if (routeName === "task") {
-    assert(messageCardOpacity >= 0.86, `task message card opacity is ${messageCardOpacity}`);
+    assert(
+      messageCardOpacity !== null && Math.abs(messageCardOpacity - 0.88) <= 0.001,
+      `task message card opacity is ${messageCardOpacity}`,
+    );
   }
 
   return {

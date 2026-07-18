@@ -242,7 +242,7 @@ nav a,
   padding: 18px;
   border: 1px solid #3c4044;
   border-radius: 8px;
-  background: rgb(42 45 48 / 86%);
+  background: transparent;
 }
 
 .fixture-avatar {

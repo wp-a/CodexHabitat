@@ -251,7 +251,10 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(!source.contains("prompt"))
     #expect(!source.contains("response"))
     #expect(!source.contains("project"))
-    #expect(!source.contains("user"))
+    let sourceWithoutApprovedUserMarker = source
+        .replacingOccurrences(of: "data-user-message-bubble", with: "")
+        .replacingOccurrences(of: "user-message-surface", with: "")
+    #expect(!sourceWithoutApprovedUserMarker.contains("user"))
     #expect(source.contains("blocked()"))
     #expect(!source.contains("</style><script>"))
 
@@ -291,6 +294,10 @@ func annotationPlanUsesOnlyProfileSelectorsAndFixedSurfaceNames() throws {
     #expect(!plan.entries.map(\.selector).contains(profile.selectors.homeMarker))
     #expect(Set(plan.entries.map(\.surface)).isSubset(of: Set(HostSurfaceName.allCases)))
     #expect(plan.entries.map(\.selector).count == Set(plan.entries.map(\.selector)).count)
+    #expect(plan.entries.contains(HostSurfaceAnnotation(
+        selector: "[data-user-message-bubble]",
+        surface: .userMessageSurface
+    )))
 }
 
 @Test

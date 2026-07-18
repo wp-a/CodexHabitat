@@ -14,6 +14,7 @@ struct CompatibilitySelectors: Codable, Equatable, Sendable {
     let homeSuggestions: String?
     let selectedNavigation: String?
     let taskTranscript: String?
+    let userMessageSurface: String?
     let messageSurface: String?
     let codeSurface: String?
     let toolSurfaces: [String]?
@@ -37,6 +38,7 @@ struct CompatibilitySelectors: Codable, Equatable, Sendable {
             homeSuggestions,
             selectedNavigation,
             taskTranscript,
+            userMessageSurface,
             messageSurface,
             codeSurface,
             sidebarResizeChrome,

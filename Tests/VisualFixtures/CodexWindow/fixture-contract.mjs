@@ -28,6 +28,7 @@ export const LATEST_PROFILE_SELECTORS = Object.freeze({
   homeSuggestions: '[class~="group/home-suggestions"]',
   selectedNavigation: "aside.app-shell-left-panel [aria-current]",
   taskTranscript: ".thread-scroll-container",
+  userMessageSurface: "[data-user-message-bubble]",
   messageSurface: "[data-content-search-unit-key]",
   codeSurface: "[data-content-search-unit-key] pre",
   toolSurfaces: Object.freeze([
@@ -53,6 +54,7 @@ export const EXPECTED_SURFACE_ANNOTATIONS = Object.freeze([
   Object.freeze({ selectorKey: "homeContent", surface: "home-content" }),
   Object.freeze({ selectorKey: "homeSuggestions", surface: "home-suggestions" }),
   Object.freeze({ selectorKey: "selectedNavigation", surface: "selected-navigation" }),
+  Object.freeze({ selectorKey: "userMessageSurface", surface: "user-message-surface" }),
   Object.freeze({ selectorKey: "messageSurface", surface: "message-surface" }),
   Object.freeze({ selectorKey: "codeSurface", surface: "code-surface" }),
   Object.freeze({ selectorKey: "toolSurfaces", surface: "tool-surface" }),
@@ -71,6 +73,7 @@ export const REQUIRED_SURFACE_SELECTORS = Object.freeze([
   Object.freeze({ name: "home content", fixtureToken: 'data-fixture-surface="home-content"' }),
   Object.freeze({ name: "home suggestions", fixtureToken: 'class="group/home-suggestions fixture-suggestions"' }),
   Object.freeze({ name: "thread scroll", fixtureToken: 'class="thread-scroll-container"' }),
+  Object.freeze({ name: "user message", fixtureToken: "data-user-message-bubble" }),
   Object.freeze({ name: "message", fixtureToken: 'data-content-search-unit-key="fixture-response"' }),
   Object.freeze({ name: "code", fixtureToken: 'data-fixture-surface="code"' }),
   Object.freeze({ name: "composer", fixtureToken: 'class="composer-surface-chrome"' }),

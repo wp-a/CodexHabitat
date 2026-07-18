@@ -31,6 +31,7 @@ enum HostSurfaceName: String, Codable, CaseIterable, Hashable, Sendable {
     case homeSuggestions = "home-suggestions"
     case selectedNavigation = "selected-navigation"
     case taskTranscript = "task-transcript"
+    case userMessageSurface = "user-message-surface"
     case messageSurface = "message-surface"
     case codeSurface = "code-surface"
     case toolSurface = "tool-surface"
@@ -73,6 +74,7 @@ struct HostSurfaceAnnotationPlan: Equatable, Sendable {
         append(.homeContent, selectors: [profile.selectors.homeContent])
         append(.homeSuggestions, selectors: [profile.selectors.homeSuggestions])
         append(.selectedNavigation, selectors: [profile.selectors.selectedNavigation])
+        append(.userMessageSurface, selectors: [profile.selectors.userMessageSurface])
         append(.messageSurface, selectors: [profile.selectors.messageSurface])
         append(.codeSurface, selectors: [profile.selectors.codeSurface])
         append(

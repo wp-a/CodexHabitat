@@ -88,7 +88,8 @@ test(
     assert.ok(
       result.scenes
         .filter(({ route }) => route === "task")
-        .every(({ messageCardOpacity }) => messageCardOpacity >= 0.86),
+        .every(({ messageCardOpacity }) =>
+          messageCardOpacity !== null && Math.abs(messageCardOpacity - 0.88) <= 0.001),
     );
   },
 );

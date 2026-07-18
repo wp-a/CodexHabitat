@@ -16,6 +16,7 @@ func currentBuildProfileOwnsCompleteSafeHostSurfaceMap() throws {
     #expect(current.selectors.homeSuggestions == "[class~=\"group/home-suggestions\"]")
     #expect(current.selectors.selectedNavigation == "aside.app-shell-left-panel [aria-current]")
     #expect(current.selectors.taskTranscript == ".thread-scroll-container")
+    #expect(current.selectors.userMessageSurface == "[data-user-message-bubble]")
     #expect(current.selectors.messageSurface == "[data-content-search-unit-key]")
     #expect(current.selectors.codeSurface == "[data-content-search-unit-key] pre")
     #expect(current.selectors.toolSurfaces == [
@@ -31,6 +32,7 @@ func currentBuildProfileOwnsCompleteSafeHostSurfaceMap() throws {
     #expect(current.selectors.composerContext ==
         "main.main-surface [data-codex-composer-root]")
     #expect(current.selectors.stickyBand == nil)
+    #expect(baseline.selectors.userMessageSurface == nil)
 
     #expect(store.profile(forVersion: "26.715.31924")?.id == "codex-26.715")
     #expect(store.profile(forVersion: "26.715.31926") == nil)

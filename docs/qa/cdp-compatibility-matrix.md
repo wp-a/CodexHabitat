@@ -34,6 +34,7 @@ selectors:
 main.main-surface [role="main"]
 [class~="group/home-suggestions"]
 aside.app-shell-left-panel [aria-current]
+[data-user-message-bubble]
 [data-content-search-unit-key]
 [data-content-search-unit-key] pre
 [data-content-search-unit-key] [data-testid="exec-shell-body"]
@@ -55,7 +56,9 @@ values are `8142e0848fe49097c129a1093f80061c13de04c2893525ee7c751d26b5a7bd4f`
 and `0c9dd677134340cb944e7642b8bc2504c7b73c7dc334d9d756547858171eea41`.
 The current bundle was reconfirmed read-only while the official Codex process
 remained PID `23647`, started `Sat Jul 18 14:48:19 2026`; no apply, restart, or
-quit action was performed.
+quit action was performed. The extracted local-conversation bundle exposes the
+narrow `data-user-message-bubble` host marker, so request-card treatment is
+owned by that exact selector instead of a generic `article` rule.
 The extracted React bundles still mount the sidebar class on an `aside`, the
 main-surface class on a `main`, the composer and thread-scroll classes on their
 respective live containers, and the Radix popper wrapper attribute. The current
