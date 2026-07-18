@@ -32,9 +32,12 @@ main-surface class on a `main`, the composer and thread-scroll classes on their
 respective live containers, and the Radix popper wrapper attribute. The current
 bundle also starts an auxiliary pet renderer at
 `avatar-overlay-composition-surface.html?surfaceId=...`, while primary windows
-start at `index.html` with an optional `initialRoute`. The bridge accepts only
-the bounded official main-page query shape and ignores auxiliary page targets;
-it does not inject into them. No Codex bundle file was modified. This static
+start at `index.html` with an optional `initialRoute`. The bridge validates
+every page debugger endpoint before ignoring only allowlisted official
+auxiliary URL shapes, then requires a passing native-layout snapshot before any
+CSS installation. Unknown queries or unsafe endpoints fail the whole attempt;
+unknown auxiliary routes cannot pass the pre-injection layout gate. No Codex
+bundle file was modified. This static
 evidence enables the narrow profile, but does not replace the required live
 screenshot and restore gate.
 

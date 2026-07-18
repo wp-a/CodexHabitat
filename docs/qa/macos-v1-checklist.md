@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 270 tests including versioned CDP profiles, main-renderer filtering, theme protocol, image bounds, thumbnail cache invalidation, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 273 tests including versioned CDP profiles, fail-closed target validation, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final `Codex-Habitat-0.1.0.dmg` passes mounted-bundle `verify-release` and strict/deep signature checks; SHA-256 is `dc854540b5b8aaa34a0a8e200990cedaa45ebb4f217918fff125a65177656031`.
+- [x] Final `Codex-Habitat-0.1.0.dmg` passes mounted-bundle `verify-release` and strict/deep signature checks; SHA-256 is `abb174b6211488bef9bdd3157124633e100931d74a6f594e990a1adf97b4555b`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -25,7 +25,7 @@ explicit user action.
 
 - [x] Onboarding completes in exactly three steps without an account.
 - [x] Settings minimum window is 760 x 520 and all pages scroll without overlap.
-- [x] Build 4 is a standard visible macOS app with no `LSUIElement`; a normal cold launch from `/Applications/Codex Habitat.app` opens Settings with `background only = false` while login-item presentation remains covered by Apple-event policy tests.
+- [x] Build 5 is a standard visible macOS app with no `LSUIElement`; a normal cold launch from `/Applications/Codex Habitat.app` opens Settings with `background only = false` while login-item presentation remains covered by Apple-event policy tests.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] All 24 bundled theme packages have unique IDs and hashes, validated 1600 x 1000 backgrounds, 800 x 500 previews, and nine materially distinct host-owned style families.
