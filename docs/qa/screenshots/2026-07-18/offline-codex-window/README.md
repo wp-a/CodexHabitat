@@ -1,6 +1,6 @@
 # Offline Codex Window Visual QA
 
-Generated on 2026-07-19 from commit `2186155ae4b36df66adf024694bab44a043441b9`.
+Generated on 2026-07-19 from commit `77a2feba1a6ea293ff7a8a29dc7e84e412d921ce`.
 
 ## Scope
 
@@ -17,18 +17,21 @@ The evidence covers all 24 built-in themes on both `home` and `task` routes at w
 
 - 96 of 96 theme, route, and viewport scenes passed.
 - No external network request was attempted.
-- Maximum measured route update latency was 0.31 ms.
+- Maximum measured route update latency was 0.20 ms.
 - Narrow-viewport focus-Y probe pixel delta was 0.431640625.
-- Minimum nonblank ratio was 0.9326171875.
-- Minimum visible task artwork delta was 0.019287109375.
+- Minimum nonblank ratio was 0.9052734375.
+- Minimum Home artwork delta was 0.4375.
+- Minimum visible non-off Task artwork delta was 0.119384765625; the
+  22 non-off Task themes averaged 0.3129938299005682 across both viewports.
 - Minimum Home suggestion viewport inset was 29.5 px; Retro Messenger and
   Grand Ocean Crew measured 32 px wide and 29.5 px narrow.
-- Semantic foreground assignments and banner fades were present in every scene.
+- Semantic foreground assignments, banner fades, and computed Task reading
+  scrims were present in every applicable scene.
 - Surface annotations, control bounds, composer hit targets, popover bounds, and horizontal overflow checks passed in every scene.
 
 ## Manual Review
 
-The four contact sheets and the high-risk nostalgia, light, banner, wide, and narrow scenes were reviewed at original resolution. The review confirmed materially different full-window compositions, readable light-theme navigation and task surfaces, continuous banner fades, preserved artwork focal areas, and no obvious logos, protected characters, embedded text, or copied product imagery.
+The four contact sheets and the high-risk nostalgia, light, banner, wide, and narrow scenes were reviewed at original resolution. The review confirmed materially different full-window compositions, readable light-theme navigation and task surfaces, continuous banner fades, preserved artwork focal areas, and no obvious logos, protected characters, embedded text, or copied product imagery. Compared with the previous Build 8 fixture, all 48 Task captures and the 28 immersive Home captures changed while the 20 framed/quiet Home controls remained byte-identical.
 
 ## Required Manual Acceptance
 
