@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-}"
 VERSION="${VERSION:-0.1.0}"
-BUILD_NUMBER="${BUILD_NUMBER:-7}"
+BUILD_NUMBER="${BUILD_NUMBER:-8}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT/dist}"
 SCRATCH_PATH="${HABITAT_SCRATCH_PATH:-/tmp/codex-habitat-release-build}"
 APP="$OUTPUT_DIR/Codex Habitat.app"
@@ -164,9 +164,11 @@ CODESIGN=(codesign --force --sign "$SIGN_IDENTITY" --options runtime "$TIMESTAMP
     "$APP"
 
 if [[ "$MODE" == "--release" ]]; then
-    HABITAT_REQUIRE_UPDATES=1 "$ROOT/scripts/verify-release.sh" "$APP"
+    HABITAT_EXPECTED_BUILD_NUMBER="$BUILD_NUMBER" HABITAT_REQUIRE_UPDATES=1 \
+        "$ROOT/scripts/verify-release.sh" "$APP"
 else
-    "$ROOT/scripts/verify-release.sh" "$APP"
+    HABITAT_EXPECTED_BUILD_NUMBER="$BUILD_NUMBER" \
+        "$ROOT/scripts/verify-release.sh" "$APP"
 fi
 
 echo "build-app: created $APP"

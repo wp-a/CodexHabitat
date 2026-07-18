@@ -63,7 +63,7 @@ and sports directions. Every theme has original local bitmap art and one of
 nine compiler-owned style families; families change geometry, borders,
 material, density, and scrims rather than only swapping colors.
 
-![Route-aware native theme prototypes](docs/qa/screenshots/2026-07-18/gallery-prototypes.png)
+![Build 8 native theme gallery](docs/qa/screenshots/2026-07-18/gallery-all-build8.png)
 
 Theme Studio accepts local, single-frame images only. Input is signature
 checked, dimension and pixel bounded, oriented, downsampled, and re-encoded.

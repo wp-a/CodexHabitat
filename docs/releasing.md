@@ -34,7 +34,7 @@ comparison. The feed and all update download URLs must use HTTPS.
 
 ```bash
 export VERSION=0.1.0
-export BUILD_NUMBER=1
+export BUILD_NUMBER=8
 export CODE_SIGN_IDENTITY='Developer ID Application: Example (TEAMID)'
 export SPARKLE_FEED_URL='https://example.com/codex-habitat/appcast.xml'
 export SPARKLE_PUBLIC_ED_KEY='base64-public-key'
@@ -73,10 +73,15 @@ re-signing. Publish the DMG and signed appcast atomically.
 For an unsigned local smoke build:
 
 ```bash
+scripts/render-codex-theme-fixtures.sh --check
 scripts/build-app.sh --adhoc
 scripts/package-dmg.sh
 scripts/verify-release.sh "dist/Codex Habitat.app"
 ```
+
+The fixture check is offline-only and uses the debug build. Release verification
+must reject any helper containing the fixture command or its private payload
+marker; neither may ship in the application bundle.
 
 For a public build, require the update configuration and notarization ticket:
 

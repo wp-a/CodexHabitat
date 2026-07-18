@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${1:-$ROOT/dist/Codex Habitat.app}"
 EXPECTED_APP_ID="com.codexhabitat.app"
 EXPECTED_HELPER_ID="com.codexhabitat.app.theme-bridge"
+EXPECTED_BUILD_NUMBER="${HABITAT_EXPECTED_BUILD_NUMBER:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT/Config/Info.plist")}"
 
 fail() {
     echo "verify-release: FAIL: $*" >&2
@@ -74,6 +75,10 @@ build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.+][A-Za-z0-9.]+)?$ ]] \
     || fail "invalid marketing version: $version"
 [[ "$build" =~ ^[0-9]+$ ]] || fail "invalid bundle build: $build"
+[[ "$EXPECTED_BUILD_NUMBER" =~ ^[0-9]+$ ]] \
+    || fail "invalid expected bundle build: $EXPECTED_BUILD_NUMBER"
+[[ "$build" == "$EXPECTED_BUILD_NUMBER" ]] \
+    || fail "bundle build does not match expected build: $build != $EXPECTED_BUILD_NUMBER"
 pass "bundle identity and versions"
 
 required_archs="${HABITAT_REQUIRED_ARCHS:-$(uname -m)}"

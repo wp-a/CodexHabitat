@@ -1,13 +1,13 @@
 # macOS v1 QA Checklist
 
-Last updated: 2026-07-18 on macOS 26.4, arm64, Xcode 26.6.
+Last updated: 2026-07-19 on macOS 26.4, arm64, Xcode 26.6.
 
 Legend: `[x]` verified, `[ ]` still requires release hardware, credentials, or
 explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 305 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image and pet-import bounds, thumbnail cache invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 344 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image and pet-import bounds, thumbnail cache invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, localization, lifecycle, performance budgets, and monotonic release-build verification.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `5df5d212003e496b2185643cd93a2284fb0a9b6bce15190c3b7f9efd6b5d6272`.
+- [x] Final build 8 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0`, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `f8ede090d94f79a74d88f3ec4c96e1d9a1f01ba75a4a73d31e899f3de4d20186`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -25,18 +25,19 @@ explicit user action.
 
 - [x] Onboarding completes in exactly three steps without an account.
 - [x] Settings minimum window is 760 x 520 and all pages scroll without overlap.
-- [x] Build 7 is a standard visible macOS app with no `LSUIElement`; it was atomically installed and launched from `/Applications/Codex Habitat.app` while login-item presentation remains covered by Apple-event policy tests.
+- [x] Build 8 is a standard visible macOS app with no `LSUIElement`; it was atomically installed at `/Applications/Codex Habitat.app` while login-item presentation remains covered by Apple-event policy tests.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] All 24 bundled theme packages have unique IDs and hashes, 800 x 500 previews, and nine materially distinct host-owned style families. Cathedral Foundry, Retro Messenger 2007, Arcade Signal, and Quiet Garden use validated 2560 x 1440 prototype backgrounds; the other twenty retain validated 1600 x 1000 backgrounds.
+- [x] The exact supported Codex profile renders all 24 themes across home/task and wide/narrow states in 96 offline full-window scenes. The production resolver, compiler, and installer were used with zero external requests; every scene passed route mutation, semantic foreground, banner fade, annotation, control-bound, hit-target, popover, overflow, artwork-decode, and visible-task-art checks. This is offline evidence and not live Codex acceptance.
 - [x] All, Nostalgia, Anime, and Custom gallery filters plus Theme Studio at narrow and wide settings widths pass native screenshot review without blank previews, clipping, or overlap.
 - [x] Installed Pets and Themes pages pass native screenshot review with decoded thumbnails/previews, stable card geometry, and no blank or overlapping content.
 - [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input (including uppercase extensions) and typed controls, including home/task treatment, safe side, chrome material, independent route strength, and sidebar/header/composer opacity; installed custom themes reopen as complete typed drafts, optional pet pairings persist, and slug collisions require explicit replacement confirmation.
-- [x] Build 7 polished-prototype gallery, Retro Messenger framed preview at 1040 points, and Theme Studio route controls at a 760-point parent pass original-resolution screenshot review; evidence is in `docs/qa/screenshots/2026-07-18/`.
+- [x] Build 8 All, Nostalgia, Anime, and Custom galleries, Pets, Theme Studio at 1152- and 760-point widths, and the advanced home/task route controls pass original-resolution screenshot review; evidence is in `docs/qa/screenshots/2026-07-18/`.
 - [x] Overlay does not activate the app and can be made click-through.
 - [x] Menu-bar connection state and Pomodoro/countdown controls render without clipping and share live timer state with the overlay.
 - [x] Simplified Chinese settings and the default status/latest-request Token/context/recent-60-second-output/quota overlay pass native screenshot review without overlap.
-- [x] At 100% scale the physical overlay is 136 x 144 collapsed and 324 x 144 expanded; the right edge remains fixed and the collapsed window has no transparent mouse-blocking rail.
+- [x] At 100% scale the physical overlay is 136 x 144 collapsed and 324 x 144 expanded; 75% and 150% expanded bounds are 243 x 108 and 486 x 216. Every observed window ended at screen x=1512, and the collapsed window has no transparent mouse-blocking rail.
 - [x] Resource packs support validated import, explicit replacement, export, and uninstall from native settings.
 - [x] Whole-pet live dragging moved the packaged overlay from `+1138,+481` to `+948,+319`; position lock, per-display relative placement, and theme-pet pairings persist through settings schema v5.
 - [x] Launch-at-login uses `SMAppService.mainApp`; registration, rollback, and stored-state reconciliation are covered by tests.
@@ -57,6 +58,8 @@ explicit user action.
 - [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
 - [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Build 7 prototype gallery and narrow Theme Studio QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
+- [x] Build 8 isolated native QA measured Themes -> Pets at 305.6 ms and Pets -> Themes at 306.1 ms including accessibility automation overhead; repeated navigation showed no multi-second stall. The complete 96-scene offline route check measured a 0.31 ms maximum internal route mutation.
+- [x] Build 8 native gallery, Studio, Pets, and 75%/100%/150% overlay QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
 - [x] Packaged idle CPU averaged 0.191% over 150 two-second `top` samples; 144/150 were below 1%.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
 - [x] Post-enhancement static regression averaged 0.037% CPU over 30 one-second samples; all samples were below 1% and final memory was 21 MB.
@@ -76,6 +79,7 @@ explicit user action.
 - [x] Installed Codex `26.707.91948` contains the `codex-theme-v1` Import/Copy shape; Habitat's clipboard encoder matches its required local schema.
 - [x] API-key mode exposes real local latest-request Token/context/recent-output values and labels unavailable account quota as `API Key` rather than a fabricated percentage.
 - [x] Salted active-thread selection keeps Token metrics on the matching session during parallel tasks, expires recent output after 60 seconds, and expires the complete metric summary after five minutes without a matching event.
+- [x] Build 8 installation and native QA preserved Codex PID `23647` and its `Sat Jul 18 14:48:19 2026` start time. Settings schema remained 5, `themeBridgeEnabled` remained false, the bridge session directory stayed empty, and no theme helper process or listener existed.
 - [ ] Paste a Habitat-generated native theme into Codex Appearance and visually confirm both light and dark variants with user approval.
 - [ ] Exact control-socket activity on Codex `26.707.91948`; this build does not publish the proxy socket.
 - [ ] Live CDP apply, screenshot health review, helper crash, and official-appearance restore with fresh user confirmation.

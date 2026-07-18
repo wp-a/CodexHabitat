@@ -60,7 +60,7 @@ func userLaunchOpensSettingsWhileLoginLaunchStaysQuiet() {
 }
 
 @Test
-func mainBundleConfigurationDeclaresAStandardVisibleBuildSevenApp() throws {
+func mainBundleConfigurationDeclaresAStandardVisibleBuildEightApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -71,7 +71,27 @@ func mainBundleConfigurationDeclaresAStandardVisibleBuildSevenApp() throws {
     )
 
     #expect(plist["LSUIElement"] == nil)
-    #expect(plist["CFBundleVersion"] as? String == "7")
+    #expect(plist["CFBundleVersion"] as? String == "8")
+}
+
+@Test
+func releaseVerificationPinsTheExpectedMonotonicBuildNumber() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let verifier = try String(
+        contentsOf: repositoryRoot.appending(path: "scripts/verify-release.sh"),
+        encoding: .utf8
+    )
+    let builder = try String(
+        contentsOf: repositoryRoot.appending(path: "scripts/build-app.sh"),
+        encoding: .utf8
+    )
+
+    #expect(verifier.contains("HABITAT_EXPECTED_BUILD_NUMBER"))
+    #expect(verifier.contains("bundle build does not match expected build"))
+    #expect(builder.contains("HABITAT_EXPECTED_BUILD_NUMBER=\"$BUILD_NUMBER\""))
 }
 
 @Test @MainActor
