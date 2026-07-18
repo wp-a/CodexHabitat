@@ -286,6 +286,20 @@ func taskSceneKeepsArtVisibleAcrossTheTranscript() throws {
 }
 
 @Test
+func taskRequestCardsKeepAReadableIndependentSurface() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "retro-messenger"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
+    let selector = "\(root) \(profile.selectors.threadScroll) :where(article, [role=\"article\"])"
+    let rule = try cssRuleBody(selector: selector, in: css)
+
+    #expect(rule.contains(
+        "background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent)"
+    ))
+}
+
+@Test
 func immersiveHomeLetsTheContinuousSceneOwnLargeSurfaces() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "workbench"))

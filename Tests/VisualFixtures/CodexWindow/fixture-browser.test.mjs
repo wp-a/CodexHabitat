@@ -85,5 +85,10 @@ test(
         .filter(({ route }) => route === "task")
         .every(({ taskCanScroll, finalScrollTop }) => taskCanScroll && finalScrollTop === 0),
     );
+    assert.ok(
+      result.scenes
+        .filter(({ route }) => route === "task")
+        .every(({ messageCardOpacity }) => messageCardOpacity >= 0.86),
+    );
   },
 );

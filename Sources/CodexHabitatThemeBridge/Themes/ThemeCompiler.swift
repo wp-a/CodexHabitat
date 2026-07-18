@@ -423,7 +423,7 @@ struct ThemeCompiler {
             }
             \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(article, [role="article"]) {
               color: var(--habitat-text);
-              background-color: transparent;
+              background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent);
               border-color: color-mix(in srgb, var(--habitat-accent) 30%, transparent);
             }
             """,

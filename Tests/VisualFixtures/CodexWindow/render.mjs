@@ -550,6 +550,19 @@ async function inspectFixturePage(
       : scene.transcriptBackgroundImage.includes("gradient")
   );
   assert(taskReadingScrimValid, "task reading scrim is not active on the transcript owner");
+  const messageCardOpacity = routeName === "task"
+    ? await page.locator('[data-fixture-surface="message"]').evaluate((node) => {
+      const color = getComputedStyle(node).backgroundColor;
+      const slashAlpha = color.match(/\/\s*([0-9.]+)\s*\)$/);
+      if (slashAlpha) return Number.parseFloat(slashAlpha[1]);
+      const legacyAlpha = color.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)$/);
+      if (legacyAlpha) return Number.parseFloat(legacyAlpha[1]);
+      return color === "transparent" ? 0 : 1;
+    })
+    : null;
+  if (routeName === "task") {
+    assert(messageCardOpacity >= 0.86, `task message card opacity is ${messageCardOpacity}`);
+  }
 
   return {
     styleCount,
@@ -563,6 +576,7 @@ async function inspectFixturePage(
     semanticForegroundsValid: true,
     bannerFadeValid,
     taskReadingScrimValid,
+    messageCardOpacity,
     taskCanScroll,
     finalScrollTop,
     artworkOpacity: scene.artworkOpacity,
