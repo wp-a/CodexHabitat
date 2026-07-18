@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 282 tests including versioned CDP profiles, fail-closed target validation, route-aware theme compilation and bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, theme-navigation resource isolation, pet-renderer reuse, localization, lifecycle, and performance budgets.
+- [x] Full Swift test suite passes: 283 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image bounds, thumbnail cache invalidation, theme-navigation resource isolation, pet-renderer reuse, localization, lifecycle, and performance budgets.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `a06ee6d57dd3e56ea9f11ff4db1ba7ae11c1a0e96e510ec57dc997ff5765a8ae`.
+- [x] Final build 7 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `d47bd0d958a1f99ce4a485d95cacc7fbb5bda1eb729c0baf6792e16f40beacf9`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 

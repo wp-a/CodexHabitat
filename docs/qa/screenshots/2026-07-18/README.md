@@ -19,6 +19,7 @@ or helper process existed, and Codex retained PID `23647` and its original
 - [`theme-studio-route-controls.png`](theme-studio-route-controls.png): narrow
   760-point parent with the Studio scrolled to the typed style, density, safe
   side, home treatment, task treatment, and chrome material controls. The
+  dynamic strength and opacity labels are localized in Simplified Chinese. The
   Retina capture is 1656 x 1480 including the sheet and shadow.
 
 Original-resolution review found no blank assets, repeated bitmap, clipped
