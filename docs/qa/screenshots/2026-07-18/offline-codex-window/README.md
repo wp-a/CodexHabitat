@@ -1,6 +1,6 @@
 # Offline Codex Window Visual QA
 
-Generated on 2026-07-19 from commit `77a2feba1a6ea293ff7a8a29dc7e84e412d921ce`.
+Generated on 2026-07-19 from commit `e2a4221fc9a6f49d3ad52e5b839bb517255b2f78`.
 
 ## Scope
 
@@ -17,16 +17,18 @@ The evidence covers all 24 built-in themes on both `home` and `task` routes at w
 
 - 96 of 96 theme, route, and viewport scenes passed.
 - No external network request was attempted.
-- Maximum measured route update latency was 0.20 ms.
+- Maximum measured route update latency was 0.30 ms.
 - Narrow-viewport focus-Y probe pixel delta was 0.431640625.
 - Minimum nonblank ratio was 0.9052734375.
 - Minimum Home artwork delta was 0.4375.
-- Minimum visible non-off Task artwork delta was 0.119384765625; the
-  22 non-off Task themes averaged 0.3129938299005682 across both viewports.
+- Minimum visible non-off Task artwork delta was 0.097412109375; the
+  22 non-off Task themes averaged 0.2770663174715909 across both viewports.
+- Minimum computed Task request-card opacity was 0.88.
 - Minimum Home suggestion viewport inset was 29.5 px; Retro Messenger and
   Grand Ocean Crew measured 32 px wide and 29.5 px narrow.
-- Semantic foreground assignments, banner fades, and computed Task reading
-  scrims were present in every applicable scene.
+- Semantic foreground assignments, banner fades, computed Task reading
+  scrims, and independently readable request-card surfaces were present in
+  every applicable scene.
 - Surface annotations, control bounds, composer hit targets, popover bounds, and horizontal overflow checks passed in every scene.
 
 ## Manual Review

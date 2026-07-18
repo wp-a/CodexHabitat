@@ -7,7 +7,7 @@ explicit user action.
 
 ## Automated and packaged
 
-- [x] Full Swift test suite passes: 349 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image and pet-import bounds, thumbnail cache invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, localization, lifecycle, performance budgets, protected-product display-name checks, Home action viewport insets, computed Task reading scrims, and monotonic release-build verification.
+- [x] Full Swift test suite passes: 350 tests including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, image and pet-import bounds, thumbnail cache invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, localization, lifecycle, performance budgets, protected-product display-name checks, Home action viewport insets, computed Task reading scrims, independently readable request cards, and monotonic release-build verification.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final build 8 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0`, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `c964ef1729b40dbd6f05d1af631e1607f0ec8893efb6ca022de9769709eadd6a`.
+- [x] Final build 8 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0`, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `be354f0085e918b81a8ff9d9c180ba552fad1fe826f80accbebd7c2b29757f72`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -29,7 +29,7 @@ explicit user action.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] All 24 bundled theme packages have unique IDs and hashes, 800 x 500 previews, and nine materially distinct host-owned style families. Cathedral Foundry, Retro Messenger 2007, Arcade Signal, and Quiet Garden use validated 2560 x 1440 prototype backgrounds; the other twenty retain validated 1600 x 1000 backgrounds.
-- [x] The exact supported Codex profile renders all 24 themes across home/task and wide/narrow states in 96 offline full-window scenes. The production resolver, compiler, and installer were used with zero external requests; every scene passed route mutation, semantic foreground, computed Task reading-scrim, banner fade, annotation, control-bound, hit-target, popover, overflow, artwork-decode, and visible-art checks. Minimum Home artwork delta is 0.4375, minimum non-off Task artwork delta is 0.119384765625, and all 48 Home scenes keep at least 29.5 px between suggestion controls and the viewport edge. This is offline evidence and not live Codex acceptance.
+- [x] The exact supported Codex profile renders all 24 themes across home/task and wide/narrow states in 96 offline full-window scenes. The production resolver, compiler, and installer were used with zero external requests; every scene passed route mutation, semantic foreground, computed Task reading-scrim, request-card opacity, banner fade, annotation, control-bound, hit-target, popover, overflow, artwork-decode, and visible-art checks. Minimum Home artwork delta is 0.4375, minimum non-off Task artwork delta is 0.097412109375, minimum request-card opacity is 0.88, and all 48 Home scenes keep at least 29.5 px between suggestion controls and the viewport edge. This is offline evidence and not live Codex acceptance.
 - [x] All, Nostalgia, Anime, and Custom gallery filters plus Theme Studio at narrow and wide settings widths pass native screenshot review without blank previews, clipping, or overlap.
 - [x] Installed Pets and Themes pages pass native screenshot review with decoded thumbnails/previews, stable card geometry, and no blank or overlapping content.
 - [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input (including uppercase extensions) and typed controls, including home/task treatment, safe side, chrome material, independent route strength, and sidebar/header/composer opacity; installed custom themes reopen as complete typed drafts, optional pet pairings persist, and slug collisions require explicit replacement confirmation.
@@ -59,7 +59,7 @@ explicit user action.
 - [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
 - [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Build 7 prototype gallery and narrow Theme Studio QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
-- [x] Build 8 isolated native QA measured Themes -> Pets at 305.6 ms and Pets -> Themes at 306.1 ms including accessibility automation overhead; repeated navigation showed no multi-second stall. The final complete 96-scene offline route check measured a 0.20 ms maximum internal route mutation.
+- [x] Build 8 isolated native QA measured Themes -> Pets at 305.6 ms and Pets -> Themes at 306.1 ms including accessibility automation overhead; repeated navigation showed no multi-second stall. The final complete 96-scene offline route check measured a 0.30 ms maximum internal route mutation.
 - [x] Build 8 native gallery, Studio, Pets, and 75%/100%/150% overlay QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
 - [x] Packaged idle CPU averaged 0.191% over 150 two-second `top` samples; 144/150 were below 1%.
 - [x] Ad-hoc release physical footprint was 23 MB after sampling, with a 39.6 MB observed peak.
