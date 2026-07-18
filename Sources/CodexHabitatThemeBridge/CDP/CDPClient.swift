@@ -137,7 +137,7 @@ actor CDPClient {
           };
           const scheduleRouteUpdate = () => {
             if (globalThis.__codexHabitatRouteTimer !== undefined) {
-              clearTimeout(globalThis.__codexHabitatRouteTimer);
+              return;
             }
             globalThis.__codexHabitatRouteTimer = setTimeout(() => {
               delete globalThis.__codexHabitatRouteTimer;

@@ -183,6 +183,22 @@ func styleInstallAndRemovalUseStructuredRuntimeEvaluation() async throws {
     #expect(source.contains("new MutationObserver(scheduleRouteUpdate)"))
     #expect(source.contains("setTimeout"))
     #expect(source.contains("120"))
+    let schedulerStart = try #require(
+        source.range(of: "const scheduleRouteUpdate = () => {")
+    )
+    let schedulerEnd = try #require(
+        source.range(
+            of: "const install = () => {",
+            range: schedulerStart.upperBound..<source.endIndex
+        )
+    )
+    let scheduler = source[schedulerStart.lowerBound..<schedulerEnd.lowerBound]
+    #expect(scheduler.contains("""
+        if (globalThis.__codexHabitatRouteTimer !== undefined) {
+              return;
+            }
+        """))
+    #expect(!scheduler.contains("clearTimeout("))
     #expect(source.contains("if (currentRoute !== route)"))
     #expect(source.contains("data-codex-habitat-route"))
     #expect(source.contains("[data-testid=\\\"home-icon\\\"]"))
