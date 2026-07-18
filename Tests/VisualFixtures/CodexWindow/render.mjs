@@ -487,7 +487,7 @@ async function inspectFixturePage(
   }, selectors.popover);
   assert(popoverBounds.inViewport, "popover is outside the viewport");
   assert(!popoverBounds.overlapsComposer, "popover overlaps the composer");
-  await assertCoreBounds(page, selectors, routeName);
+  const coreBounds = await assertCoreBounds(page, selectors, routeName);
   await assertSemanticTextColors(page, routeName);
 
   let taskCanScroll = false;
@@ -546,6 +546,7 @@ async function inspectFixturePage(
     popoverOverlapsComposer: popoverBounds.overlapsComposer,
     surfaceAnnotationsValid: true,
     allControlsWithinViewport: true,
+    homeSuggestionMinimumViewportInset: coreBounds.homeSuggestionMinimumViewportInset,
     semanticForegroundsValid: true,
     bannerFadeValid,
     taskCanScroll,
@@ -645,15 +646,21 @@ async function assertCoreBounds(page, selectors, routeName) {
     assert(inViewport, `${selectorKey} is clipped or outside the viewport`);
   }
   if (routeName === "home") {
-    const suggestionsInset = await page.locator(selectors.homeSuggestions).evaluate((node) => {
+    const minimumInset = await page.locator(selectors.homeSuggestions).evaluate((node) => {
       const controls = Array.from(node.querySelectorAll("button, a, [role=button]"));
-      return controls.length > 0 && controls.every((control) => {
+      if (controls.length === 0) return null;
+      return Math.min(...controls.flatMap((control) => {
         const rect = control.getBoundingClientRect();
-        return rect.left >= 12 && rect.right <= innerWidth - 12;
-      });
+        return [rect.left, innerWidth - rect.right];
+      }));
     });
-    assert(suggestionsInset, "home suggestion controls touch or cross the viewport edge");
+    assert(
+      minimumInset !== null && minimumInset >= 12,
+      `home suggestion controls have only ${String(minimumInset)}px viewport inset`,
+    );
+    return { homeSuggestionMinimumViewportInset: minimumInset };
   }
+  return { homeSuggestionMinimumViewportInset: null };
 }
 
 async function measureArtworkPixelDelta(page, themedScreenshot) {
