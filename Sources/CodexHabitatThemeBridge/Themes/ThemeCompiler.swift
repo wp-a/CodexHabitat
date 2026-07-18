@@ -47,6 +47,16 @@ struct BridgeThemeAppearance: Codable, Equatable, Sendable {
     let sidebarOpacity: Double
     let headerOpacity: Double
     let composerOpacity: Double
+    let homeArtFocus: HabitatThemeFocalPoint
+    let taskArtFocus: HabitatThemeFocalPoint
+    let homeArtScale: Double
+    let taskArtScale: Double
+    let taskSidebarOpacity: Double
+    let taskHeaderOpacity: Double
+    let homeContentOpacity: Double
+    let taskContentOpacity: Double
+    let homeContentWidth: Double
+    let vignetteStrength: Double
 
     init(_ appearance: HabitatThemeAppearance) {
         styleFamily = appearance.styleFamily
@@ -64,6 +74,16 @@ struct BridgeThemeAppearance: Codable, Equatable, Sendable {
         sidebarOpacity = appearance.resolvedSidebarOpacity
         headerOpacity = appearance.resolvedHeaderOpacity
         composerOpacity = appearance.resolvedComposerOpacity
+        homeArtFocus = appearance.resolvedHomeArtFocus
+        taskArtFocus = appearance.resolvedTaskArtFocus
+        homeArtScale = appearance.resolvedHomeArtScale
+        taskArtScale = appearance.resolvedTaskArtScale
+        taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
+        taskHeaderOpacity = appearance.resolvedTaskHeaderOpacity
+        homeContentOpacity = appearance.resolvedHomeContentOpacity
+        taskContentOpacity = appearance.resolvedTaskContentOpacity
+        homeContentWidth = appearance.resolvedHomeContentWidth
+        vignetteStrength = appearance.resolvedVignetteStrength
     }
 
     static let workbench = BridgeThemeAppearance(
@@ -155,6 +175,9 @@ struct BridgeThemeDecoder {
                     "panelOpacity", "blurRadius", "density",
                     "homeMode", "taskMode", "chromeMaterial", "homeStrength",
                     "taskStrength", "sidebarOpacity", "headerOpacity", "composerOpacity",
+                    "homeArtFocus", "taskArtFocus", "homeArtScale", "taskArtScale",
+                    "taskSidebarOpacity", "taskHeaderOpacity", "homeContentOpacity",
+                    "taskContentOpacity", "homeContentWidth", "vignetteStrength",
                 ],
                 prefix: "appearance."
             )
@@ -164,6 +187,15 @@ struct BridgeThemeDecoder {
                     allowed: ["x", "y"],
                     prefix: "appearance.artFocus."
                 )
+            }
+            for focusKey in ["homeArtFocus", "taskArtFocus"] {
+                if let focus = appearance[focusKey] as? [String: Any] {
+                    try rejectUnknownFields(
+                        in: focus,
+                        allowed: ["x", "y"],
+                        prefix: "appearance.\(focusKey)."
+                    )
+                }
             }
         }
         return try JSONDecoder().decode(BridgeTheme.self, from: data)
@@ -252,11 +284,6 @@ struct ThemeCompiler {
             artBackground = "none"
         }
 
-        let artX = Self.cssPercent(theme.appearance.artFocus.x * 100)
-        let artY = Self.cssPercent(theme.appearance.artFocus.y * 100)
-        let artVeil = Self.cssPercent((1 - theme.appearance.backgroundStrength) * 100)
-        let routeVeil = Self.cssPercent((1 - theme.appearance.backgroundStrength * 0.46) * 100)
-        let panelOpacity = Self.cssPercent(theme.appearance.panelOpacity * 100)
         let densitySpacing = theme.appearance.density == .compact ? "8px" : "12px"
 
         var result = template
@@ -273,18 +300,29 @@ struct ThemeCompiler {
             "error": theme.tokens.error,
             "color-scheme": Self.colorScheme(for: theme.tokens.surface),
             "art-background": artBackground,
-            "art-position-x": artX,
-            "art-position-y": artY,
-            "art-veil": artVeil,
-            "route-veil": routeVeil,
-            "panel-opacity": panelOpacity,
+            "home-art-position-x": Self.cssPercent(theme.appearance.homeArtFocus.x * 100),
+            "home-art-position-y": Self.cssPercent(theme.appearance.homeArtFocus.y * 100),
+            "task-art-position-x": Self.cssPercent(theme.appearance.taskArtFocus.x * 100),
+            "task-art-position-y": Self.cssPercent(theme.appearance.taskArtFocus.y * 100),
+            "home-art-scale": Self.cssNumber(theme.appearance.homeArtScale),
+            "task-art-scale": Self.cssNumber(theme.appearance.taskArtScale),
             "home-strength": Self.cssPercent(theme.appearance.homeStrength * 100),
             "task-strength": Self.cssPercent(theme.appearance.taskStrength * 100),
-            "home-veil": Self.cssPercent((1 - theme.appearance.homeStrength) * 100),
-            "task-veil": Self.cssPercent((1 - theme.appearance.taskStrength) * 100),
             "sidebar-opacity": Self.cssPercent(theme.appearance.sidebarOpacity * 100),
             "header-opacity": Self.cssPercent(theme.appearance.headerOpacity * 100),
             "composer-opacity": Self.cssPercent(theme.appearance.composerOpacity * 100),
+            "task-sidebar-opacity": Self.cssPercent(
+                theme.appearance.taskSidebarOpacity * 100
+            ),
+            "task-header-opacity": Self.cssPercent(theme.appearance.taskHeaderOpacity * 100),
+            "home-content-opacity": Self.cssPercent(
+                theme.appearance.homeContentOpacity * 100
+            ),
+            "task-content-opacity": Self.cssPercent(
+                theme.appearance.taskContentOpacity * 100
+            ),
+            "home-content-width": Self.cssPercent(theme.appearance.homeContentWidth * 100),
+            "vignette-strength": Self.cssPercent(theme.appearance.vignetteStrength * 100),
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "blur-radius": Self.cssNumber(theme.appearance.blurRadius) + "px",
             "tinted-blur-radius": Self.cssNumber(theme.appearance.blurRadius * 0.55) + "px",
@@ -295,6 +333,11 @@ struct ThemeCompiler {
             "thread": profile.selectors.threadScroll,
             "popover": profile.selectors.popover,
             "header": profile.selectors.header,
+            "app-shell": profile.selectors.appShell ?? "body",
+            "surface-treatment": Self.surfaceTreatment(
+                profile: profile,
+                safeSide: theme.appearance.safeSide
+            ),
             "home-treatment": Self.homeTreatment(
                 for: theme.appearance.homeMode,
                 profile: profile
@@ -325,63 +368,172 @@ struct ThemeCompiler {
         return result
     }
 
+    static func surfaceTreatment(
+        profile: CompatibilityProfile,
+        safeSide: HabitatThemeSafeSide
+    ) -> String {
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        var rules: [String] = []
+
+        if let homeContent = profile.selectors.homeContent {
+            rules.append("""
+            \(root)[data-codex-habitat-route="home"] \(homeContent) {
+              max-width: min(100%, var(--habitat-home-content-width));
+              \(homeContentLayout(for: safeSide))
+              background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent);
+              backdrop-filter: none;
+            }
+            """)
+        }
+        if let suggestions = profile.selectors.homeSuggestions {
+            rules.append("""
+            \(root)[data-codex-habitat-route="home"] \(suggestions) {
+              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-home-content-opacity), transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 34%, transparent);
+            }
+            """)
+        }
+        if let transcript = profile.selectors.taskTranscript {
+            rules.append("""
+            \(root)[data-codex-habitat-route="task"] \(transcript) {
+              background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent);
+              backdrop-filter: none;
+            }
+            """)
+        }
+        if let message = profile.selectors.messageSurface {
+            rules.append("""
+            \(root)[data-codex-habitat-route="task"] \(message) {
+              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
+            }
+            """)
+        }
+        let protectedContent = [profile.selectors.codeSurface]
+            .compactMap { $0 } + (profile.selectors.toolSurfaces ?? [])
+        if !protectedContent.isEmpty {
+            rules.append("""
+            \(scopedSelectors(protectedContent, root: "\(root)[data-codex-habitat-route=\"task\"]")) {
+              background-color: color-mix(in srgb, var(--habitat-panel) 94%, transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 36%, transparent);
+              backdrop-filter: none;
+            }
+            """)
+        }
+        if let selectedNavigation = profile.selectors.selectedNavigation {
+            rules.append("""
+            \(root) \(selectedNavigation) {
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 78%, transparent);
+              box-shadow: inset 3px 0 0 var(--habitat-accent);
+            }
+            """)
+        }
+        if let composerContext = profile.selectors.composerContext {
+            rules.append("""
+            \(root) \(composerContext) {
+              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-composer-opacity), transparent);
+            }
+            """)
+        }
+        let interruptionLayers = [
+            profile.selectors.sidebarResizeChrome,
+            profile.selectors.topFade,
+            profile.selectors.bottomFade,
+        ].compactMap { $0 }
+        if !interruptionLayers.isEmpty {
+            rules.append("""
+            \(scopedSelectors(interruptionLayers, root: root)) {
+              background: transparent;
+              box-shadow: none;
+              backdrop-filter: none;
+            }
+            """)
+        }
+        if let stickyBand = profile.selectors.stickyBand {
+            rules.append("""
+            \(root) \(stickyBand) {
+              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
+            }
+            """)
+        }
+        return rules.joined(separator: "\n")
+    }
+
     static func homeTreatment(
         for mode: HabitatThemeHomeMode,
         profile: CompatibilityProfile
     ) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"]"
-        let body = "\(root) body"
+        let appShell = profile.selectors.appShell ?? "body"
+        let scene = "\(root) \(appShell)::before"
+        let overlay = "\(root) \(appShell)::after"
         let main = "\(root) \(profile.selectors.mainSurface)"
         return switch mode {
         case .immersive:
             """
             /* habitat-home-mode: immersive */
-            \(body) {
-              background-image: var(--habitat-art-background);
-              background-position: var(--habitat-art-position);
-              background-repeat: no-repeat;
-              background-size: cover;
+            \(scene) {
+              inset: 0;
+              opacity: var(--habitat-home-strength);
+              background-position: var(--habitat-home-art-position);
+              transform: scale(var(--habitat-home-art-scale));
+            }
+            \(overlay) {
+              inset: 0;
+              opacity: 1;
+              background-image: var(--habitat-safe-scrim);
+              border: 0;
+              border-radius: 0;
+              box-shadow: none;
             }
             \(main) {
               background-color: transparent;
-              background-image: var(--habitat-safe-scrim), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent));
+              background-image: none;
               border-radius: 0;
             }
             """
         case .framed:
             """
             /* habitat-home-mode: framed */
-            \(main) {
-              background-image: none;
-              border-radius: 0;
+            \(scene) {
+              inset: 0;
+              opacity: var(--habitat-home-strength);
+              background-position: var(--habitat-home-art-position);
+              transform: scale(var(--habitat-home-art-scale));
             }
-            \(main)::before {
-              content: "";
-              position: absolute;
-              z-index: -1;
+            \(overlay) {
               inset: 16px;
-              pointer-events: none;
-              background-color: var(--habitat-surface);
-              background-image:
-                var(--habitat-safe-scrim),
-                linear-gradient(
-                  color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent),
-                  color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent)
-                ),
-                var(--habitat-art-background);
-              background-position: center, center, var(--habitat-art-position);
-              background-repeat: no-repeat;
-              background-size: 100% 100%, 100% 100%, cover;
+              opacity: 1;
+              background-image: var(--habitat-safe-scrim);
               border: 1px solid color-mix(in srgb, var(--habitat-accent) 42%, transparent);
               border-radius: 12px;
-              box-shadow: 0 14px 34px color-mix(in srgb, var(--habitat-surface) 24%, transparent);
+              box-shadow: 0 0 0 100vmax var(--habitat-surface), 0 14px 34px color-mix(in srgb, var(--habitat-surface) 24%, transparent);
+            }
+            \(main) {
+              background-color: transparent;
+              background-image: none;
+              border-radius: 0;
             }
             """
         case .quiet:
             """
             /* habitat-home-mode: quiet */
+            \(scene) {
+              inset: 0;
+              opacity: var(--habitat-home-strength);
+              background-position: var(--habitat-home-art-position);
+              transform: scale(var(--habitat-home-art-scale));
+            }
+            \(overlay) {
+              inset: 0;
+              opacity: 1;
+              background-image: var(--habitat-safe-scrim);
+              border: 0;
+              border-radius: 0;
+              box-shadow: none;
+            }
             \(main) {
-              border-radius: 10px 0 0 0;
+              background-color: transparent;
+              background-image: none;
               box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-text) 8%, transparent);
             }
             """
@@ -393,38 +545,76 @@ struct ThemeCompiler {
         profile: CompatibilityProfile
     ) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
-        let body = "\(root) body"
+        let appShell = profile.selectors.appShell ?? "body"
+        let scene = "\(root) \(appShell)::before"
+        let overlay = "\(root) \(appShell)::after"
         let main = "\(root) \(profile.selectors.mainSurface)"
         return switch mode {
         case .ambient:
             """
             /* habitat-task-mode: ambient */
-            \(body) {
-              background-image: var(--habitat-art-background);
-              background-position: var(--habitat-art-position);
-              background-repeat: no-repeat;
-              background-size: cover;
+            \(scene) {
+              inset: 0;
+              opacity: var(--habitat-task-strength);
+              background-position: var(--habitat-task-art-position);
+              transform: scale(var(--habitat-task-art-scale));
+            }
+            \(overlay) {
+              inset: 0;
+              opacity: 1;
+              background-image: var(--habitat-safe-scrim);
+              border: 0;
+              border-radius: 0;
+              box-shadow: none;
             }
             \(main) {
               background-color: transparent;
-              background-image: var(--habitat-safe-scrim), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent));
+              background-image: none;
             }
             """
         case .banner:
             """
             /* habitat-task-mode: banner */
+            \(scene) {
+              inset: 0;
+              opacity: var(--habitat-task-strength);
+              background-position: var(--habitat-task-art-position);
+              transform: scale(var(--habitat-task-art-scale));
+              clip-path: inset(0 0 48% 0);
+            }
+            \(overlay) {
+              inset: 0;
+              opacity: 1;
+              background-image: var(--habitat-safe-scrim);
+              border: 0;
+              border-radius: 0;
+              box-shadow: none;
+              clip-path: inset(0 0 48% 0);
+            }
             \(main) {
-              background-image: linear-gradient(to bottom, transparent 0 34%, var(--habitat-surface) 76% 100%), var(--habitat-safe-scrim), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent)), var(--habitat-art-background);
-              background-position: center, center, center, var(--habitat-art-position);
-              background-repeat: no-repeat;
-              background-size: 100% 100%, 100% 100%, 100% 100%, cover;
+              background-color: transparent;
+              background-image: linear-gradient(to bottom, transparent 0 34%, color-mix(in srgb, var(--habitat-surface) 92%, transparent) 76% 100%);
             }
             """
         case .off:
             """
             /* habitat-task-mode: off */
+            \(scene) {
+              opacity: 0;
+              transform: none;
+              clip-path: inset(0);
+            }
+            \(overlay) {
+              inset: 0;
+              opacity: 0;
+              background-image: var(--habitat-safe-scrim);
+              border: 0;
+              border-radius: 0;
+              box-shadow: none;
+              clip-path: inset(0);
+            }
             \(main) {
-              background-color: var(--habitat-surface);
+              background-color: color-mix(in srgb, var(--habitat-surface) 96%, transparent);
               background-image: none;
             }
             """
@@ -436,8 +626,8 @@ struct ThemeCompiler {
         profile: CompatibilityProfile
     ) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"]"
-        let selectors = [
-            "\(root) \(profile.selectors.sidebar)",
+        let sidebar = "\(root) \(profile.selectors.sidebar)"
+        let smallChrome = [
             "\(root) \(profile.selectors.header)",
             "\(root) \(profile.selectors.composer)",
             "\(root) \(profile.selectors.popover)",
@@ -446,21 +636,28 @@ struct ThemeCompiler {
         case .solid:
             """
             /* habitat-chrome-material: solid */
-            \(selectors) {
+            \(sidebar),
+            \(smallChrome) {
               backdrop-filter: none;
             }
             """
         case .tinted:
             """
             /* habitat-chrome-material: tinted */
-            \(selectors) {
+            \(sidebar) {
+              backdrop-filter: none;
+            }
+            \(smallChrome) {
               backdrop-filter: blur(var(--habitat-tinted-blur-radius)) saturate(1.04);
             }
             """
         case .glass:
             """
             /* habitat-chrome-material: glass */
-            \(selectors) {
+            \(sidebar) {
+              backdrop-filter: none;
+            }
+            \(smallChrome) {
               backdrop-filter: blur(var(--habitat-blur-radius)) saturate(1.16);
               box-shadow: inset 0 1px 0 color-mix(in srgb, white 34%, transparent), 0 12px 30px color-mix(in srgb, var(--habitat-surface) 18%, transparent);
             }
@@ -473,9 +670,6 @@ struct ThemeCompiler {
         profile: CompatibilityProfile
     ) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"]"
-        let sidebar = "\(root) \(profile.selectors.sidebar)"
-        let composer = "\(root) \(profile.selectors.composer)"
-        let popover = "\(root) \(profile.selectors.popover)"
         let declarations: (sidebar: String, composer: String, popover: String) = switch family {
         case .arcade:
             (
@@ -532,12 +726,192 @@ struct ThemeCompiler {
                 "border-radius: 0; border-width: 2px; box-shadow: 3px 3px 0 color-mix(in srgb, var(--habitat-text) 38%, transparent);"
             )
         }
+        let shell = profile.selectors.appShell ?? "body"
+        let stageSurfaces = [
+            profile.selectors.mainSurface,
+            profile.selectors.homeContent,
+        ].compactMap { $0 }
+        let transcriptSurfaces = [
+            profile.selectors.threadScroll,
+            profile.selectors.taskTranscript,
+        ].compactMap { $0 }
+        let contentSurfaces = [
+            profile.selectors.homeSuggestions,
+            profile.selectors.messageSurface,
+            profile.selectors.codeSurface,
+            profile.selectors.stickyBand,
+            profile.selectors.popover,
+        ].compactMap { $0 } + (profile.selectors.toolSurfaces ?? [])
+        let composerSurfaces = [
+            Optional(profile.selectors.composer),
+            profile.selectors.composerContext,
+        ].compactMap { $0 }
+        let selectedSurfaces = [
+            profile.selectors.selectedNavigation,
+        ].compactMap { $0 }
+        let interruptionSurfaces = [
+            profile.selectors.sidebarResizeChrome,
+            profile.selectors.topFade,
+            profile.selectors.bottomFade,
+        ].compactMap { $0 }
+        let interruptionRule = interruptionSurfaces.isEmpty ? "" : """
+        \(scopedSelectors(interruptionSurfaces, root: root)) {
+          background: transparent;
+          box-shadow: none;
+          backdrop-filter: none;
+        }
+        """
+        let selectedSurfaceRule = selectedSurfaces.isEmpty ? "" : """
+        \(scopedSelectors(selectedSurfaces, root: root)) {
+          \(styleSelected(for: family))
+          font-weight: 600;
+        }
+        """
         return """
         /* habitat-style-family: \(family.rawValue) */
-        \(sidebar) { \(declarations.sidebar) }
-        \(composer) { \(declarations.composer) }
-        \(popover) { \(declarations.popover) }
+
+        /* habitat-surface: shell */
+        \(root) \(shell) {
+          accent-color: var(--habitat-accent);
+          scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
+        }
+
+        /* habitat-surface: sidebar */
+        \(root) \(profile.selectors.sidebar) { \(declarations.sidebar) }
+
+        /* habitat-surface: header */
+        \(root) \(profile.selectors.header) { \(styleHeader(for: family)) }
+
+        /* habitat-surface: stage */
+        \(scopedSelectors(stageSurfaces, root: root)) { \(styleStage(for: family)) }
+
+        /* habitat-surface: transcript */
+        \(scopedSelectors(transcriptSurfaces, root: root)) {
+          \(styleStage(for: family))
+          scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
+        }
+
+        /* habitat-surface: content */
+        \(scopedSelectors(contentSurfaces, root: root)) { \(declarations.popover) }
+
+        /* habitat-surface: composer */
+        \(scopedSelectors(composerSurfaces, root: root)) { \(declarations.composer) }
+
+        /* habitat-surface: selected-navigation */
+        \(selectedSurfaceRule)
+
+        /* habitat-surface: fades-and-resize */
+        \(interruptionRule)
+
+        /* habitat-semantic-state: primary */
+        \(root) button[type="submit"] { \(declarations.composer) }
+
+        /* habitat-semantic-state: focus */
+        \(root) :focus-visible {
+          outline-style: \(styleFocus(for: family));
+          outline-width: 2px;
+          outline-offset: 2px;
+        }
+
+        /* habitat-semantic-state: selected */
+        \(root) [aria-selected="true"],
+        \(root) [aria-current],
+        \(root) [aria-pressed="true"] { \(styleSelected(for: family)) }
+
+        /* habitat-semantic-state: warning */
+        \(root) :invalid:not([aria-invalid="true"]) {
+          border-color: var(--habitat-attention);
+          box-shadow: inset 3px 0 0 var(--habitat-attention);
+        }
+
+        /* habitat-semantic-state: destructive */
+        \(root) [aria-invalid="true"] {
+          border-color: var(--habitat-error);
+          box-shadow: inset 3px 0 0 var(--habitat-error);
+        }
         """
+    }
+
+    private static func styleHeader(for family: HabitatThemeStyleFamily) -> String {
+        switch family {
+        case .arcade:
+            "border-bottom-width: 2px; box-shadow: inset 0 -3px 0 var(--habitat-secondary);"
+        case .retroMessenger:
+            "border-bottom-width: 1px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 58%, transparent), inset 0 30px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
+        case .greenChat:
+            "border-bottom-width: 4px; border-bottom-color: var(--habitat-secondary); box-shadow: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);"
+        case .classicDesktop:
+            "border-bottom: 2px outset var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white;"
+        case .gameCinematic:
+            "border-bottom-width: 2px; border-bottom-color: var(--habitat-attention); box-shadow: inset 0 -8px 18px color-mix(in srgb, black 18%, transparent);"
+        case .cozyWorld:
+            "border-bottom-width: 1px; box-shadow: inset 0 -4px 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+        case .animeEnergy:
+            "border-bottom-width: 3px; border-bottom-color: var(--habitat-highlight); box-shadow: inset 0 -7px 0 color-mix(in srgb, var(--habitat-accent) 16%, transparent);"
+        case .fantasyAdventure:
+            "border-bottom: 3px double color-mix(in srgb, var(--habitat-highlight) 62%, var(--habitat-accent)); box-shadow: inset 0 -5px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+        case .pixelWorld:
+            "border-bottom-width: 3px; border-bottom-style: solid; box-shadow: inset 0 -3px 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;"
+        }
+    }
+
+    private static func styleStage(for family: HabitatThemeStyleFamily) -> String {
+        switch family {
+        case .arcade:
+            "border-inline-start: 2px solid color-mix(in srgb, var(--habitat-secondary) 58%, transparent);"
+        case .retroMessenger:
+            "box-shadow: inset 1px 0 0 color-mix(in srgb, white 44%, transparent);"
+        case .greenChat:
+            "box-shadow: inset 4px 0 0 color-mix(in srgb, var(--habitat-secondary) 34%, transparent);"
+        case .classicDesktop:
+            "outline: 1px solid var(--habitat-panel-alt); outline-offset: -1px;"
+        case .gameCinematic:
+            "box-shadow: inset 8px 0 24px color-mix(in srgb, black 16%, transparent);"
+        case .cozyWorld:
+            "border-radius: 8px 0 0 0; box-shadow: inset 4px 0 12px color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
+        case .animeEnergy:
+            "border-inline-start: 3px solid color-mix(in srgb, var(--habitat-highlight) 46%, transparent);"
+        case .fantasyAdventure:
+            "outline: 1px solid color-mix(in srgb, var(--habitat-highlight) 28%, transparent); outline-offset: -1px;"
+        case .pixelWorld:
+            "border-inline-start: 3px solid color-mix(in srgb, var(--habitat-text) 30%, transparent); image-rendering: pixelated;"
+        }
+    }
+
+    private static func styleSelected(for family: HabitatThemeStyleFamily) -> String {
+        switch family {
+        case .arcade:
+            "box-shadow: inset 3px 0 0 var(--habitat-highlight), inset 0 0 0 1px var(--habitat-secondary);"
+        case .retroMessenger:
+            "box-shadow: inset 3px 0 0 var(--habitat-accent), inset 0 1px 0 color-mix(in srgb, white 70%, transparent); border-radius: 5px;"
+        case .greenChat:
+            "box-shadow: inset 4px 0 0 var(--habitat-secondary); border-radius: 4px;"
+        case .classicDesktop:
+            "border: 2px inset var(--habitat-panel-alt); border-radius: 0; box-shadow: none;"
+        case .gameCinematic:
+            "box-shadow: inset 3px 0 0 var(--habitat-attention), 0 6px 18px color-mix(in srgb, black 18%, transparent); border-radius: 3px;"
+        case .cozyWorld:
+            "box-shadow: inset 3px 0 0 var(--habitat-accent); border-radius: 8px;"
+        case .animeEnergy:
+            "box-shadow: inset 4px 0 0 var(--habitat-highlight), 5px 5px 0 color-mix(in srgb, var(--habitat-secondary) 16%, transparent); border-radius: 2px;"
+        case .fantasyAdventure:
+            "box-shadow: inset 3px 0 0 var(--habitat-highlight), inset 0 0 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent); border-radius: 7px;"
+        case .pixelWorld:
+            "box-shadow: inset 3px 0 0 var(--habitat-highlight), 3px 3px 0 color-mix(in srgb, black 38%, transparent); border-radius: 0;"
+        }
+    }
+
+    private static func styleFocus(for family: HabitatThemeStyleFamily) -> String {
+        switch family {
+        case .arcade, .gameCinematic, .animeEnergy, .pixelWorld:
+            "solid"
+        case .retroMessenger, .greenChat, .cozyWorld:
+            "auto"
+        case .classicDesktop:
+            "dotted"
+        case .fantasyAdventure:
+            "double"
+        }
     }
 
     private func validate(_ appearance: BridgeThemeAppearance) throws {
@@ -545,6 +919,13 @@ struct ThemeCompiler {
               appearance.artFocus.y.isFinite, (0...1).contains(appearance.artFocus.y)
         else {
             throw ThemeCompilationError.invalidAppearance("artFocus")
+        }
+        for (name, focus) in [
+            ("homeArtFocus", appearance.homeArtFocus),
+            ("taskArtFocus", appearance.taskArtFocus),
+        ] where !focus.x.isFinite || !(0...1).contains(focus.x)
+            || !focus.y.isFinite || !(0...1).contains(focus.y) {
+            throw ThemeCompilationError.invalidAppearance(name)
         }
         guard appearance.backgroundStrength.isFinite,
               (0.10...0.70).contains(appearance.backgroundStrength)
@@ -576,19 +957,50 @@ struct ThemeCompiler {
         else {
             throw ThemeCompilationError.invalidAppearance("headerOpacity")
         }
+        for (name, value, range) in [
+            ("homeArtScale", appearance.homeArtScale, 1.00...1.35),
+            ("taskArtScale", appearance.taskArtScale, 1.00...1.35),
+            ("taskSidebarOpacity", appearance.taskSidebarOpacity, 0.54...0.90),
+            ("taskHeaderOpacity", appearance.taskHeaderOpacity, 0.54...0.90),
+            ("homeContentOpacity", appearance.homeContentOpacity, 0.40...0.78),
+            ("taskContentOpacity", appearance.taskContentOpacity, 0.60...0.84),
+            ("homeContentWidth", appearance.homeContentWidth, 0.46...0.68),
+            ("vignetteStrength", appearance.vignetteStrength, 0.00...0.70),
+        ] where !value.isFinite || !range.contains(value) {
+            throw ThemeCompilationError.invalidAppearance(name)
+        }
     }
 
     private static func safeScrim(for safeSide: HabitatThemeSafeSide) -> String {
         switch safeSide {
         case .leading:
-            "linear-gradient(to right, var(--habitat-surface) 0%, color-mix(in srgb, var(--habitat-surface) 88%, transparent) 38%, transparent 76%)"
+            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 0%, transparent 58%)"
         case .trailing:
-            "linear-gradient(to left, var(--habitat-surface) 0%, color-mix(in srgb, var(--habitat-surface) 88%, transparent) 38%, transparent 76%)"
+            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 0%, transparent 58%)"
         case .center:
-            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) 90%, transparent) 0 24%, transparent 74%)"
+            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 0 24%, transparent 74%)"
         case .none:
             "linear-gradient(transparent, transparent)"
         }
+    }
+
+    private static func homeContentLayout(for safeSide: HabitatThemeSafeSide) -> String {
+        switch safeSide {
+        case .leading:
+            "margin-inline-start: 0; margin-inline-end: auto;"
+        case .trailing:
+            "margin-inline-start: auto; margin-inline-end: 0;"
+        case .center, .none:
+            "margin-inline-start: auto; margin-inline-end: auto;"
+        }
+    }
+
+    private static func scopedSelectors(_ selectors: [String], root: String) -> String {
+        var seen: Set<String> = []
+        return selectors.compactMap { selector in
+            guard seen.insert(selector).inserted else { return nil }
+            return "\(root) \(selector)"
+        }.joined(separator: ",\n")
     }
 
     private static func cssPercent(_ value: Double) -> String {

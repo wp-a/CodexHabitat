@@ -26,7 +26,7 @@ func bundledProfileCompilesOnlyHostSelectorsApprovedTokensAndLocalBlobArt() thro
     #expect(css.contains(definition.palette.highlight))
     #expect(css.contains("blob:app://codex/habitat-art-1"))
     #expect(css.contains("habitat-style-family: gameCinematic"))
-    #expect(css.contains("--habitat-art-position: 80% 42%"))
+    #expect(css.contains("--habitat-home-art-position: 80% 42%"))
     #expect(css.contains("--habitat-tinted-blur-radius: 5.5px"))
     #expect(!css.contains("* 0.55"))
     #expect(!css.contains("soft-light"))
@@ -62,7 +62,7 @@ func fourPrototypesCompileDistinctRouteAwareWindowTreatments() throws {
 
     let framed = styles[1]
     #expect(framed.contains("habitat-home-mode: framed"))
-    #expect(framed.contains("main.main-surface::before"))
+    #expect(framed.contains("body::before"))
     #expect(framed.contains("inset: 16px"))
     #expect(framed.contains("pointer-events: none"))
     #expect(framed.contains("background-image: none"))
@@ -244,6 +244,147 @@ func everyHostOwnedStyleFamilyCompilesToADistinctTreatment() throws {
 }
 
 @Test
+func compiledSceneSpansTheWholeWindow() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
+
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+
+    #expect(css.contains("habitat-scene-canvas"))
+    #expect(css.contains(profile.selectors.appShell ?? "missing-app-shell"))
+    #expect(css.contains("position: fixed"))
+    #expect(css.contains("inset: 0"))
+    #expect(css.contains("pointer-events: none"))
+    #expect(css.contains("--habitat-home-art-scale"))
+    #expect(css.contains("--habitat-task-art-scale"))
+    #expect(css.contains("--habitat-task-content-opacity"))
+    #expect(!css.contains("--habitat-route-veil"))
+    #expect(css.components(separatedBy: "var(--habitat-art-background)").count - 1 == 1)
+}
+
+@Test
+func taskSceneKeepsArtVisibleAcrossTheTranscript() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
+
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let transcript = try #require(profile.selectors.taskTranscript)
+
+    #expect(css.contains("--habitat-task-content-opacity: 68%"))
+    #expect(css.contains(transcript))
+    #expect(css.contains("var(--habitat-task-content-opacity)"))
+    #expect(css.contains("--habitat-task-sidebar-opacity: 74%"))
+    #expect(css.contains("--habitat-task-header-opacity: 64%"))
+    #expect(!css.contains("80.68%"))
+    #expect(!css.contains("--habitat-route-veil"))
+}
+
+@Test
+func framedSceneScalesOnlyArtworkAndKeepsItsFrameStable() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "retro-messenger"))
+
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+    let homeRoot = "\(root)[data-codex-habitat-route=\"home\"]"
+    let shell = try #require(profile.selectors.appShell)
+    let artwork = try cssRuleBody(selector: "\(homeRoot) \(shell)::before", in: css)
+    let overlay = try cssRuleBody(selector: "\(homeRoot) \(shell)::after", in: css)
+
+    #expect(artwork.contains("transform: scale(var(--habitat-home-art-scale))"))
+    #expect(!artwork.contains("border:"))
+    #expect(!artwork.contains("var(--habitat-safe-scrim)"))
+    #expect(overlay.contains("inset: 16px"))
+    #expect(overlay.contains("border-radius: 12px"))
+    #expect(overlay.contains("var(--habitat-safe-scrim)"))
+    #expect(!overlay.contains("transform:"))
+    #expect(!overlay.contains("var(--habitat-home-strength)"))
+}
+
+@Test
+func routeStrengthDoesNotWeakenTheReadabilityVignette() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "quiet-garden"))
+
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let shell = try #require(profile.selectors.appShell)
+    let baseArtwork = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"] \(shell)::before",
+        in: css
+    )
+    let baseOverlay = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"] \(shell)::after",
+        in: css
+    )
+
+    #expect(baseArtwork.contains("var(--habitat-art-background)"))
+    #expect(!baseArtwork.contains("var(--habitat-safe-scrim)"))
+    #expect(baseOverlay.contains("var(--habitat-safe-scrim)"))
+    #expect(!baseOverlay.contains("var(--habitat-home-strength)"))
+    #expect(!baseOverlay.contains("var(--habitat-task-strength)"))
+}
+
+@Test
+func largeSidebarNeverReceivesBackdropBlur() throws {
+    let profile = try currentCompleteSurfaceProfile()
+
+    for material in [HabitatThemeChromeMaterial.tinted, .glass] {
+        let treatment = ThemeCompiler.chromeTreatment(for: material, profile: profile)
+        let sidebar = try cssRuleBody(
+            selector: "html[data-codex-habitat-theme=\"1\"] \(profile.selectors.sidebar)",
+            in: treatment
+        )
+        #expect(sidebar.contains("backdrop-filter: none"))
+        #expect(!sidebar.contains("blur("))
+    }
+}
+
+@Test
+func everyStyleRecipeCoversRequiredHostSurfaces() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let selectors = profile.selectors.allSelectors.filter {
+        $0 != profile.selectors.homeMarker
+    }
+    let recipes = HabitatThemeStyleFamily.allCases.map {
+        ThemeCompiler.styleTreatment(for: $0, profile: profile)
+    }
+
+    for (family, recipe) in zip(HabitatThemeStyleFamily.allCases, recipes) {
+        for selector in selectors {
+            #expect(recipe.contains(selector), "\(family.rawValue) omits \(selector)")
+        }
+        for surface in [
+            "shell", "sidebar", "header", "stage", "transcript", "content",
+            "composer", "selected-navigation", "fades-and-resize",
+        ] {
+            #expect(
+                recipe.contains("habitat-surface: \(surface)"),
+                "\(family.rawValue) omits the \(surface) surface recipe"
+            )
+        }
+        for state in ["primary", "focus", "selected", "warning", "destructive"] {
+            #expect(
+                recipe.contains("habitat-semantic-state: \(state)"),
+                "\(family.rawValue) omits the \(state) semantic state"
+            )
+        }
+
+        let rootSelector = "html[data-codex-habitat-theme=\"1\"] "
+            + (profile.selectors.appShell ?? "missing-app-shell")
+        let shellRule = try cssRuleBody(selector: rootSelector, in: recipe)
+        #expect(!shellRule.contains("border-right"))
+        #expect(!shellRule.contains("box-shadow"))
+        #expect(!recipe.contains(profile.selectors.homeMarker))
+        #expect(!recipe.contains("text-token-"))
+        #expect(!recipe.contains("bg-token-"))
+        #expect(!recipe.contains("[data-state="))
+    }
+
+    let normalized = recipes.map(normalizedStyleRecipe)
+    #expect(Set(normalized).count == HabitatThemeStyleFamily.allCases.count)
+}
+
+@Test
 func installedCustomThemeIsRevalidatedBeforeBridgeCompilation() throws {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "CodexHabitatBridgeResolver-\(UUID().uuidString)",
@@ -366,6 +507,54 @@ func untrustedOrOversizedDataArtIsRejected() throws {
     #expect(throws: ThemeCompilationError.invalidArtDataURL) {
         try ThemeCompiler.bundled().compile(theme: oversized, profile: profile)
     }
+}
+
+private func currentCompleteSurfaceProfile() throws -> CompatibilityProfile {
+    try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+}
+
+private func normalizedStyleRecipe(_ recipe: String) -> String {
+    recipe
+        .replacingOccurrences(
+            of: #"/\*[\s\S]*?\*/"#,
+            with: "",
+            options: .regularExpression
+        )
+        .replacingOccurrences(
+            of: #"#[0-9A-Fa-f]{3,8}"#,
+            with: "<color>",
+            options: .regularExpression
+        )
+        .replacingOccurrences(
+            of: #"data:[^)\"']+"#,
+            with: "<data>",
+            options: .regularExpression
+        )
+        .replacingOccurrences(
+            of: #"-?[0-9]+(?:\.[0-9]+)?(?:px|%|rem)?"#,
+            with: "<number>",
+            options: .regularExpression
+        )
+        .replacingOccurrences(
+            of: #"\s+"#,
+            with: " ",
+            options: .regularExpression
+        )
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+private func cssRuleBody(selector: String, in css: String) throws -> String {
+    let escaped = NSRegularExpression.escapedPattern(for: selector)
+    let expression = try NSRegularExpression(
+        pattern: escaped + #"\s*\{([^}]*)\}"#,
+        options: .dotMatchesLineSeparators
+    )
+    let range = NSRange(css.startIndex..<css.endIndex, in: css)
+    let match = try #require(expression.firstMatch(in: css, range: range))
+    let bodyRange = try #require(Range(match.range(at: 1), in: css))
+    return String(css[bodyRange])
 }
 
 private func copyBuiltInAsInstalledTheme(

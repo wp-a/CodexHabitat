@@ -10,17 +10,21 @@ html[data-codex-habitat-theme="1"] {
   --habitat-attention: {{attention}};
   --habitat-error: {{error}};
   --habitat-art-background: {{art-background}};
-  --habitat-art-position: {{art-position-x}} {{art-position-y}};
+  --habitat-home-art-position: {{home-art-position-x}} {{home-art-position-y}};
+  --habitat-task-art-position: {{task-art-position-x}} {{task-art-position-y}};
+  --habitat-home-art-scale: {{home-art-scale}};
+  --habitat-task-art-scale: {{task-art-scale}};
   --habitat-safe-scrim: {{safe-scrim}};
-  --habitat-art-veil: {{art-veil}};
-  --habitat-route-veil: {{route-veil}};
-  --habitat-panel-opacity: {{panel-opacity}};
   --habitat-home-strength: {{home-strength}};
   --habitat-task-strength: {{task-strength}};
-  --habitat-home-veil: {{home-veil}};
-  --habitat-task-veil: {{task-veil}};
   --habitat-sidebar-opacity: {{sidebar-opacity}};
   --habitat-header-opacity: {{header-opacity}};
+  --habitat-task-sidebar-opacity: {{task-sidebar-opacity}};
+  --habitat-task-header-opacity: {{task-header-opacity}};
+  --habitat-home-content-opacity: {{home-content-opacity}};
+  --habitat-task-content-opacity: {{task-content-opacity}};
+  --habitat-home-content-width: {{home-content-width}};
+  --habitat-vignette-strength: {{vignette-strength}};
   --habitat-composer-opacity: {{composer-opacity}};
   --habitat-blur-radius: {{blur-radius}};
   --habitat-tinted-blur-radius: {{tinted-blur-radius}};
@@ -34,50 +38,66 @@ html[data-codex-habitat-theme="1"] body {
   background-image: none;
 }
 
+html[data-codex-habitat-theme="1"] {{app-shell}} {
+  position: relative;
+  isolation: isolate;
+}
+
+/* habitat-scene-canvas */
+html[data-codex-habitat-theme="1"] {{app-shell}}::before {
+  content: "";
+  position: fixed;
+  z-index: -2;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--habitat-art-background);
+  background-position: var(--habitat-home-art-position);
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(var(--habitat-home-art-scale));
+  transform-origin: center;
+  opacity: var(--habitat-home-strength);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+/* habitat-scene-overlay */
+html[data-codex-habitat-theme="1"] {{app-shell}}::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--habitat-safe-scrim);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
 html[data-codex-habitat-theme="1"] {{sidebar}} {
   color: var(--habitat-text);
   background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-sidebar-opacity), transparent);
   border-right-color: color-mix(in srgb, var(--habitat-accent) 40%, transparent);
 }
 
+html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{sidebar}} {
+  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-sidebar-opacity), transparent);
+}
+
 html[data-codex-habitat-theme="1"] {{main}} {
   position: relative;
-  isolation: isolate;
-  overflow: hidden;
   color: var(--habitat-text);
-  background-color: var(--habitat-surface);
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-
-html[data-codex-habitat-theme="1"][data-codex-habitat-route="home"] {{main}} {
-  background-image:
-    var(--habitat-safe-scrim),
-    linear-gradient(
-      color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent),
-      color-mix(in srgb, var(--habitat-surface) var(--habitat-home-veil), transparent)
-    ),
-    var(--habitat-art-background);
-  background-position: center, center, var(--habitat-art-position);
-  background-size: 100% 100%, 100% 100%, cover;
-}
-
-html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{main}} {
-  background-image:
-    var(--habitat-safe-scrim),
-    linear-gradient(
-      color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent),
-      color-mix(in srgb, var(--habitat-surface) var(--habitat-task-veil), transparent)
-    ),
-    var(--habitat-art-background);
-  background-position: center, center, var(--habitat-art-position);
-  background-size: 100% 100%, 100% 100%, cover;
+  background-color: transparent;
+  background-image: none;
 }
 
 html[data-codex-habitat-theme="1"] {{header}} {
   color: var(--habitat-text);
   background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-header-opacity), transparent);
   border-bottom-color: color-mix(in srgb, var(--habitat-accent) 28%, transparent);
+}
+
+html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{header}} {
+  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-header-opacity), transparent);
 }
 
 html[data-codex-habitat-theme="1"] {{composer}},
@@ -93,7 +113,7 @@ html[data-codex-habitat-theme="1"] {{composer}} {
 }
 
 html[data-codex-habitat-theme="1"] {{thread}} {
-  background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-route-veil), transparent);
+  background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent);
   scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
 }
 
@@ -101,14 +121,15 @@ html[data-codex-habitat-theme="1"][data-codex-habitat-route="home"] {{thread}} {
   background-color: transparent;
 }
 
-html[data-codex-habitat-theme="1"] button[class~="bg-token-foreground"] {
+html[data-codex-habitat-theme="1"] button[type="submit"] {
   color: var(--habitat-surface);
   background-color: var(--habitat-accent);
   border-color: var(--habitat-highlight);
 }
 
-html[data-codex-habitat-theme="1"] [data-state="open"],
-html[data-codex-habitat-theme="1"] [aria-selected="true"] {
+html[data-codex-habitat-theme="1"] [aria-selected="true"],
+html[data-codex-habitat-theme="1"] [aria-current],
+html[data-codex-habitat-theme="1"] [aria-pressed="true"] {
   color: var(--habitat-text);
   background-color: color-mix(in srgb, var(--habitat-panel-alt) 72%, transparent);
   outline-color: var(--habitat-attention);
@@ -116,6 +137,10 @@ html[data-codex-habitat-theme="1"] [aria-selected="true"] {
 
 html[data-codex-habitat-theme="1"] [aria-invalid="true"] {
   border-color: var(--habitat-error);
+}
+
+html[data-codex-habitat-theme="1"] :invalid:not([aria-invalid="true"]) {
+  border-color: var(--habitat-attention);
 }
 
 html[data-codex-habitat-theme="1"] ::selection {
@@ -126,6 +151,14 @@ html[data-codex-habitat-theme="1"] ::selection {
 html[data-codex-habitat-theme="1"] :focus-visible {
   outline-color: var(--habitat-secondary);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-codex-habitat-theme="1"] {{app-shell}}::before {
+    transition: none;
+  }
+}
+
+{{surface-treatment}}
 
 {{home-treatment}}
 
