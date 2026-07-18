@@ -37,6 +37,9 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Immersive", "Framed", "Quiet", "Ambient", "Banner", "Off",
         "Solid", "Tinted", "Glass", "Center", "Home strength", "Task strength",
         "Sidebar opacity", "Header opacity", "Composer opacity",
+        "Edit theme", "Replace existing theme?", "Replace Theme",
+        "Replacement confirmation required",
+        "A local theme with this name already exists. Replace it with this draft?",
         "Choose a local background image.",
         "Export does not grant image rights. You confirm you may use and share this image.",
         "Theme names must be 100 characters or fewer and contain no control characters.",
@@ -44,6 +47,7 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     ] {
         #expect(localization.text(key) != key)
     }
+    #expect(localization.format("Edit %@", "测试主题") == "编辑测试主题")
     for category in HabitatThemeCategory.allCases {
         #expect(localization.text(category.localizationKey) != category.localizationKey)
     }

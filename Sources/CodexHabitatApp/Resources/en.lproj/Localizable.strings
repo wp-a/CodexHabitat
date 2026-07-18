@@ -424,3 +424,9 @@
 "Arcade Signal" = "Arcade Signal";
 "Magenta, cyan, and yellow signals after dark." = "Magenta, cyan, and yellow signals after dark.";
 "Morning glass, living greens, and calm daylight." = "Morning glass, living greens, and calm daylight.";
+"Edit theme" = "Edit theme";
+"Edit %@" = "Edit %@";
+"Replace existing theme?" = "Replace existing theme?";
+"Replace Theme" = "Replace Theme";
+"Replacement confirmation required" = "Replacement confirmation required";
+"A local theme with this name already exists. Replace it with this draft?" = "A local theme with this name already exists. Replace it with this draft?";

@@ -157,7 +157,12 @@ struct ThemesSettingsView: View {
                         ThemeChoiceCard(
                             theme: theme,
                             isSelected: model.settings.selectedThemeID == theme.id,
-                            action: { model.selectTheme(theme.id) }
+                            action: { model.selectTheme(theme.id) },
+                            editAction: model.installedPackages.contains(where: {
+                                $0.id == theme.id && $0.manifest.theme != nil
+                            })
+                                ? { openThemeStudio(editingThemeID: theme.id) }
+                                : nil
                         )
                     }
                 }
@@ -276,12 +281,15 @@ struct ThemesSettingsView: View {
         themeStudioModel = studio
     }
 
+    private func openThemeStudio(editingThemeID: String) {
+        guard let studio = model.makeThemeStudioModel(editingThemeID: editingThemeID) else { return }
+        themeStudioModel = studio
+    }
+
     private func themeSaved(id: String, pairedPetID: String?) {
         model.refreshResources()
+        model.setThemePetPairing(themeID: id, petID: pairedPetID)
         model.selectTheme(id)
-        if let pairedPetID {
-            model.selectPet(pairedPetID)
-        }
         themeStudioModel = nil
     }
 
@@ -295,52 +303,66 @@ struct ThemeChoiceCard: View {
     let theme: HabitatThemeDescriptor
     let isSelected: Bool
     let action: () -> Void
+    var editAction: (() -> Void)? = nil
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
-                ThemeTreatmentPreview(
-                    model: ThemeTreatmentPreviewModel(theme: theme),
-                    imageURL: theme.backgroundURL ?? theme.previewURL,
-                    symbol: theme.symbol
-                )
-                HStack {
-                    HStack(spacing: 5) {
-                        ForEach(Array(palette.enumerated()), id: \.offset) { _, color in
-                            Circle()
-                                .fill(color)
-                                .frame(width: 12, height: 12)
+        ZStack(alignment: .topTrailing) {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ThemeTreatmentPreview(
+                        model: ThemeTreatmentPreviewModel(theme: theme),
+                        imageURL: theme.backgroundURL ?? theme.previewURL,
+                        symbol: theme.symbol
+                    )
+                    HStack {
+                        HStack(spacing: 5) {
+                            ForEach(Array(palette.enumerated()), id: \.offset) { _, color in
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 12, height: 12)
+                            }
                         }
+                        Spacer()
+                        Text(L10n.text(theme.category.localizationKey))
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    Spacer()
-                    Text(L10n.text(theme.category.localizationKey))
-                        .font(.caption2.weight(.medium))
+                    Text(L10n.text(theme.name))
+                        .font(.body.weight(.semibold))
+                    Text(L10n.text(theme.detail))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(L10n.text(theme.name))
-                    .font(.body.weight(.semibold))
-                Text(L10n.text(theme.detail))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                .padding(12)
+                .frame(maxWidth: .infinity, minHeight: 224, alignment: .topLeading)
+                .background(
+                    isSelected ? palette[0].opacity(0.09) : Color.primary.opacity(0.03),
+                    in: RoundedRectangle(cornerRadius: 8)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isSelected ? palette[0] : Color.primary.opacity(0.09), lineWidth: 1.5)
+                }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 224, alignment: .topLeading)
-            .background(
-                isSelected ? palette[0].opacity(0.09) : Color.primary.opacity(0.03),
-                in: RoundedRectangle(cornerRadius: 8)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? palette[0] : Color.primary.opacity(0.09), lineWidth: 1.5)
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.text(theme.name))
+            .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
+            .accessibilityIdentifier("themes.choice.\(theme.id)")
+
+            if let editAction {
+                Button(action: editAction) {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Edit theme")
+                .accessibilityLabel(L10n.format("Edit %@", L10n.text(theme.name)))
+                .padding(8)
             }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.text(theme.name))
-        .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
-        .accessibilityIdentifier("themes.choice.\(theme.id)")
     }
 
     private var palette: [Color] {

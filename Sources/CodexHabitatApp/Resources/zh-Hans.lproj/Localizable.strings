@@ -424,3 +424,9 @@
 "Arcade Signal" = "街机信号";
 "Magenta, cyan, and yellow signals after dark." = "深夜里的洋红、青色与黄色信号。";
 "Morning glass, living greens, and calm daylight." = "晨光玻璃、鲜活绿意与安静日光。";
+"Edit theme" = "编辑主题";
+"Edit %@" = "编辑%@";
+"Replace existing theme?" = "替换现有主题？";
+"Replace Theme" = "替换主题";
+"Replacement confirmation required" = "需要确认替换";
+"A local theme with this name already exists. Replace it with this draft?" = "已存在同名本地主题。要用当前草稿替换吗？";

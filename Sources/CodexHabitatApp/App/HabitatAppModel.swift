@@ -362,8 +362,21 @@ final class HabitatAppModel: ObservableObject {
         reconcileResourceSelections()
     }
 
-    func makeThemeStudioModel() -> ThemeStudioModel? {
+    func makeThemeStudioModel(editingThemeID: String? = nil) -> ThemeStudioModel? {
         guard let resourceLibraryRoot else { return nil }
+        let installedPackage: InstalledPackage?
+        if let editingThemeID {
+            guard BuiltInThemeCatalog.definition(id: editingThemeID) == nil,
+                  let package = installedPackages.first(where: {
+                      $0.id == editingThemeID && $0.manifest.theme != nil
+                  })
+            else {
+                return nil
+            }
+            installedPackage = package
+        } else {
+            installedPackage = nil
+        }
         let pets = validPets.compactMap { entry -> ThemeStudioPetOption? in
             guard let manifest = entry.manifest else { return nil }
             return ThemeStudioPetOption(id: manifest.id, name: manifest.displayName)
@@ -374,7 +387,9 @@ final class HabitatAppModel: ObservableObject {
                 path: ".theme-studio",
                 directoryHint: .isDirectory
             ),
-            availablePets: pets
+            availablePets: pets,
+            editing: installedPackage,
+            pairedPetID: editingThemeID.flatMap { settings.themePetPairings[$0] }
         )
     }
 
@@ -386,7 +401,30 @@ final class HabitatAppModel: ObservableObject {
 
     func selectTheme(_ id: String) {
         guard availableThemes.contains(where: { $0.id == id }) else { return }
-        updateSettings { $0.selectedThemeID = id }
+        let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
+        updateSettings { settings in
+            settings.selectedThemeID = id
+            if let pairedPetID = settings.themePetPairings[id],
+               validPetIDs.contains(pairedPetID) {
+                settings.selectedPetID = pairedPetID
+            }
+        }
+    }
+
+    func setThemePetPairing(themeID: String, petID: String?) {
+        guard availableThemes.contains(where: { $0.id == themeID }) else { return }
+        let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
+        guard petID == nil || petID.map(validPetIDs.contains) == true else { return }
+        updateSettings { settings in
+            if let petID {
+                settings.themePetPairings[themeID] = petID
+                if settings.selectedThemeID == themeID {
+                    settings.selectedPetID = petID
+                }
+            } else {
+                settings.themePetPairings.removeValue(forKey: themeID)
+            }
+        }
     }
 
     func importResourcePackage(from archiveURL: URL, replacing: Bool = false) async {
@@ -565,6 +603,7 @@ final class HabitatAppModel: ObservableObject {
             knownWidgets.contains($0) && seen.insert($0).inserted
         }
         result.scale = min(max(result.scale, 0.75), 1.5)
+        result.themePetPairings = validatedThemePetPairings(result.themePetPairings)
         return result
     }
 
@@ -643,9 +682,20 @@ final class HabitatAppModel: ObservableObject {
         if !validThemeIDs.contains(repaired.selectedThemeID) {
             repaired.selectedThemeID = HabitatSettings.default.selectedThemeID
         }
+        repaired.themePetPairings = repaired.themePetPairings.filter { themeID, petID in
+            validThemeIDs.contains(themeID) && validPetIDs.contains(petID)
+        }
         guard repaired != settings else { return }
         updateSettings { settings in
             settings = repaired
+        }
+    }
+
+    private func validatedThemePetPairings(_ pairings: [String: String]) -> [String: String] {
+        let validThemeIDs = Set(availableThemes.map(\.id))
+        let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
+        return pairings.filter { themeID, petID in
+            validThemeIDs.contains(themeID) && validPetIDs.contains(petID)
         }
     }
 }

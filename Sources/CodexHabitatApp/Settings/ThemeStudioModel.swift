@@ -6,6 +6,7 @@ import SwiftUI
 enum ThemeStudioState: Equatable, Sendable {
     case editing
     case saving
+    case replacementRequired(String)
     case validationFailure(String)
     case saved(String)
 }
@@ -90,11 +91,58 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     init(
         libraryRoot: URL,
         workingRoot: URL,
-        availablePets: [ThemeStudioPetOption] = []
+        availablePets: [ThemeStudioPetOption] = [],
+        editing installedPackage: InstalledPackage? = nil,
+        pairedPetID: String? = nil
     ) {
         self.libraryRoot = libraryRoot
         self.workingRoot = workingRoot
         self.availablePets = availablePets
+        if let pairedPetID, availablePets.contains(where: { $0.id == pairedPetID }) {
+            self.pairedPetID = pairedPetID
+        }
+        guard let installedPackage,
+              let appearance = installedPackage.manifest.theme
+        else {
+            return
+        }
+
+        suppressDirtyTracking = true
+        let colors = installedPackage.manifest.colors
+        name = installedPackage.manifest.name
+        author = installedPackage.manifest.author
+        sourceImageURL = installedPackage.url.appending(path: appearance.background)
+        palette = HabitatThemePalette(
+            surface: colors.surface,
+            panel: colors.panel ?? colors.surface,
+            panelAlt: colors.panelAlt ?? colors.accent,
+            text: colors.text,
+            mutedText: colors.mutedText ?? colors.text,
+            accent: colors.accent,
+            secondary: colors.secondary ?? colors.attention,
+            highlight: colors.highlight ?? colors.accent,
+            attention: colors.attention,
+            error: colors.error
+        )
+        category = appearance.category
+        styleFamily = appearance.styleFamily
+        artFocus = appearance.artFocus
+        safeSide = appearance.safeSide
+        backgroundStrength = appearance.backgroundStrength
+        panelOpacity = appearance.panelOpacity
+        blurRadius = appearance.blurRadius
+        density = appearance.density
+        homeMode = appearance.resolvedHomeMode
+        taskMode = appearance.resolvedTaskMode
+        chromeMaterial = appearance.resolvedChromeMaterial
+        homeStrength = appearance.resolvedHomeStrength
+        taskStrength = appearance.resolvedTaskStrength
+        sidebarOpacity = appearance.resolvedSidebarOpacity
+        headerOpacity = appearance.resolvedHeaderOpacity
+        composerOpacity = appearance.resolvedComposerOpacity
+        isDirty = false
+        state = .editing
+        suppressDirtyTracking = false
     }
 
     func selectImage(_ url: URL) throws {
@@ -284,6 +332,20 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     }
 
     func saveLocally() async {
+        await saveLocally(replacing: false)
+    }
+
+    func replaceExistingTheme() async {
+        guard case .replacementRequired = state else { return }
+        await saveLocally(replacing: true)
+    }
+
+    func cancelReplacement() {
+        guard case .replacementRequired = state else { return }
+        state = .editing
+    }
+
+    private func saveLocally(replacing: Bool) async {
         guard let request = validatedRequest() else { return }
         state = .saving
         do {
@@ -293,11 +355,13 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
                 try ThemePackageBuilder(workingRoot: workingRoot).buildAndInstall(
                     request,
                     libraryRoot: libraryRoot,
-                    replacing: true
+                    replacing: replacing
                 )
             }.value
             state = .saved(installed.id)
             isDirty = false
+        } catch PackageInstallationError.alreadyInstalled {
+            state = .replacementRequired(ThemePackageBuilder.safeID(for: request.name))
         } catch {
             state = .validationFailure(L10n.text("The theme could not be saved."))
         }

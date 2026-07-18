@@ -130,3 +130,137 @@ func themeStudioShowsAdjacentIdentityValidationErrors() async {
         "Authors must be 100 characters or fewer and contain no control characters."
     ))
 }
+
+@Test @MainActor
+func installedCustomThemeReopensAsCleanStronglyTypedStudioDraft() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioEdit-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let library = root.appending(path: "Library", directoryHint: .isDirectory)
+    let sourceImageURL = try #require(HabitatThemeDescriptor.builtIn.first?.backgroundURL)
+    let creator = ThemeStudioModel(
+        libraryRoot: library,
+        workingRoot: root.appending(path: "Work")
+    )
+    creator.name = "Editable Theme"
+    creator.author = "Local Artist"
+    creator.setStyleFamily(.retroMessenger)
+    creator.setSafeSide(.trailing)
+    creator.setDensity(.compact)
+    creator.setHomeMode(.framed)
+    creator.setTaskMode(.banner)
+    creator.setChromeMaterial(.glass)
+    creator.setArtFocus(x: 0.23, y: 0.67)
+    creator.setBackgroundStrength(0.51)
+    creator.setPanelOpacity(0.79)
+    creator.setBlurRadius(13)
+    creator.setHomeStrength(0.62)
+    creator.setTaskStrength(0.28)
+    creator.setSidebarOpacity(0.74)
+    creator.setHeaderOpacity(0.69)
+    creator.setComposerOpacity(0.91)
+    try creator.selectImage(sourceImageURL)
+    let expectedPalette = try #require(creator.palette)
+    await creator.saveLocally()
+    let themeID = try #require(creator.state.savedID)
+    let petRoot = root.appending(path: "Pets", directoryHint: .isDirectory)
+    try installThemeStudioPetFixture(at: petRoot)
+    let settingsStore = SettingsStore(root: root.appending(path: "Settings"))
+    var settings = HabitatSettings.default
+    settings.themePetPairings[themeID] = "test-pet"
+    try await settingsStore.save(settings)
+
+    let appModel = HabitatAppModel(
+        settingsStore: settingsStore,
+        petRoot: petRoot,
+        resourceLibraryRoot: library
+    )
+    await appModel.load()
+
+    let editor = try #require(appModel.makeThemeStudioModel(editingThemeID: themeID))
+    #expect(editor.name == "Editable Theme")
+    #expect(editor.author == "Local Artist")
+    #expect(editor.sourceImageURL?.standardizedFileURL.path.hasPrefix(
+        library.standardizedFileURL.path + "/"
+    ) == true)
+    #expect(editor.palette == expectedPalette)
+    #expect(editor.styleFamily == .retroMessenger)
+    #expect(editor.safeSide == .trailing)
+    #expect(editor.density == .compact)
+    #expect(editor.homeMode == .framed)
+    #expect(editor.taskMode == .banner)
+    #expect(editor.chromeMaterial == .glass)
+    #expect(editor.artFocus == HabitatThemeFocalPoint(x: 0.23, y: 0.67))
+    #expect(editor.backgroundStrength == 0.51)
+    #expect(editor.panelOpacity == 0.79)
+    #expect(editor.blurRadius == 13)
+    #expect(editor.homeStrength == 0.62)
+    #expect(editor.taskStrength == 0.28)
+    #expect(editor.sidebarOpacity == 0.74)
+    #expect(editor.headerOpacity == 0.69)
+    #expect(editor.composerOpacity == 0.91)
+    #expect(editor.pairedPetID == "test-pet")
+    #expect(!editor.isDirty)
+    #expect(appModel.makeThemeStudioModel(editingThemeID: "workbench") == nil)
+}
+
+@Test @MainActor
+func themeStudioRequiresExplicitConfirmationBeforeReplacingSlugCollision() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioCollision-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let library = root.appending(path: "Library", directoryHint: .isDirectory)
+    let imageURL = try #require(HabitatThemeDescriptor.builtIn.first?.backgroundURL)
+
+    let original = ThemeStudioModel(
+        libraryRoot: library,
+        workingRoot: root.appending(path: "OriginalWork")
+    )
+    original.name = "Slug Collision"
+    original.author = "Original Author"
+    try original.selectImage(imageURL)
+    await original.saveLocally()
+    let themeID = try #require(original.state.savedID)
+
+    let replacement = ThemeStudioModel(
+        libraryRoot: library,
+        workingRoot: root.appending(path: "ReplacementWork")
+    )
+    replacement.name = "Slug Collision"
+    replacement.author = "Replacement Author"
+    try replacement.selectImage(imageURL)
+
+    await replacement.saveLocally()
+
+    #expect(replacement.state == .replacementRequired(themeID))
+    #expect(InstalledPackageLibrary(root: library, runtimeVersion: "1.0.0")
+        .currentPackages().first?.manifest.author == "Original Author")
+
+    await replacement.replaceExistingTheme()
+
+    #expect(replacement.state == .saved(themeID))
+    #expect(InstalledPackageLibrary(root: library, runtimeVersion: "1.0.0")
+        .currentPackages().first?.manifest.author == "Replacement Author")
+}
+
+private func installThemeStudioPetFixture(at petRoot: URL) throws {
+    let testsRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let fixture = testsRoot.appending(
+        path: "PetRuntimeTests/Fixtures/valid-pet",
+        directoryHint: .isDirectory
+    )
+    try FileManager.default.createDirectory(at: petRoot, withIntermediateDirectories: true)
+    try FileManager.default.copyItem(
+        at: fixture,
+        to: petRoot.appending(path: "test-pet", directoryHint: .isDirectory)
+    )
+}
+
+private extension ThemeStudioState {
+    var savedID: String? {
+        guard case let .saved(id) = self else { return nil }
+        return id
+    }
+}

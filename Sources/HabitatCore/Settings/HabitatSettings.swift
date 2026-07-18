@@ -28,7 +28,7 @@ public struct OverlayPosition: Codable, Equatable, Sendable {
 }
 
 public struct HabitatSettings: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 4
+    public static let currentSchemaVersion = 5
     private static let themeBridgeSchemaVersion = 1
     private static let usefulMetricsSchemaVersion = 4
     private static let legacyDefaultWidgetOrder: [WidgetIdentifier] = [
@@ -38,6 +38,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
     public var schemaVersion: Int
     public var selectedPetID: String?
     public var selectedThemeID: String
+    public var themePetPairings: [String: String]
     public var widgetOrder: [WidgetIdentifier]
     public var overlayPositions: [String: OverlayPosition]
     public var scale: Double
@@ -52,6 +53,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         schemaVersion: currentSchemaVersion,
         selectedPetID: nil,
         selectedThemeID: "workbench",
+        themePetPairings: [:],
         widgetOrder: [.status, .tokens, .context, .speed, .usage],
         overlayPositions: [:],
         scale: 1,
@@ -67,6 +69,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         schemaVersion: Int,
         selectedPetID: String?,
         selectedThemeID: String,
+        themePetPairings: [String: String],
         widgetOrder: [WidgetIdentifier],
         overlayPositions: [String: OverlayPosition],
         scale: Double,
@@ -80,6 +83,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         self.schemaVersion = schemaVersion
         self.selectedPetID = selectedPetID
         self.selectedThemeID = selectedThemeID
+        self.themePetPairings = themePetPairings
         self.widgetOrder = widgetOrder
         self.overlayPositions = overlayPositions
         self.scale = scale
@@ -100,6 +104,10 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         selectedPetID = try container.decodeIfPresent(String.self, forKey: .selectedPetID)
         selectedThemeID = try container.decodeIfPresent(String.self, forKey: .selectedThemeID)
             ?? defaults.selectedThemeID
+        themePetPairings = try container.decodeIfPresent(
+            [String: String].self,
+            forKey: .themePetPairings
+        ) ?? defaults.themePetPairings
         let decodedWidgetOrder = try container.decodeIfPresent(
             [WidgetIdentifier].self,
             forKey: .widgetOrder

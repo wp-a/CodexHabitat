@@ -6,8 +6,9 @@ import Testing
 func defaultSettingsKeepRiskyFeaturesDisabled() {
     let settings = HabitatSettings.default
 
-    #expect(settings.schemaVersion == 4)
+    #expect(settings.schemaVersion == 5)
     #expect(settings.selectedThemeID == "workbench")
+    #expect(settings.themePetPairings.isEmpty)
     #expect(settings.scale == 1)
     #expect(settings.themeBridgeEnabled == false)
     #expect(settings.launchAtLogin == false)
@@ -32,7 +33,7 @@ func schemaThreeOldDefaultsMigrateToUsefulCodexMetrics() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 4)
+        #expect(settings.schemaVersion == 5)
         #expect(settings.widgetOrder == [.status, .tokens, .context, .speed, .usage])
     }
 }
@@ -65,6 +66,7 @@ func settingsRoundTripThroughInjectedRoot() async throws {
         var settings = HabitatSettings.default
         settings.selectedPetID = "test-pet"
         settings.selectedThemeID = "night-shift"
+        settings.themePetPairings = ["night-shift": "test-pet"]
         settings.scale = 1.25
         settings.clickThrough = true
         settings.positionLocked = true
@@ -74,6 +76,29 @@ func settingsRoundTripThroughInjectedRoot() async throws {
 
         #expect(try await store.load() == settings)
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "Settings.json").path))
+    }
+}
+
+@Test
+func schemaFourMigratesWithNoThemePetPairings() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 4,
+              "selectedPetID": "test-pet",
+              "selectedThemeID": "night-shift"
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        let settings = try await store.load()
+
+        #expect(settings.schemaVersion == 5)
+        #expect(settings.themePetPairings.isEmpty)
     }
 }
 
@@ -119,7 +144,7 @@ func schemaZeroMigratesWithThemeBridgeDisabled() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 4)
+        #expect(settings.schemaVersion == 5)
         #expect(settings.selectedPetID == "test-pet")
         #expect(settings.selectedThemeID == "night-shift")
         #expect(settings.themeBridgeEnabled == false)
@@ -144,7 +169,7 @@ func schemaOnePreservesThemeBridgeAndDefaultsOnboardingToIncomplete() async thro
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 4)
+        #expect(settings.schemaVersion == 5)
         #expect(settings.themeBridgeEnabled)
         #expect(settings.onboardingCompleted == false)
         #expect(settings.positionLocked == false)

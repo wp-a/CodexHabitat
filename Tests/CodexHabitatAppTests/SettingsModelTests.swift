@@ -147,6 +147,49 @@ func installedResourcePackPetsJoinLocalDiscoveryWithoutReplacingLocalIDs() async
 }
 
 @Test @MainActor
+func themePetPairingsAreValidatedPersistedAndRestoredWhenSelectingThemes() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemePetPairings-\(UUID().uuidString)", directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let settingsRoot = root.appending(path: "Settings")
+    let localPetRoot = root.appending(path: "Pets")
+    let resourceRoot = root.appending(path: "Library")
+    try installSettingsPetFixture(at: localPetRoot)
+    try installResourcePetFixture(at: resourceRoot, petID: "resource-pet")
+    let store = SettingsStore(root: settingsRoot)
+    var settings = HabitatSettings.default
+    settings.selectedThemeID = "night-shift"
+    settings.selectedPetID = "test-pet"
+    settings.themePetPairings = [
+        "night-shift": "test-pet",
+        "missing-theme": "test-pet",
+        "arcade-signal": "missing-pet",
+    ]
+    try await store.save(settings)
+    let model = HabitatAppModel(
+        settingsStore: store,
+        petRoot: localPetRoot,
+        resourceLibraryRoot: resourceRoot
+    )
+
+    await model.load()
+
+    #expect(model.settings.themePetPairings == ["night-shift": "test-pet"])
+    model.setThemePetPairing(themeID: "arcade-signal", petID: "resource-pet")
+    model.selectTheme("arcade-signal")
+    #expect(model.settings.selectedPetID == "resource-pet")
+    model.selectTheme("night-shift")
+    #expect(model.settings.selectedPetID == "test-pet")
+    await model.flushSettings()
+
+    let persisted = try await store.load()
+    #expect(persisted.themePetPairings == [
+        "arcade-signal": "resource-pet",
+        "night-shift": "test-pet",
+    ])
+}
+
+@Test @MainActor
 func installedResourceThemesCanBeSelectedAndUninstallFallsBack() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatResourceThemeTests-\(UUID().uuidString)", directoryHint: .isDirectory)

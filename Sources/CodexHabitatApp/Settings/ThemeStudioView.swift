@@ -11,6 +11,7 @@ struct ThemeStudioView: View {
     @State private var showsRightsConfirmation = false
     @State private var rightsAccepted = false
     @State private var previewRoute = ThemeTreatmentPreviewRoute.home
+    @State private var pendingReplacementThemeID: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +59,26 @@ struct ThemeStudioView: View {
             Button("Cancel", role: .cancel) { pendingExportURL = nil }
         } message: {
             Text("Export does not grant image rights. You confirm you may use and share this image.")
+        }
+        .confirmationDialog(
+            "Replace existing theme?",
+            isPresented: Binding(
+                get: { pendingReplacementThemeID != nil },
+                set: { if !$0 { pendingReplacementThemeID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Replace Theme", role: .destructive, action: replaceExistingTheme)
+            Button("Cancel", role: .cancel) {
+                pendingReplacementThemeID = nil
+                model.cancelReplacement()
+            }
+        } message: {
+            Text("A local theme with this name already exists. Replace it with this draft?")
+        }
+        .onChange(of: model.state) { _, state in
+            guard case let .replacementRequired(id) = state else { return }
+            pendingReplacementThemeID = id
         }
     }
 
@@ -385,6 +406,10 @@ struct ThemeStudioView: View {
         case .saving:
             ProgressView()
                 .controlSize(.small)
+        case .replacementRequired:
+            Label("Replacement confirmation required", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
         case let .validationFailure(message):
             Label(message, systemImage: "exclamationmark.triangle.fill")
                 .font(.caption)
@@ -441,10 +466,22 @@ struct ThemeStudioView: View {
     private func saveLocally() {
         Task {
             await model.saveLocally()
-            guard case let .saved(id) = model.state else { return }
-            onSaved(id, model.pairedPetID)
-            dismiss()
+            finishSavedTheme()
         }
+    }
+
+    private func replaceExistingTheme() {
+        pendingReplacementThemeID = nil
+        Task {
+            await model.replaceExistingTheme()
+            finishSavedTheme()
+        }
+    }
+
+    private func finishSavedTheme() {
+        guard case let .saved(id) = model.state else { return }
+        onSaved(id, model.pairedPetID)
+        dismiss()
     }
 
     private func beginExport() {
