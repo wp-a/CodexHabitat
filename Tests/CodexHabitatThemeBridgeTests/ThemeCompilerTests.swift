@@ -352,7 +352,7 @@ func ambientTaskWithoutASafeSidePreservesTheConfiguredReadingOpacity() throws {
 
     #expect(css.contains("--habitat-task-content-opacity: 84%"))
     #expect(css.contains(
-        "--habitat-task-reading-scrim: linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent)"
+        "), linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent)"
     ))
 }
 
@@ -544,6 +544,28 @@ func routeStrengthDoesNotWeakenTheReadabilityVignette() throws {
     #expect(baseOverlay.contains("var(--habitat-safe-scrim)"))
     #expect(!baseOverlay.contains("var(--habitat-home-strength)"))
     #expect(!baseOverlay.contains("var(--habitat-task-strength)"))
+}
+
+@Test
+func fullWindowSceneUsesLayeredReadabilityAndNarrowFallbacks() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let css = try ThemeCompiler.bundled().compile(
+        theme: try #require(BridgeTheme.builtIn(id: "workbench")),
+        profile: profile
+    )
+    let root = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"]",
+        in: css
+    )
+
+    #expect(root.contains("--habitat-safe-scrim: linear-gradient(to bottom"))
+    #expect(root.contains("), linear-gradient(to right"))
+    #expect(root.contains("--habitat-task-reading-scrim: linear-gradient(to bottom"))
+    #expect(css.contains("@media (max-width: 1180px)"))
+    #expect(css.contains("max-width: min(calc(100% - 32px), 72%)"))
+    #expect(css.contains("@media (max-width: 900px)"))
+    #expect(css.contains("max-width: calc(100% - 24px)"))
+    #expect(css.contains("backdrop-filter: none"))
 }
 
 @Test

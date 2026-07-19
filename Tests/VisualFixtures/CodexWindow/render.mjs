@@ -527,6 +527,7 @@ async function inspectFixturePage(
       artworkPosition: artwork.position,
       artworkSize: artwork.backgroundSize,
       artworkMask: artwork.maskImage || artwork.webkitMaskImage,
+      overlayBackgroundImage: overlay.backgroundImage,
       overlayMask: overlay.maskImage || overlay.webkitMaskImage,
       sidebarBackdropFilter: sidebar.backdropFilter,
       transcriptBackgroundImage: transcript.backgroundImage,
@@ -536,6 +537,8 @@ async function inspectFixturePage(
   assert(scene.artworkPosition === "fixed", `artwork position is ${scene.artworkPosition}`);
   assert(scene.artworkSize === "cover", `artwork size is ${scene.artworkSize}`);
   assert(scene.sidebarBackdropFilter === "none", "sidebar unexpectedly uses backdrop blur");
+  const sceneOverlayLayerCount = (scene.overlayBackgroundImage.match(/gradient\(/g) ?? []).length;
+  assert(sceneOverlayLayerCount >= 2, `scene overlay has only ${sceneOverlayLayerCount} gradient layer(s)`);
   if (routeName === "home") {
     assert(scene.artworkOpacity > 0, "home artwork is not visible");
   } else if (taskModeOff) {
@@ -554,6 +557,15 @@ async function inspectFixturePage(
       : scene.transcriptBackgroundImage.includes("gradient")
   );
   assert(taskReadingScrimValid, "task reading scrim is not active on the transcript owner");
+  const taskReadingLayerCount = routeName === "task"
+    ? (scene.transcriptBackgroundImage.match(/gradient\(/g) ?? []).length
+    : null;
+  if (routeName === "task") {
+    assert(
+      taskReadingLayerCount >= 2,
+      `task reading surface has only ${taskReadingLayerCount} gradient layer(s)`,
+    );
+  }
   const messageCardOpacity = routeName === "task"
     ? await page.locator('[data-fixture-surface="message"]').evaluate((node) => {
       const color = getComputedStyle(node).backgroundColor;
@@ -583,6 +595,8 @@ async function inspectFixturePage(
     semanticForegroundsValid: true,
     bannerFadeValid,
     taskReadingScrimValid,
+    sceneOverlayLayerCount,
+    taskReadingLayerCount,
     messageCardOpacity,
     taskCanScroll,
     finalScrollTop,

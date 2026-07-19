@@ -435,6 +435,17 @@ struct ThemeCompiler {
             \(root)[data-codex-habitat-route="home"] \(homeContent) p {
               color: var(--habitat-muted-text);
             }
+            @media (max-width: 1180px) {
+              \(root)[data-codex-habitat-route="home"] \(homeContent) {
+                max-width: min(calc(100% - 32px), 72%);
+              }
+            }
+            @media (max-width: 900px) {
+              \(root)[data-codex-habitat-route="home"] \(homeContent) {
+                max-width: calc(100% - 24px);
+                margin-inline: 12px;
+              }
+            }
             """)
         }
         if let suggestions = profile.selectors.homeSuggestions {
@@ -706,7 +717,7 @@ struct ThemeCompiler {
             }
             \(readingSurfaceRules("""
               background-color: transparent;
-              background-image: linear-gradient(to bottom, transparent 0 30%, color-mix(in srgb, var(--habitat-surface) 72%, transparent) 64%, color-mix(in srgb, var(--habitat-surface) 94%, transparent) 100%);
+              background-image: linear-gradient(to bottom, transparent 0 30%, color-mix(in srgb, var(--habitat-surface) 72%, transparent) 64%, color-mix(in srgb, var(--habitat-surface) 94%, transparent) 100%), var(--habitat-safe-scrim);
               background-repeat: no-repeat;
               background-size: 100% 100%;
               backdrop-filter: none;
@@ -753,7 +764,7 @@ struct ThemeCompiler {
             "\(root) \(profile.selectors.composer)",
             "\(root) \(profile.selectors.popover)",
         ].joined(separator: ",\n")
-        return switch material {
+        let treatment = switch material {
         case .solid:
             """
             /* habitat-chrome-material: solid */
@@ -784,6 +795,14 @@ struct ThemeCompiler {
             }
             """
         }
+        return treatment + """
+
+        @media (max-width: 900px) {
+          \(smallChrome) {
+            backdrop-filter: none;
+          }
+        }
+        """
     }
 
     static func styleTreatment(
@@ -1094,7 +1113,8 @@ struct ThemeCompiler {
     }
 
     private static func safeScrim(for safeSide: HabitatThemeSafeSide) -> String {
-        switch safeSide {
+        let chromeWash = "linear-gradient(to bottom, color-mix(in srgb, var(--habitat-surface) 22%, transparent) 0%, transparent 14% 78%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 100%)"
+        let directional = switch safeSide {
         case .leading:
             "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 0%, transparent 58%)"
         case .trailing:
@@ -1104,19 +1124,22 @@ struct ThemeCompiler {
         case .none:
             "linear-gradient(transparent, transparent)"
         }
+        return "\(chromeWash), \(directional)"
     }
 
     private static func taskReadingScrim(for safeSide: HabitatThemeSafeSide) -> String {
-        switch safeSide {
+        let chromeWash = "linear-gradient(to bottom, color-mix(in srgb, var(--habitat-surface) 18%, transparent) 0%, transparent 15% 72%, color-mix(in srgb, var(--habitat-surface) 34%, transparent) 100%)"
+        let directional = switch safeSide {
         case .leading:
-            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 28%, color-mix(in srgb, var(--habitat-surface) 38%, transparent) 58%, transparent 84%)"
+            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 52%, transparent 78%)"
         case .trailing:
-            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 28%, color-mix(in srgb, var(--habitat-surface) 38%, transparent) 58%, transparent 84%)"
+            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 52%, transparent 78%)"
         case .center:
-            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 26%, color-mix(in srgb, var(--habitat-surface) 36%, transparent) 60%, transparent 88%)"
+            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 56%, transparent 82%)"
         case .none:
             "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent))"
         }
+        return "\(chromeWash), \(directional)"
     }
 
     private static func homeContentLayout(for safeSide: HabitatThemeSafeSide) -> String {

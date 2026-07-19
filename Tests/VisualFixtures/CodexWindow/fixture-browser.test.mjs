@@ -46,6 +46,12 @@ test(
     assert.ok(result.scenes.every(({ semanticForegroundsValid }) => semanticForegroundsValid));
     assert.ok(result.scenes.every(({ bannerFadeValid }) => bannerFadeValid));
     assert.ok(result.scenes.every(({ taskReadingScrimValid }) => taskReadingScrimValid));
+    assert.ok(result.scenes.every(({ sceneOverlayLayerCount }) => sceneOverlayLayerCount >= 2));
+    assert.ok(
+      result.scenes
+        .filter(({ route }) => route === "task")
+        .every(({ taskReadingLayerCount }) => taskReadingLayerCount >= 2),
+    );
     assert.ok(result.scenes.every(({ horizontalOverflow }) => horizontalOverflow <= 0));
     assert.ok(
       result.scenes
