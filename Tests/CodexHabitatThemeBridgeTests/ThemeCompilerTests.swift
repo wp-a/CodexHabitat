@@ -383,8 +383,25 @@ func taskModesUseRouteSpecificReadingScrimsInsteadOfOneOpaqueTranscriptSlab() th
             && rule.contains("background-image: linear-gradient(to bottom")
     })
 
+    let offAppearance = HabitatThemeAppearance(
+        category: .custom,
+        styleFamily: .cozyWorld,
+        background: "background.jpg",
+        artFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.5),
+        safeSide: .leading,
+        backgroundStrength: 0.42,
+        panelOpacity: 0.88,
+        blurRadius: 12,
+        density: .comfortable,
+        homeMode: .quiet,
+        taskMode: .off
+    )
     let offCSS = try ThemeCompiler.bundled().compile(
-        theme: try #require(BridgeTheme.builtIn(id: "quiet-garden")),
+        theme: BridgeTheme(
+            tokens: .workbench,
+            appearance: BridgeThemeAppearance(offAppearance),
+            artBlobURL: nil
+        ),
         profile: profile
     )
     let offRules = try cssRuleBodies(selector: selector, in: offCSS)

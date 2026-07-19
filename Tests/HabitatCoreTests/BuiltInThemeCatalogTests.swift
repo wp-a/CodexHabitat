@@ -49,12 +49,19 @@ func fourPrototypeThemesHaveMateriallyDifferentRouteTreatments() throws {
     ).resolvedTaskMode == .banner)
     #expect(BuiltInThemeCatalog.definition(id: "quiet-garden")?.appearance(
         background: "background.jpg"
-    ).resolvedTaskMode == .off)
+    ).resolvedTaskMode == .ambient)
     let quietGarden = try #require(BuiltInThemeCatalog.definition(id: "quiet-garden"))
     #expect(quietGarden.palette.surface == "#F4FAF2")
     #expect(quietGarden.palette.panel == "#F9FFF8")
     #expect(quietGarden.palette.panelAlt == "#DCEFD9")
     #expect(quietGarden.palette.text == "#193525")
+}
+
+@Test
+func builtInTaskScenesAlwaysRetainArtwork() {
+    #expect(BuiltInThemeCatalog.all.allSatisfy { definition in
+        definition.appearance(background: "background.jpg").resolvedTaskMode != .off
+    })
 }
 
 @Test

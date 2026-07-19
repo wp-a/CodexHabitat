@@ -186,9 +186,13 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                   artworkPixelDelta >= 0.02,
                   `${theme.id}/${viewport.id} home artwork pixel delta ${artworkPixelDelta} is too low`,
                 );
-              } else if (!taskModeOff) {
+              } else {
                 assert(
-                  artworkPixelDelta >= 0.04,
+                  !taskModeOff,
+                  `${theme.id}/${viewport.id} built-in task scene disables artwork`,
+                );
+                assert(
+                  artworkPixelDelta >= 0.08,
                   `${theme.id}/${viewport.id} task artwork pixel delta ${artworkPixelDelta} is too low`,
                 );
               }

@@ -233,8 +233,8 @@ public enum BuiltInThemeCatalog {
             "#607565", "#3F9B57", "#4FAFB0", "#E6C84F", "#C97925", "#C94555",
             0.82, 0.46, .leading, .cozyWorld, .cozy,
             treatment(
-                .quiet, .off, .glass,
-                homeStrength: 0.56, taskStrength: 0.10,
+                .quiet, .ambient, .glass,
+                homeStrength: 0.56, taskStrength: 0.26,
                 homeFocus: (0.82, 0.46), taskFocus: (0.76, 0.47),
                 homeScale: 1.00, taskScale: 1.00,
                 homeSidebar: 0.70, homeHeader: 0.64,
@@ -386,8 +386,8 @@ public enum BuiltInThemeCatalog {
             "#C5D7B0", "#F0A52B", "#68C75A", "#FFE86A", "#FFB037", "#D94B4B",
             0.81, 0.44, .leading, .cozyWorld, .cozy,
             treatment(
-                .quiet, .off, .glass,
-                homeStrength: 0.62, taskStrength: 0.14,
+                .quiet, .ambient, .glass,
+                homeStrength: 0.62, taskStrength: 0.28,
                 homeFocus: (0.81, 0.44), taskFocus: (0.76, 0.46),
                 homeScale: 1.02, taskScale: 1.00,
                 homeSidebar: 0.72, homeHeader: 0.62,

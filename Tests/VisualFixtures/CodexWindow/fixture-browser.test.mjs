@@ -63,7 +63,7 @@ test(
       result.scenes
         .filter(({ route }) => route === "task")
         .every(({ taskModeOff, artworkOpacity }) =>
-          taskModeOff ? artworkOpacity === 0 : artworkOpacity > 0),
+          !taskModeOff && artworkOpacity > 0),
     );
     assert.ok(
       result.scenes
@@ -72,13 +72,8 @@ test(
     );
     assert.ok(
       result.scenes
-        .filter(({ route, taskModeOff }) => route === "task" && !taskModeOff)
-        .every(({ artworkPixelDelta }) => artworkPixelDelta >= 0.04),
-    );
-    assert.ok(
-      result.scenes
-        .filter(({ route, taskModeOff }) => route === "task" && taskModeOff)
-        .every(({ artworkPixelDelta }) => artworkPixelDelta === 0),
+        .filter(({ route }) => route === "task")
+        .every(({ artworkPixelDelta }) => artworkPixelDelta >= 0.08),
     );
     assert.ok(
       result.scenes
