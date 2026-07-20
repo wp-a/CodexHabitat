@@ -223,7 +223,64 @@ git add Sources/CodexHabitatThemeBridge/Themes/ThemeCompiler.swift Tests/CodexHa
 git commit -m "feat: polish native theme interactions"
 ```
 
-### Task 4: Offline Visual QA and Build 13
+### Task 4: Refine Cross-Theme Material Hierarchy
+
+**Files:**
+- Create: `Tests/CodexHabitatThemeBridgeTests/ThemeVisualHierarchyTests.swift`
+- Modify: `Sources/CodexHabitatThemeBridge/Themes/ThemeCompiler.swift`
+- Modify: `Sources/CodexHabitatThemeBridge/Resources/codex-theme-template.css`
+- Modify: `Sources/CodexHabitatApp/Resources/Themes/*/habitat.json`
+
+**Step 1: Write failing hierarchy tests**
+
+Add tests that compile all twenty-four themes and assert:
+
+- built-in composer opacity is within the refined `0.84...0.90` range while the public protocol remains backward compatible;
+- home action fill uses a lighter theme-derived material instead of the current 80% block;
+- selected navigation remains visually stronger than hover but does not use an opaque fill;
+- `gameCinematic` home actions and composer do not use 3px attention-colored rails or long 30px shadows;
+- every allowlisted style family still produces a distinct material signature;
+- no new blur is applied to the large sidebar or complete home surface;
+- theme manifests remain data-only and contain no CSS, JavaScript, selector, command, executable, remote URL, person, brand, or protected-IP fields.
+
+**Step 2: Run tests to verify RED**
+
+Run:
+
+```bash
+swift test --filter ThemeVisualHierarchyTests
+```
+
+Expected: FAIL on current 80% home actions, 94-98% built-in composer values, and heavy `gameCinematic` rails/shadows.
+
+**Step 3: Implement the refined hierarchy**
+
+- Lower the shared home-action and selected-navigation fills while keeping semantic theme tokens.
+- Replace `gameCinematic` thick attention rails with a one-pixel tinted boundary, subtle inner highlight, radius no greater than 8px, and shorter shadow.
+- Set each built-in composer opacity to a value in `0.84...0.90` appropriate to its style family and light/dark palette.
+- Preserve custom theme protocol bounds and old resource decoding; this task changes built-in defaults, not the public schema.
+- Do not change typography, wording, native layout, or background art.
+
+**Step 4: Run GREEN verification**
+
+Run:
+
+```bash
+swift test --filter ThemeVisualHierarchyTests
+swift test --filter ThemeCompilerTests
+swift test --filter CodexHabitatThemeBridgeTests
+```
+
+Expected: PASS.
+
+**Step 5: Commit**
+
+```bash
+git add Sources/CodexHabitatThemeBridge Sources/CodexHabitatApp/Resources/Themes Tests/CodexHabitatThemeBridgeTests/ThemeVisualHierarchyTests.swift
+git commit -m "feat: refine theme material hierarchy"
+```
+
+### Task 5: Offline Visual QA and Build 13
 
 **Files:**
 - Modify: `Config/Info.plist`
@@ -282,4 +339,3 @@ Because the current Build 12 process owns an active theme session, leave Build 1
 **Step 6: Read-only review**
 
 Run a final read-only code review over the commits from this plan, prioritizing geometry regressions, selector safety, contrast, reduced motion, and missing tests. Address any finding through a new RED to GREEN commit.
-

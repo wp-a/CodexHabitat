@@ -44,6 +44,22 @@ The polished hierarchy includes:
 
 The right-edge Habitat pet remains a separate overlay. It is not part of any Codex theme bitmap and is not bundled into theme assets.
 
+### Reference Refinement
+
+The user-provided `2009..png` is a composition and hierarchy reference only. Its useful qualities are the continuous window scene, quiet translucent sidebar, one coherent material language across navigation/actions/composer, stable centered work area, and immediately legible selected and interactive states.
+
+Habitat will transfer those principles without copying the portrait, person, costume, ribbons, decorative marks, text, watermark, icons, brand treatment, or exact composition. Built-in artwork remains original, text-free, person-free, and free of recognizable third-party IP.
+
+The refinement applies measured restraint rather than universal glassmorphism:
+
+- home actions use a lighter theme-derived fill instead of an 80% opaque block;
+- built-in composer opacity moves from the current 94-98% range to a theme-appropriate 84-90% range;
+- selected navigation remains stronger than hover but still reveals the continuous scene;
+- `gameCinematic` replaces thick attention-colored rails with a fine tinted boundary, inner highlight, and shorter shadow;
+- other style families retain their distinct desktop, messenger, cozy, pixel, anime, arcade, and fantasy material cues.
+
+Typography, wording, control order, and native Codex layout remain host-owned.
+
 ## Interaction Contract
 
 Interaction polish is CSS-only and attaches to existing native actionable surfaces.
