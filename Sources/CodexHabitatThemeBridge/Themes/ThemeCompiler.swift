@@ -304,6 +304,10 @@ struct ThemeCompiler {
             focus: theme.appearance.taskArtFocus,
             scale: theme.appearance.taskArtScale
         )
+        let submitAccent = Self.visibleOpaqueColor(
+            theme.tokens.accent,
+            over: theme.tokens.panel
+        )
 
         var result = template
         let replacements = [
@@ -312,7 +316,13 @@ struct ThemeCompiler {
             "panel-alt": theme.tokens.panelAlt,
             "text": theme.tokens.text,
             "muted-text": theme.tokens.mutedText,
+            "on-accent": Self.higherContrastForeground(
+                against: submitAccent,
+                first: theme.tokens.text,
+                second: theme.tokens.surface
+            ),
             "accent": theme.tokens.accent,
+            "submit-accent": submitAccent,
             "secondary": theme.tokens.secondary,
             "highlight": theme.tokens.highlight,
             "attention": theme.tokens.attention,
@@ -405,9 +415,11 @@ struct ThemeCompiler {
             """
             \(root) \(profile.selectors.sidebar) :where(a, button, [role="button"]) {
               color: var(--habitat-text);
+              text-shadow: 0 0 2px var(--habitat-surface), 0 1px 4px color-mix(in srgb, var(--habitat-surface) 92%, transparent), 0 0 14px color-mix(in srgb, var(--habitat-surface) 72%, transparent);
             }
             \(root) \(profile.selectors.sidebar) :where(h1, h2, h3, h4, h5, h6) {
-              color: var(--habitat-muted-text);
+              color: var(--habitat-readable-muted);
+              text-shadow: 0 0 2px var(--habitat-surface), 0 1px 4px color-mix(in srgb, var(--habitat-surface) 92%, transparent), 0 0 14px color-mix(in srgb, var(--habitat-surface) 72%, transparent);
             }
             \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(h1, h2, h3, h4, h5, h6, strong) {
               color: var(--habitat-text);
@@ -425,7 +437,10 @@ struct ThemeCompiler {
               backdrop-filter: none;
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) p {
-              color: var(--habitat-muted-text);
+              color: var(--habitat-readable-muted);
+            }
+            \(root)[data-codex-habitat-route="home"] \(homeContent) :where(h1, h2, h3, p) {
+              text-shadow: 0 0 2px var(--habitat-surface), 0 1px 4px color-mix(in srgb, var(--habitat-surface) 92%, transparent), 0 0 14px color-mix(in srgb, var(--habitat-surface) 72%, transparent);
             }
             """)
         }
@@ -459,7 +474,9 @@ struct ThemeCompiler {
             rules.append("""
             \(root)[data-codex-habitat-route="task"] \(message) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
+              background-color: color-mix(in srgb, var(--habitat-panel) 84%, transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 24%, transparent);
+              backdrop-filter: none;
             }
             """)
         }
@@ -483,6 +500,12 @@ struct ThemeCompiler {
             }
             """)
         }
+        rules.append("""
+        \(root) \(profile.selectors.composer) :where(textarea, input)::placeholder {
+          color: var(--habitat-readable-muted);
+          opacity: 1;
+        }
+        """)
         if let composerContext = profile.selectors.composerContext {
             rules.append("""
             \(root) \(composerContext) {
@@ -900,7 +923,7 @@ struct ThemeCompiler {
             /* habitat-surface: home-actions */
             \(root) \(action) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 68%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 82%, transparent);
               \(styleHomeAction(for: family))
             }
             """
@@ -1290,5 +1313,85 @@ struct ThemeCompiler {
         return (0.2126 * red + 0.7152 * green + 0.0722 * blue) < 0.5
             ? "dark"
             : "light"
+    }
+
+    private static func higherContrastForeground(
+        against background: String,
+        first: String,
+        second: String
+    ) -> String {
+        let secondColor = rgbaColor(second)
+        let visibleBackground = composite(rgbaColor(background), over: secondColor.opaque)
+        let firstColor = rgbaColor(first)
+        let visibleFirst = composite(firstColor, over: visibleBackground)
+        let visibleSecond = composite(secondColor, over: visibleBackground)
+        let selected = contrastRatio(visibleFirst, visibleBackground)
+            >= contrastRatio(visibleSecond, visibleBackground) ? visibleFirst : visibleSecond
+        return selected.opaqueHex
+    }
+
+    private static func visibleOpaqueColor(_ foreground: String, over background: String) -> String {
+        composite(rgbaColor(foreground), over: rgbaColor(background).opaque).opaqueHex
+    }
+
+    private static func contrastRatio(_ first: RGBAColor, _ second: RGBAColor) -> Double {
+        let firstLuminance = relativeLuminance(first)
+        let secondLuminance = relativeLuminance(second)
+        return (max(firstLuminance, secondLuminance) + 0.05)
+            / (min(firstLuminance, secondLuminance) + 0.05)
+    }
+
+    private static func relativeLuminance(_ color: RGBAColor) -> Double {
+        let channels = [
+            color.red,
+            color.green,
+            color.blue,
+        ].map { channel in
+            channel <= 0.04045
+                ? channel / 12.92
+                : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+    }
+
+    private static func rgbaColor(_ value: String) -> RGBAColor {
+        let hex = value.dropFirst()
+        let rgb = UInt64(hex.prefix(6), radix: 16) ?? 0
+        let alpha = hex.count == 8
+            ? Double(UInt64(hex.suffix(2), radix: 16) ?? 0) / 255
+            : 1
+        return RGBAColor(
+            red: Double((rgb >> 16) & 0xff) / 255,
+            green: Double((rgb >> 8) & 0xff) / 255,
+            blue: Double(rgb & 0xff) / 255,
+            alpha: alpha
+        )
+    }
+
+    private static func composite(_ foreground: RGBAColor, over background: RGBAColor) -> RGBAColor {
+        RGBAColor(
+            red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
+            green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
+            blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
+            alpha: 1
+        )
+    }
+
+    private struct RGBAColor {
+        let red: Double
+        let green: Double
+        let blue: Double
+        let alpha: Double
+
+        var opaque: RGBAColor {
+            RGBAColor(red: red, green: green, blue: blue, alpha: 1)
+        }
+
+        var opaqueHex: String {
+            let red = Int((red * 255).rounded())
+            let green = Int((green * 255).rounded())
+            let blue = Int((blue * 255).rounded())
+            return String(format: "#%02X%02X%02X", red, green, blue)
+        }
     }
 }

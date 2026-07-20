@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import * as fixtureContract from "./fixture-contract.mjs";
+
 import {
   EXPECTED_FIXTURE_SCENE_COUNT,
   EXPECTED_SURFACE_ANNOTATIONS,
@@ -177,9 +179,11 @@ test("scene material checks enforce one computed background layer on real DOM pa
   assert.doesNotThrow(() => assertSceneMaterialHierarchy(healthy));
 
   for (const [field, value, expected] of [
+    ["minimumTextContrast", 4.49, /minimum text contrast/],
+    ["minimumControlContrast", 2.99, /minimum control contrast/],
     ["homeContentBackgroundAlpha", 0.2, /home content background alpha/],
     ["homeSuggestionsBackgroundAlpha", 0.2, /home suggestions background alpha/],
-    ["homeActionBackgroundAlpha", 0.8, /home action background alpha/],
+    ["homeActionBackgroundAlpha", 0.7, /home action background alpha/],
     ["composerContextBackgroundAlpha", 0.2, /composer context background alpha/],
     ["composerBackgroundAlpha", 0.5, /composer background alpha/],
   ]) {
@@ -187,6 +191,55 @@ test("scene material checks enforce one computed background layer on real DOM pa
     invalid.find(({ route }) => route === "home")[field] = value;
     assert.throws(() => assertSceneMaterialHierarchy(invalid), expected);
   }
+
+  const missingContrastTarget = structuredClone(healthy);
+  missingContrastTarget[0].contrastSamples.pop();
+  assert.throws(
+    () => assertSceneMaterialHierarchy(missingContrastTarget),
+    /contrast target .* is missing/,
+  );
+
+  for (const [kind, ratio, expected] of [
+    ["normalText", 4.49, /normalText contrast/],
+    ["largeText", 2.99, /largeText contrast/],
+    ["control", 2.99, /control contrast/],
+  ]) {
+    const lowContrast = structuredClone(healthy);
+    const sample = lowContrast
+      .flatMap(({ contrastSamples }) => contrastSamples)
+      .find((candidate) => candidate.kind === kind);
+    assert.ok(sample, `${kind} representative sample is missing`);
+    sample.ratio = ratio;
+    assert.throws(() => assertSceneMaterialHierarchy(lowContrast), expected);
+  }
+
+  const emptyPixelEvidence = structuredClone(healthy);
+  emptyPixelEvidence[0].contrastSamples[0].pixelCount = 0;
+  assert.throws(
+    () => assertSceneMaterialHierarchy(emptyPixelEvidence),
+    /pixel evidence/,
+  );
+
+  const missingNodeEvidence = structuredClone(healthy);
+  missingNodeEvidence[0].contrastSamples[0].evidenceCount = 0;
+  assert.throws(
+    () => assertSceneMaterialHierarchy(missingNodeEvidence),
+    /node evidence/,
+  );
+
+  const excessiveTaskArtworkLeak = structuredClone(healthy);
+  excessiveTaskArtworkLeak.find(({ route }) => route === "task").taskReadingArtworkLeak = 0.081;
+  assert.throws(
+    () => assertSceneMaterialHierarchy(excessiveTaskArtworkLeak),
+    /task reading artwork leak/,
+  );
+
+  const missingTaskTiles = structuredClone(healthy);
+  missingTaskTiles.find(({ route }) => route === "task").taskReadingTileCount = 0;
+  assert.throws(
+    () => assertSceneMaterialHierarchy(missingTaskTiles),
+    /task reading tile count/,
+  );
 
   const missingAncestor = structuredClone(healthy);
   missingAncestor[0].homeMaterialChain = missingAncestor[0].homeMaterialChain.filter(
@@ -204,6 +257,37 @@ test("scene material checks enforce one computed background layer on real DOM pa
     ).backgroundAlpha = 0.2;
     assert.throws(() => assertSceneMaterialHierarchy(opaqueAncestor), expected);
   }
+});
+
+test("pixel summaries preserve the weakest node and strongest local artwork leak", () => {
+  assert.equal(typeof fixtureContract.summarizeContrastNodeSamples, "function");
+  assert.equal(typeof fixtureContract.percentileLocalArtworkLeak, "function");
+  const summary = fixtureContract.summarizeContrastNodeSamples(
+    { id: "multi-node", kind: "normalText" },
+    [
+      { label: "first", ratio: 8.4, pixelCount: 120, rectCount: 3 },
+      { label: "second", ratio: 3.2, pixelCount: 12, rectCount: 1 },
+    ],
+  );
+  assert.equal(summary.ratio, 3.2);
+  assert.equal(summary.pixelCount, 132);
+  assert.equal(summary.evidenceCount, 2);
+  assert.equal(summary.rectCount, 4);
+  assert.equal(summary.weakestNodeLabel, "second");
+  assert.equal(typeof fixtureContract.mergeContrastFrameSamples, "function");
+  const merged = fixtureContract.mergeContrastFrameSamples(
+    { ratio: 6.2, weakestNodeLabel: "top", pixelCount: 20, evidenceCount: 1, rectCount: 1 },
+    { ratio: 4.7, weakestNodeLabel: "bottom", pixelCount: 12, evidenceCount: 1, rectCount: 2 },
+  );
+  assert.equal(merged.ratio, 4.7);
+  assert.equal(merged.weakestNodeLabel, "bottom");
+  assert.equal(merged.pixelCount, 32);
+  assert.equal(merged.evidenceCount, 2);
+  assert.equal(merged.rectCount, 3);
+  assert.equal(
+    fixtureContract.percentileLocalArtworkLeak([0.01, 0.02, 0.03, 0.04, 0.12], 0.75),
+    0.04,
+  );
 });
 
 function representativePayload() {
@@ -277,13 +361,18 @@ function representativeMetrics() {
     viewport: "wide",
     perceptualHash,
     nonblankRatio: 0.8,
+    minimumTextContrast: 5,
+    minimumControlContrast: 3.5,
+    contrastSamples: representativeContrastSamples(index % 2 === 0 ? "home" : "task"),
+    taskReadingArtworkLeak: index % 2 === 0 ? null : 0.04,
+    taskReadingTileCount: index % 2 === 0 ? null : 12,
     homeContentBackgroundAlpha: index % 2 === 0 ? 0 : null,
     homeSuggestionsBackgroundAlpha: index % 2 === 0 ? 0 : null,
-    homeActionBackgroundAlpha: index % 2 === 0 ? 0.68 : null,
+    homeActionBackgroundAlpha: index % 2 === 0 ? 0.82 : null,
     composerContextBackgroundAlpha: 0,
     composerBackgroundAlpha: 0.86,
     homeMaterialChain: index % 2 === 0 ? [
-      { surface: "home-action", backgroundAlpha: 0.68 },
+      { surface: "home-action", backgroundAlpha: 0.82 },
       { surface: "home-suggestions", backgroundAlpha: 0 },
       { surface: "home-content", backgroundAlpha: 0 },
       { surface: "main-surface", backgroundAlpha: 0 },
@@ -295,6 +384,39 @@ function representativeMetrics() {
       { surface: "main-surface", backgroundAlpha: 0 },
       { surface: "app-shell", backgroundAlpha: 1 },
     ],
+  }));
+}
+
+function representativeContrastSamples(route) {
+  const common = [
+    ["sidebar-primary", "normalText", 5],
+    ["sidebar-selected", "normalText", 5],
+    ["sidebar-secondary", "normalText", 5],
+    ["composer-placeholder", "normalText", 5],
+    ["composer-submit", "control", 3.5],
+  ];
+  const routeSpecific = route === "home"
+    ? [
+      ["home-primary", "largeText", 3.5],
+      ["home-secondary", "normalText", 5],
+      ["home-actions", "normalText", 5],
+    ]
+    : [
+      ["task-request", "normalText", 5],
+      ["task-response-primary", "normalText", 5],
+      ["task-response-secondary", "normalText", 5],
+      ["task-code", "normalText", 5],
+      ["task-tool-primary", "normalText", 5],
+      ["task-tool-secondary", "normalText", 5],
+      ["task-tool-grid", "normalText", 5],
+    ];
+  return [...common, ...routeSpecific].map(([id, kind, ratio]) => ({
+    id,
+    kind,
+    ratio,
+    pixelCount: 24,
+    evidenceCount: 1,
+    rectCount: 1,
   }));
 }
 

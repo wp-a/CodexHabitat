@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   EXPECTED_FIXTURE_SCENE_COUNT,
   EXPECTED_SURFACE_ANNOTATIONS,
+  FIXTURE_CONTRAST_TARGETS,
   FIXTURE_LABEL,
   FIXTURE_ROUTES,
   FIXTURE_VIEWPORTS,
@@ -16,6 +17,9 @@ import {
   assertSceneDifferences,
   classifyFixtureRequest,
   fixtureSourceFingerprint,
+  mergeContrastFrameSamples,
+  percentileLocalArtworkLeak,
+  summarizeContrastNodeSamples,
   validateFixturePayload,
   validateFixtureSource,
 } from "./fixture-contract.mjs";
@@ -41,6 +45,7 @@ const primaryThemeIDs = new Set([
   "cyber-cafe",
   "win95-workbench",
 ]);
+const GLYPH_CORE_SENTINEL_DELTA = 224;
 
 export async function readOfflineFixturePayload(payloadPath) {
   if (
@@ -178,6 +183,11 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 fullPage: false,
                 type: "png",
               });
+              const contrast = await measureFinalPixelContrast(
+                page,
+                screenshotBuffer,
+                routeName,
+              );
               const artworkPixelDelta = routeName === "home" || !taskModeOff
                 ? await measureArtworkPixelDelta(page, screenshotBuffer)
                 : 0;
@@ -236,6 +246,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 cssFingerprint: theme.cssFingerprint,
                 artFingerprint: theme.artFingerprint,
                 ...pageChecks,
+                ...contrast,
                 ...pixels,
               });
             }
@@ -688,7 +699,7 @@ async function inspectFixturePage(
     );
     assert(
       Number.isFinite(materialHierarchy.homeActionBackgroundAlpha)
-        && Math.abs(materialHierarchy.homeActionBackgroundAlpha - 0.68) <= alphaTolerance,
+        && Math.abs(materialHierarchy.homeActionBackgroundAlpha - 0.82) <= alphaTolerance,
       `home action background alpha is ${materialHierarchy.homeActionBackgroundAlpha}`,
     );
   }
@@ -729,7 +740,7 @@ async function assertSemanticTextColors(page, routeName) {
       return color;
     };
     const text = resolveThemeColor("--habitat-text");
-    const muted = resolveThemeColor("--habitat-muted-text");
+    const muted = resolveThemeColor("--habitat-readable-muted");
     const checks = [
       ["nav a:not([aria-current])", text],
       [".fixture-recents h2", muted],
@@ -759,6 +770,413 @@ async function assertSemanticTextColors(page, routeName) {
     });
   }, routeName);
   assert(failures.length === 0, `semantic text color mismatch: ${failures.join("; ")}`);
+}
+
+async function measureFinalPixelContrast(page, screenshotBuffer, routeName) {
+  const targets = FIXTURE_CONTRAST_TARGETS[routeName];
+  const frames = [await measureContrastFrame(page, screenshotBuffer, targets, routeName)];
+  let originalScrollTop = 0;
+
+  if (routeName === "task") {
+    const scroll = await page.locator(".thread-scroll-container").evaluate((node) => {
+      const original = node.scrollTop;
+      node.scrollTop = node.scrollHeight;
+      return { original, maximum: node.scrollTop };
+    });
+    originalScrollTop = scroll.original;
+    if (scroll.maximum > originalScrollTop) {
+      await settleRenderedFrame(page);
+      const bottomScreenshot = await page.screenshot({
+        animations: "disabled",
+        fullPage: false,
+        type: "png",
+      });
+      frames.push(await measureContrastFrame(page, bottomScreenshot, targets, routeName));
+    }
+    await page.locator(".thread-scroll-container").evaluate(
+      (node, scrollTop) => { node.scrollTop = scrollTop; },
+      originalScrollTop,
+    );
+    await settleRenderedFrame(page);
+  }
+
+  const byTarget = new Map();
+  for (const frame of frames) {
+    for (const sample of frame.contrastSamples) {
+      if (sample.evidenceCount <= 0) continue;
+      const existing = byTarget.get(sample.id);
+      byTarget.set(sample.id, mergeContrastFrameSamples(existing, sample));
+    }
+  }
+  const contrastSamples = [...byTarget.values()];
+  const textRatios = contrastSamples
+    .filter(({ kind }) => kind === "normalText")
+    .map(({ ratio }) => ratio);
+  const controlRatios = contrastSamples
+    .filter(({ kind }) => kind === "control")
+    .map(({ ratio }) => ratio);
+  const leakSamples = frames
+    .map(({ taskReadingArtworkLeak }) => taskReadingArtworkLeak)
+    .filter((value) => Number.isFinite(value));
+  const taskReadingTileCount = frames.reduce(
+    (total, frame) => total + frame.taskReadingTileCount,
+    0,
+  );
+  return {
+    contrastSamples,
+    minimumTextContrast: textRatios.length > 0 ? Math.min(...textRatios) : 0,
+    minimumControlContrast: controlRatios.length > 0 ? Math.min(...controlRatios) : 0,
+    taskReadingArtworkLeak: routeName === "task" && leakSamples.length > 0
+      ? Math.max(...leakSamples)
+      : null,
+    taskReadingTileCount: routeName === "task" ? taskReadingTileCount : null,
+  };
+}
+
+async function measureContrastFrame(page, finalScreenshot, targets, routeName) {
+  const geometry = await page.evaluate(({ contrastTargets, activeRoute }) => {
+    const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    const intersect = (left, right) => {
+      const result = {
+        left: Math.max(left.left, right.left),
+        top: Math.max(left.top, right.top),
+        right: Math.min(left.right, right.right),
+        bottom: Math.min(left.bottom, right.bottom),
+      };
+      return result.right > result.left && result.bottom > result.top ? result : null;
+    };
+    const asPlainRect = (rect) => ({
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+    });
+    const visibleClip = (node) => {
+      if (!(node instanceof HTMLElement) || node.closest("[hidden]")) return null;
+      for (let current = node; current instanceof HTMLElement; current = current.parentElement) {
+        const style = getComputedStyle(current);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+          return null;
+        }
+      }
+      const scroll = node.closest(".thread-scroll-container");
+      const clip = scroll ? intersect(viewport, asPlainRect(scroll.getBoundingClientRect())) : viewport;
+      return clip && intersect(asPlainRect(node.getBoundingClientRect()), clip) ? clip : null;
+    };
+    const clippedRect = (rect, clip) => intersect(asPlainRect(rect), clip);
+    const textRects = (node, clip) => {
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      const rects = [];
+      for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+        if (!text.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        for (const rect of range.getClientRects()) {
+          const clipped = clippedRect(rect, clip);
+          if (clipped && clipped.right - clipped.left >= 1 && clipped.bottom - clipped.top >= 1) {
+            rects.push(clipped);
+          }
+        }
+      }
+      return rects;
+    };
+    const placeholderRect = (node, clip) => {
+      const rect = node.getBoundingClientRect();
+      return clippedRect({
+        left: rect.left + 8,
+        top: rect.top + 6,
+        right: rect.right - 8,
+        bottom: rect.bottom - 6,
+      }, clip);
+    };
+    const collectedTargets = contrastTargets.map((target) => {
+      const nodes = [];
+      for (const node of document.querySelectorAll(target.selector)) {
+        const clip = visibleClip(node);
+        if (!clip) continue;
+        const rects = [];
+        if (target.pseudo === "placeholder") {
+          const rect = placeholderRect(node, clip);
+          if (rect) rects.push(rect);
+        } else {
+          rects.push(...textRects(node, clip));
+        }
+        const text = node.getAttribute("aria-label") ?? node.textContent ?? "";
+        const label = `${node.tagName.toLowerCase()}:${text.trim().replace(/\s+/g, " ").slice(0, 80)}`;
+        nodes.push({ label, rects });
+      }
+      return { id: target.id, kind: target.kind, nodes };
+    });
+
+    const taskReadingRects = [];
+    if (activeRoute === "task") {
+      const response = document.querySelector("[data-content-search-unit-key]");
+      const scroll = response?.closest(".thread-scroll-container");
+      if (response instanceof HTMLElement && scroll instanceof HTMLElement) {
+        const scrollClip = intersect(viewport, asPlainRect(scroll.getBoundingClientRect()));
+        const visibleResponse = scrollClip
+          ? intersect(asPlainRect(response.getBoundingClientRect()), scrollClip)
+          : null;
+        if (visibleResponse) {
+          const protectedRects = [...response.querySelectorAll(
+            '[data-fixture-surface="code"], [data-fixture-surface="tool"], .fixture-tool-grid',
+          )].map((node) => asPlainRect(node.getBoundingClientRect()));
+          const readingBounds = {
+            left: visibleResponse.left + 10,
+            top: visibleResponse.top + 10,
+            right: visibleResponse.right - 10,
+            bottom: visibleResponse.bottom - 10,
+          };
+          const tileSize = 64;
+          for (let top = readingBounds.top; top < readingBounds.bottom; top += tileSize) {
+            for (let left = readingBounds.left; left < readingBounds.right; left += tileSize) {
+              const tile = {
+                left,
+                top,
+                right: Math.min(left + tileSize, readingBounds.right),
+                bottom: Math.min(top + tileSize, readingBounds.bottom),
+              };
+              if (tile.right - tile.left < 24 || tile.bottom - tile.top < 24) continue;
+              if (protectedRects.some((rect) => intersect(tile, rect))) continue;
+              taskReadingRects.push(tile);
+            }
+          }
+        }
+      }
+    }
+    return {
+      targets: collectedTargets,
+      taskReadingRects,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+    };
+  }, { contrastTargets: targets, activeRoute: routeName });
+
+  const foregroundRules = (color, textShadow) => targets.map((target) => {
+    const selector = target.pseudo === "placeholder"
+      ? `${target.selector}::placeholder`
+      : target.selector;
+    return `${selector} { color: ${color} !important; -webkit-text-fill-color: ${color} !important; ${textShadow} caret-color: transparent !important; }`;
+  }).join("\n");
+  const sentinelForegrounds = await page.addStyleTag({
+    content: foregroundRules("#000000", "text-shadow: none !important;"),
+  });
+  let blackSentinelScreenshot;
+  let whiteSentinelScreenshot;
+  try {
+    await settleRenderedFrame(page);
+    blackSentinelScreenshot = await page.screenshot({
+      animations: "disabled",
+      fullPage: false,
+      type: "png",
+    });
+    await sentinelForegrounds.evaluate((node, content) => { node.textContent = content; },
+      foregroundRules("#ffffff", "text-shadow: none !important;"));
+    await settleRenderedFrame(page);
+    whiteSentinelScreenshot = await page.screenshot({
+      animations: "disabled",
+      fullPage: false,
+      type: "png",
+    });
+  } finally {
+    await sentinelForegrounds.evaluate((node) => node.remove());
+  }
+
+  const hiddenForegrounds = await page.addStyleTag({
+    content: foregroundRules("transparent", ""),
+  });
+  let backgroundScreenshot;
+  let backgroundWithoutArtwork = null;
+  try {
+    await settleRenderedFrame(page);
+    backgroundScreenshot = await page.screenshot({
+      animations: "disabled",
+      fullPage: false,
+      type: "png",
+    });
+    if (geometry.taskReadingRects.length > 0) {
+      const hiddenArtwork = await page.addStyleTag({
+        content: 'html[data-codex-habitat-theme="1"] #root::before { opacity: 0 !important; }',
+      });
+      try {
+        await settleRenderedFrame(page);
+        backgroundWithoutArtwork = await page.screenshot({
+          animations: "disabled",
+          fullPage: false,
+          type: "png",
+        });
+      } finally {
+        await hiddenArtwork.evaluate((node) => node.remove());
+      }
+    }
+  } finally {
+    await hiddenForegrounds.evaluate((node) => node.remove());
+    await settleRenderedFrame(page);
+  }
+
+  const pixelEvidence = await page.evaluate(async ({
+    finalBase64,
+    backgroundBase64,
+    blackSentinelBase64,
+    whiteSentinelBase64,
+    noArtworkBase64,
+    frameGeometry,
+    glyphCoreSentinelDelta,
+  }) => {
+    const decode = async (base64) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) throw new Error("unable to create screenshot contrast canvas");
+      context.drawImage(image, 0, 0);
+      return {
+        width: canvas.width,
+        height: canvas.height,
+        pixels: context.getImageData(0, 0, canvas.width, canvas.height).data,
+      };
+    };
+    const [finalImage, backgroundImage, blackSentinelImage, whiteSentinelImage, noArtworkImage] = await Promise.all([
+      decode(finalBase64),
+      decode(backgroundBase64),
+      decode(blackSentinelBase64),
+      decode(whiteSentinelBase64),
+      noArtworkBase64 ? decode(noArtworkBase64) : null,
+    ]);
+    if (
+      finalImage.width !== backgroundImage.width
+      || finalImage.height !== backgroundImage.height
+      || blackSentinelImage.width !== finalImage.width
+      || blackSentinelImage.height !== finalImage.height
+      || whiteSentinelImage.width !== finalImage.width
+      || whiteSentinelImage.height !== finalImage.height
+      || (noArtworkImage && (
+        noArtworkImage.width !== finalImage.width
+        || noArtworkImage.height !== finalImage.height
+      ))
+    ) {
+      throw new Error("contrast screenshots have mismatched dimensions");
+    }
+    const scaleX = finalImage.width / frameGeometry.viewportWidth;
+    const scaleY = finalImage.height / frameGeometry.viewportHeight;
+    const linearChannel = (value) => {
+      const normalized = value / 255;
+      return normalized <= 0.04045
+        ? normalized / 12.92
+        : ((normalized + 0.055) / 1.055) ** 2.4;
+    };
+    const luminanceRGB = (channels) => (
+      0.2126 * linearChannel(channels[0])
+      + 0.7152 * linearChannel(channels[1])
+      + 0.0722 * linearChannel(channels[2])
+    );
+    const foregroundContrastAt = (offset, coverage) => {
+      const background = [
+        backgroundImage.pixels[offset],
+        backgroundImage.pixels[offset + 1],
+        backgroundImage.pixels[offset + 2],
+      ];
+      const foreground = background.map((channel, index) => Math.max(0, Math.min(255,
+        (finalImage.pixels[offset + index] - channel * (1 - coverage)) / coverage,
+      )));
+      const foregroundLuminance = luminanceRGB(foreground);
+      const backgroundLuminance = luminanceRGB(background);
+      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    };
+    const pixelBounds = (rect) => ({
+      left: Math.max(0, Math.floor(rect.left * scaleX)),
+      top: Math.max(0, Math.floor(rect.top * scaleY)),
+      right: Math.min(finalImage.width, Math.ceil(rect.right * scaleX)),
+      bottom: Math.min(finalImage.height, Math.ceil(rect.bottom * scaleY)),
+    });
+    const sampleNode = (node) => {
+      const corePixels = [];
+      const visited = new Set();
+      for (const rect of node.rects) {
+        const bounds = pixelBounds(rect);
+        for (let y = bounds.top; y < bounds.bottom; y += 1) {
+          for (let x = bounds.left; x < bounds.right; x += 1) {
+            const pixelIndex = y * finalImage.width + x;
+            if (visited.has(pixelIndex)) continue;
+            visited.add(pixelIndex);
+            const offset = pixelIndex * 4;
+            const sentinelDelta = Math.max(
+              Math.abs(blackSentinelImage.pixels[offset] - whiteSentinelImage.pixels[offset]),
+              Math.abs(blackSentinelImage.pixels[offset + 1] - whiteSentinelImage.pixels[offset + 1]),
+              Math.abs(blackSentinelImage.pixels[offset + 2] - whiteSentinelImage.pixels[offset + 2]),
+            );
+            if (sentinelDelta >= glyphCoreSentinelDelta) {
+              corePixels.push({ offset, coverage: sentinelDelta / 255 });
+            }
+          }
+        }
+      }
+      if (corePixels.length === 0) {
+        return { label: node.label, ratio: 0, pixelCount: 0, rectCount: node.rects.length };
+      }
+      const ratios = corePixels
+        .map(({ offset, coverage }) => foregroundContrastAt(offset, coverage))
+        .sort((left, right) => left - right);
+      const lowPercentileIndex = Math.floor((ratios.length - 1) * 0.05);
+      return {
+        label: node.label,
+        ratio: ratios[lowPercentileIndex],
+        pixelCount: ratios.length,
+        rectCount: node.rects.length,
+      };
+    };
+    const contrastTargets = frameGeometry.targets.map((target) => ({
+      id: target.id,
+      kind: target.kind,
+      nodeSamples: target.nodes.map(sampleNode),
+    }));
+
+    const taskReadingTileLeaks = [];
+    if (frameGeometry.taskReadingRects.length > 0 && noArtworkImage) {
+      for (const rect of frameGeometry.taskReadingRects) {
+        const bounds = pixelBounds(rect);
+        let totalDelta = 0;
+        let pixelCount = 0;
+        for (let y = bounds.top; y < bounds.bottom; y += 2) {
+          for (let x = bounds.left; x < bounds.right; x += 2) {
+            const offset = (y * finalImage.width + x) * 4;
+            totalDelta += Math.max(
+              Math.abs(backgroundImage.pixels[offset] - noArtworkImage.pixels[offset]),
+              Math.abs(backgroundImage.pixels[offset + 1] - noArtworkImage.pixels[offset + 1]),
+              Math.abs(backgroundImage.pixels[offset + 2] - noArtworkImage.pixels[offset + 2]),
+            ) / 255;
+            pixelCount += 1;
+          }
+        }
+        if (pixelCount > 0) taskReadingTileLeaks.push(totalDelta / pixelCount);
+      }
+    }
+    return { contrastTargets, taskReadingTileLeaks };
+  }, {
+    finalBase64: finalScreenshot.toString("base64"),
+    backgroundBase64: backgroundScreenshot.toString("base64"),
+    blackSentinelBase64: blackSentinelScreenshot.toString("base64"),
+    whiteSentinelBase64: whiteSentinelScreenshot.toString("base64"),
+    noArtworkBase64: backgroundWithoutArtwork?.toString("base64") ?? null,
+    frameGeometry: geometry,
+    glyphCoreSentinelDelta: GLYPH_CORE_SENTINEL_DELTA,
+  });
+  return {
+    contrastSamples: pixelEvidence.contrastTargets.map((target) =>
+      summarizeContrastNodeSamples(target, target.nodeSamples)),
+    taskReadingArtworkLeak: percentileLocalArtworkLeak(pixelEvidence.taskReadingTileLeaks),
+    taskReadingTileCount: pixelEvidence.taskReadingTileLeaks.length,
+  };
+}
+
+async function settleRenderedFrame(page) {
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
 }
 
 async function assertProfileSelectorCardinality(page, selectors, routeName) {
@@ -825,6 +1243,48 @@ async function assertCoreBounds(page, selectors, routeName) {
 }
 
 async function measureArtworkPixelDelta(page, themedScreenshot) {
+  const revealRects = await page.evaluate(() => {
+    const route = document.documentElement.dataset.codexHabitatRoute;
+    const main = document.querySelector(".main-surface");
+    const header = document.querySelector(".app-header-tint");
+    const composer = document.querySelector(".composer-surface-chrome");
+    if (!(main instanceof HTMLElement) || !(header instanceof HTMLElement) || !(composer instanceof HTMLElement)) {
+      return [];
+    }
+    const asRect = (node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+    };
+    const stage = asRect(main);
+    stage.top = Math.max(stage.top, header.getBoundingClientRect().bottom + 8);
+    stage.bottom = Math.min(stage.bottom, composer.getBoundingClientRect().top - 8);
+    const protectedSelector = route === "home"
+      ? ".fixture-home, .fixture-popover"
+      : ".fixture-message, .fixture-response, .fixture-popover";
+    const protectedRects = [...document.querySelectorAll(protectedSelector)].map(asRect);
+    const overlaps = (left, right) => !(
+      right.right <= left.left
+      || right.left >= left.right
+      || right.bottom <= left.top
+      || right.top >= left.bottom
+    );
+    const regions = [];
+    const tileSize = 32;
+    for (let top = stage.top; top < stage.bottom; top += tileSize) {
+      for (let left = stage.left; left < stage.right; left += tileSize) {
+        const tile = {
+          left,
+          top,
+          right: Math.min(left + tileSize, stage.right),
+          bottom: Math.min(top + tileSize, stage.bottom),
+        };
+        if (tile.right - tile.left < 20 || tile.bottom - tile.top < 20) continue;
+        if (protectedRects.some((rect) => overlaps(tile, rect))) continue;
+        regions.push(tile);
+      }
+    }
+    return regions;
+  });
   const override = await page.addStyleTag({
     content: 'html[data-codex-habitat-theme="1"] #root::before { opacity: 0 !important; }',
   });
@@ -835,7 +1295,58 @@ async function measureArtworkPixelDelta(page, themedScreenshot) {
     type: "png",
   });
   await override.evaluate((node) => node.remove());
-  return compareScreenshotPixels(page, themedScreenshot, withoutArtwork);
+  return compareScreenshotRegionPixels(page, themedScreenshot, withoutArtwork, revealRects);
+}
+
+async function compareScreenshotRegionPixels(page, left, right, regions) {
+  return page.evaluate(async ({ leftBase64, rightBase64, sampleRegions }) => {
+    if (!Array.isArray(sampleRegions) || sampleRegions.length === 0) return 0;
+    const decode = async (base64) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) throw new Error("unable to create artwork comparison canvas");
+      context.drawImage(image, 0, 0);
+      return { width: canvas.width, height: canvas.height, pixels: context.getImageData(0, 0, canvas.width, canvas.height).data };
+    };
+    const [leftImage, rightImage] = await Promise.all([
+      decode(leftBase64),
+      decode(rightBase64),
+    ]);
+    if (leftImage.width !== rightImage.width || leftImage.height !== rightImage.height) {
+      throw new Error("artwork comparison screenshots have mismatched dimensions");
+    }
+    const scaleX = leftImage.width / innerWidth;
+    const scaleY = leftImage.height / innerHeight;
+    let changed = 0;
+    let total = 0;
+    for (const region of sampleRegions) {
+      const left = Math.max(0, Math.floor(region.left * scaleX));
+      const top = Math.max(0, Math.floor(region.top * scaleY));
+      const right = Math.min(leftImage.width, Math.ceil(region.right * scaleX));
+      const bottom = Math.min(leftImage.height, Math.ceil(region.bottom * scaleY));
+      for (let y = top; y < bottom; y += 2) {
+        for (let x = left; x < right; x += 2) {
+          const offset = (y * leftImage.width + x) * 4;
+          if (Math.max(
+            Math.abs(leftImage.pixels[offset] - rightImage.pixels[offset]),
+            Math.abs(leftImage.pixels[offset + 1] - rightImage.pixels[offset + 1]),
+            Math.abs(leftImage.pixels[offset + 2] - rightImage.pixels[offset + 2]),
+          ) >= 6) changed += 1;
+          total += 1;
+        }
+      }
+    }
+    return total > 0 ? changed / total : 0;
+  }, {
+    leftBase64: left.toString("base64"),
+    rightBase64: right.toString("base64"),
+    sampleRegions: regions,
+  });
 }
 
 async function compareScreenshotPixels(page, left, right) {

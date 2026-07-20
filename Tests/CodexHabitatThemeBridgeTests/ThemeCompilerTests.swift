@@ -303,6 +303,64 @@ func taskRequestCardsKeepAReadableIndependentSurface() throws {
 }
 
 @Test
+func taskResponseSurfacesUseAStableLocalReadingMaterial() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "aqua-pulse"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
+    let responseSurface = try #require(profile.selectors.messageSurface)
+    let selector = "\(root) \(responseSurface)"
+    let rule = try cssRuleBody(selector: selector, in: css)
+
+    #expect(rule.contains(
+        "background-color: color-mix(in srgb, var(--habitat-panel) 84%, transparent)"
+    ))
+    #expect(rule.contains("backdrop-filter: none"))
+}
+
+@Test
+func composerPlaceholderUsesOpaqueSemanticMutedText() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+    let selector = "\(root) \(profile.selectors.composer) :where(textarea, input)::placeholder"
+    let rule = try cssRuleBody(selector: selector, in: css)
+
+    #expect(rule.contains("color: var(--habitat-readable-muted)"))
+    #expect(rule.contains("opacity: 1"))
+}
+
+@Test
+func homeTextUsesABoundedSurfaceHaloWithoutOwningTheContainer() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "quiet-garden"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"]"
+    let homeContent = try #require(profile.selectors.homeContent)
+    let selector = "\(root) \(homeContent) :where(h1, h2, h3, p)"
+    let rule = try cssRuleBody(selector: selector, in: css)
+
+    #expect(rule.contains("text-shadow:"))
+    #expect(rule.contains("var(--habitat-surface)"))
+    #expect(!rule.contains("background"))
+}
+
+@Test
+func submitControlsUseTheHighestContrastThemeForeground() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let compiler = try ThemeCompiler.bundled()
+    let greenChat = try #require(BridgeTheme.builtIn(id: "green-chat-desk"))
+    let workbench = try #require(BridgeTheme.builtIn(id: "workbench"))
+
+    let greenCSS = try compiler.compile(theme: greenChat, profile: profile)
+    let darkCSS = try compiler.compile(theme: workbench, profile: profile)
+    #expect(greenCSS.contains("--habitat-on-accent: #113B25"))
+    #expect(darkCSS.contains("--habitat-on-accent: #171A21"))
+    #expect(greenCSS.contains("color: var(--habitat-on-accent)"))
+}
+
+@Test
 func immersiveHomeLetsTheContinuousSceneOwnLargeSurfaces() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
@@ -668,8 +726,18 @@ func compiledSurfacesOverrideHostTextClassesWithSemanticForegrounds() throws {
     #expect(css.contains("\(root)[data-codex-habitat-route=\"home\"] \(homeContent) p"))
     #expect(css.contains("\(root)[data-codex-habitat-route=\"task\"] \(profile.selectors.threadScroll) p"))
     #expect(css.contains("\(root) \(profile.selectors.popover) > *"))
-    #expect(css.contains("color: var(--habitat-muted-text)"))
+    #expect(css.contains(
+        "--habitat-readable-muted: color-mix(in srgb, var(--habitat-muted-text) 30%, var(--habitat-text))"
+    ))
+    #expect(css.contains("color: var(--habitat-readable-muted)"))
     #expect(!css.contains("\(profile.selectors.sidebar) > :last-child"))
+
+    let sidebarAction = try cssRuleBody(
+        selector: "\(root) \(profile.selectors.sidebar) :where(a, button, [role=\"button\"])",
+        in: css
+    )
+    #expect(sidebarAction.contains("text-shadow:"))
+    #expect(sidebarAction.contains("var(--habitat-surface)"))
 
     let taskParagraph = try cssRuleBody(
         selector: "\(root)[data-codex-habitat-route=\"task\"] \(profile.selectors.threadScroll) p",
@@ -677,6 +745,7 @@ func compiledSurfacesOverrideHostTextClassesWithSemanticForegrounds() throws {
     )
     #expect(taskParagraph.contains("color: var(--habitat-text)"))
     #expect(!taskParagraph.contains("color: var(--habitat-muted-text)"))
+    #expect(!taskParagraph.contains("color: var(--habitat-readable-muted)"))
 }
 
 @Test
@@ -875,7 +944,80 @@ func eightDigitProtocolColorsCompileWithoutChangingRGBColorScheme() throws {
     )
 
     #expect(css.contains("--habitat-surface: #10182080"))
+    #expect(css.contains("--habitat-on-accent: #F4FAFF"))
     #expect(css.contains("color-scheme: dark"))
+
+    let lowAlphaTextPalette = HabitatThemePalette(
+        surface: "#101820FF",
+        panel: "#182633FF",
+        panelAlt: "#24384AFF",
+        text: "#FFFFFF01",
+        mutedText: "#A9BAC8FF",
+        accent: "#000000FF",
+        secondary: "#FF4F9AFF",
+        highlight: "#FFE45CFF",
+        attention: "#FFAA33FF",
+        error: "#F04455FF"
+    )
+    let lowAlphaTextTheme = BridgeTheme(
+        tokens: BridgeThemeTokens(palette: lowAlphaTextPalette),
+        artBlobURL: nil
+    )
+    let lowAlphaCSS = try ThemeCompiler.bundled().compile(
+        theme: lowAlphaTextTheme,
+        profile: try #require(
+            try CompatibilityProfileStore.bundled().profile(forVersion: "26.707.91948")
+        )
+    )
+    #expect(lowAlphaCSS.contains("--habitat-on-accent: #101820"))
+
+    let translucentWinnerPalette = HabitatThemePalette(
+        surface: "#000000FF",
+        panel: "#182633FF",
+        panelAlt: "#24384AFF",
+        text: "#FFFFFF80",
+        mutedText: "#A9BAC8FF",
+        accent: "#000000FF",
+        secondary: "#FF4F9AFF",
+        highlight: "#FFE45CFF",
+        attention: "#FFAA33FF",
+        error: "#F04455FF"
+    )
+    let translucentWinnerCSS = try ThemeCompiler.bundled().compile(
+        theme: BridgeTheme(
+            tokens: BridgeThemeTokens(palette: translucentWinnerPalette),
+            artBlobURL: nil
+        ),
+        profile: try #require(
+            try CompatibilityProfileStore.bundled().profile(forVersion: "26.707.91948")
+        )
+    )
+    #expect(translucentWinnerCSS.contains("--habitat-on-accent: #808080"))
+
+    let translucentAccentPalette = HabitatThemePalette(
+        surface: "#000000FF",
+        panel: "#FFFFFFFF",
+        panelAlt: "#808080FF",
+        text: "#FFFFFFFF",
+        mutedText: "#A9BAC8FF",
+        accent: "#FFFFFF01",
+        secondary: "#FF4F9AFF",
+        highlight: "#FFE45CFF",
+        attention: "#FFAA33FF",
+        error: "#F04455FF"
+    )
+    let translucentAccentCSS = try ThemeCompiler.bundled().compile(
+        theme: BridgeTheme(
+            tokens: BridgeThemeTokens(palette: translucentAccentPalette),
+            artBlobURL: nil
+        ),
+        profile: try #require(
+            try CompatibilityProfileStore.bundled().profile(forVersion: "26.707.91948")
+        )
+    )
+    #expect(translucentAccentCSS.contains("--habitat-submit-accent: #FFFFFF"))
+    #expect(translucentAccentCSS.contains("--habitat-on-accent: #000000"))
+    #expect(translucentAccentCSS.contains("background-color: var(--habitat-submit-accent)"))
 }
 
 @Test

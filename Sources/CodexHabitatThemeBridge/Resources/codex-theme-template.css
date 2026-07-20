@@ -4,7 +4,10 @@ html[data-codex-habitat-theme="1"] {
   --habitat-panel-alt: {{panel-alt}};
   --habitat-text: {{text}};
   --habitat-muted-text: {{muted-text}};
+  --habitat-readable-muted: color-mix(in srgb, var(--habitat-muted-text) 30%, var(--habitat-text));
+  --habitat-on-accent: {{on-accent}};
   --habitat-accent: {{accent}};
+  --habitat-submit-accent: {{submit-accent}};
   --habitat-secondary: {{secondary}};
   --habitat-highlight: {{highlight}};
   --habitat-attention: {{attention}};
@@ -147,8 +150,8 @@ html[data-codex-habitat-theme="1"][data-codex-habitat-route="home"] {{thread}} {
 }
 
 html[data-codex-habitat-theme="1"] button[type="submit"] {
-  color: var(--habitat-surface);
-  background-color: var(--habitat-accent);
+  color: var(--habitat-on-accent);
+  background-color: var(--habitat-submit-accent);
   border-color: var(--habitat-highlight);
 }
 

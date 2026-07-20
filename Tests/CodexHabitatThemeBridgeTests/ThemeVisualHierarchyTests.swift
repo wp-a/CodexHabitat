@@ -5,7 +5,7 @@ import Testing
 
 @Suite
 struct ThemeVisualHierarchyTests {
-    private let homeActionFillPercent = 68
+    private let homeActionFillPercent = 82
     private let selectedNavigationFillPercent = 64
     private let sidebarHoverFillPercent = 54
 

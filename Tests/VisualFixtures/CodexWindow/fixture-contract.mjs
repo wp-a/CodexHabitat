@@ -15,6 +15,88 @@ export const MINIMUM_CROSS_THEME_PHASH_DISTANCE = 12;
 export const MINIMUM_NONBLANK_RATIO = 0.05;
 export const EXPORTER_CONTRACT_MARKER = "offline-theme-fixture-payload-v1";
 
+const commonContrastTargets = [
+  { id: "sidebar-primary", kind: "normalText", selector: ".app-shell-left-panel nav a:not([aria-current]), .fixture-recents a:not(.is-selected), .fixture-account" },
+  { id: "sidebar-selected", kind: "normalText", selector: ".app-shell-left-panel [aria-current]" },
+  { id: "sidebar-secondary", kind: "normalText", selector: ".fixture-recents h2" },
+  { id: "composer-placeholder", kind: "normalText", selector: "#fixture-composer", pseudo: "placeholder" },
+  { id: "composer-submit", kind: "control", selector: ".composer-surface-chrome button" },
+].map((target) => Object.freeze(target));
+
+const routeContrastTargets = {
+  home: [
+    { id: "home-primary", kind: "largeText", selector: ".fixture-home h1" },
+    { id: "home-secondary", kind: "normalText", selector: ".fixture-home p" },
+    { id: "home-actions", kind: "normalText", selector: '.group\\/home-suggestions :where(button, [role="button"])' },
+  ],
+  task: [
+    { id: "task-request", kind: "normalText", selector: ".fixture-message h2, .fixture-message p" },
+    { id: "task-response-primary", kind: "normalText", selector: ".fixture-response h2" },
+    { id: "task-response-secondary", kind: "normalText", selector: ".fixture-response > p" },
+    { id: "task-code", kind: "normalText", selector: ".fixture-response pre code" },
+    { id: "task-tool-primary", kind: "normalText", selector: ".fixture-tool strong" },
+    { id: "task-tool-secondary", kind: "normalText", selector: ".fixture-tool p" },
+    { id: "task-tool-grid", kind: "normalText", selector: ".fixture-tool-grid > div" },
+  ],
+};
+
+export const FIXTURE_CONTRAST_TARGETS = Object.freeze(Object.fromEntries(
+  FIXTURE_ROUTES.map((route) => [
+    route,
+    Object.freeze([
+      ...commonContrastTargets,
+      ...routeContrastTargets[route].map((target) => Object.freeze(target)),
+    ]),
+  ]),
+));
+
+const contrastThresholds = Object.freeze({
+  normalText: 4.5,
+  largeText: 3,
+  control: 3,
+});
+export const MAXIMUM_TASK_READING_ARTWORK_LEAK = 0.08;
+
+export function summarizeContrastNodeSamples(target, nodeSamples) {
+  const samples = Array.isArray(nodeSamples) ? nodeSamples : [];
+  const weakest = samples.reduce(
+    (current, sample) => !current || sample.ratio < current.ratio ? sample : current,
+    null,
+  );
+  return {
+    id: target.id,
+    kind: target.kind,
+    ratio: samples.length > 0 ? Math.min(...samples.map(({ ratio }) => ratio)) : 0,
+    pixelCount: samples.reduce((total, { pixelCount }) => total + pixelCount, 0),
+    evidenceCount: samples.length,
+    rectCount: samples.reduce((total, { rectCount }) => total + rectCount, 0),
+    weakestNodeLabel: weakest?.label ?? null,
+  };
+}
+
+export function mergeContrastFrameSamples(current, incoming) {
+  if (!current) return incoming;
+  const weakest = incoming.ratio < current.ratio ? incoming : current;
+  return {
+    ...current,
+    ratio: weakest.ratio,
+    weakestNodeLabel: weakest.weakestNodeLabel,
+    pixelCount: current.pixelCount + incoming.pixelCount,
+    evidenceCount: current.evidenceCount + incoming.evidenceCount,
+    rectCount: current.rectCount + incoming.rectCount,
+  };
+}
+
+export function percentileLocalArtworkLeak(tileLeaks, percentile = 0.95) {
+  const finiteLeaks = Array.isArray(tileLeaks)
+    ? tileLeaks.filter((value) => Number.isFinite(value))
+    : [];
+  if (finiteLeaks.length === 0) return null;
+  finiteLeaks.sort((left, right) => left - right);
+  const boundedPercentile = Math.max(0, Math.min(1, percentile));
+  return finiteLeaks[Math.ceil((finiteLeaks.length - 1) * boundedPercentile)];
+}
+
 export const LATEST_PROFILE_SELECTORS = Object.freeze({
   sidebar: "aside.app-shell-left-panel",
   mainSurface: "main.main-surface",
@@ -257,6 +339,56 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
   requireMetrics(Array.isArray(sceneMetrics) && sceneMetrics.length > 0, "metrics are missing");
   for (const metric of sceneMetrics) {
     const context = `${metric.themeID}/${metric.route}/${metric.viewport}`;
+    const requiredContrastTargets = FIXTURE_CONTRAST_TARGETS[metric.route];
+    requireMetrics(
+      Array.isArray(requiredContrastTargets) && Array.isArray(metric.contrastSamples),
+      `${context} contrast samples are missing`,
+    );
+    const samplesByID = new Map();
+    for (const sample of metric.contrastSamples) {
+      requireMetrics(
+        sample && typeof sample.id === "string" && !samplesByID.has(sample.id),
+        `${context} contrast target ${sample?.id} is duplicated or invalid`,
+      );
+      samplesByID.set(sample.id, sample);
+    }
+    for (const target of requiredContrastTargets) {
+      const sample = samplesByID.get(target.id);
+      requireMetrics(sample, `${context} contrast target ${target.id} is missing`);
+      requireMetrics(
+        sample.kind === target.kind,
+        `${context} contrast target ${target.id} kind is ${sample.kind}`,
+      );
+      requireMetrics(
+        Number.isInteger(sample.pixelCount) && sample.pixelCount > 0,
+        `${context} contrast target ${target.id} has no pixel evidence`,
+      );
+      requireMetrics(
+        Number.isInteger(sample.evidenceCount) && sample.evidenceCount > 0,
+        `${context} contrast target ${target.id} has no node evidence`,
+      );
+      requireMetrics(
+        Number.isInteger(sample.rectCount) && sample.rectCount >= sample.evidenceCount,
+        `${context} contrast target ${target.id} has invalid rect evidence`,
+      );
+      requireMetrics(
+        Number.isFinite(sample.ratio) && sample.ratio >= contrastThresholds[target.kind],
+        `${context} ${target.kind} contrast target ${target.id} is ${sample.ratio}`
+          + ` at ${sample.weakestNodeLabel ?? "unknown node"}`,
+      );
+    }
+    requireMetrics(
+      samplesByID.size === requiredContrastTargets.length,
+      `${context} contrast target count is ${samplesByID.size}`,
+    );
+    requireMetrics(
+      Number.isFinite(metric.minimumTextContrast) && metric.minimumTextContrast >= 4.5,
+      `${context} minimum text contrast is ${metric.minimumTextContrast}`,
+    );
+    requireMetrics(
+      Number.isFinite(metric.minimumControlContrast) && metric.minimumControlContrast >= 3,
+      `${context} minimum control contrast is ${metric.minimumControlContrast}`,
+    );
     requireApproximateAlpha(
       metric.composerContextBackgroundAlpha,
       0,
@@ -276,6 +408,19 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
       `${context} composer material chain`,
     );
 
+    if (metric.route === "task") {
+      requireMetrics(
+        Number.isInteger(metric.taskReadingTileCount) && metric.taskReadingTileCount > 0,
+        `${context} task reading tile count is ${metric.taskReadingTileCount}`,
+      );
+      requireMetrics(
+        Number.isFinite(metric.taskReadingArtworkLeak)
+          && metric.taskReadingArtworkLeak >= 0
+          && metric.taskReadingArtworkLeak <= MAXIMUM_TASK_READING_ARTWORK_LEAK,
+        `${context} task reading artwork leak is ${metric.taskReadingArtworkLeak}`,
+      );
+    }
+
     if (metric.route === "home") {
       requireApproximateAlpha(
         metric.homeContentBackgroundAlpha,
@@ -289,7 +434,7 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
       );
       requireApproximateAlpha(
         metric.homeActionBackgroundAlpha,
-        0.68,
+        0.82,
         `${context} home action background alpha`,
       );
       requireMaterialChain(
