@@ -107,7 +107,7 @@ git commit -m "fix: strengthen themed reading surfaces"
 **Files:**
 - Modify: `Tests/VisualFixtures/CodexWindow/fixture-contract.mjs`
 - Modify: `Tests/VisualFixtures/CodexWindow/render.mjs`
-- Modify: `Tests/VisualFixtures/CodexWindow/fixture.html`
+- Modify: `Tests/VisualFixtures/CodexWindow/index.html`
 - Modify: `Tests/CodexHabitatThemeBridgeTests/ThemeCompilerTests.swift`
 
 **Step 1: Write failing contract checks**
