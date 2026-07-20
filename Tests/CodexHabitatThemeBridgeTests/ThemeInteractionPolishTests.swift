@@ -56,7 +56,7 @@ struct ThemeInteractionPolishTests {
         let expectedGlowSelectors = fixture.glowSelectors(root: root)
         let expectedMotionTargets = fixture.motionTargets(root: root)
         let glowSelectors = rules
-            .filter { $0.declarations["box-shadow"]?.contains("0 14px 36px") == true }
+            .filter { $0.declarations["box-shadow"]?.contains("0 8px 20px") == true }
             .flatMap(\.selectors)
 
         #expect(Set(glowSelectors) == expectedGlowSelectors)

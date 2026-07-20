@@ -1016,7 +1016,7 @@ struct ThemeCompiler {
 
         \(scopedSelectors(composerFocusSurfaces, root: root)) {
           border-color: color-mix(in srgb, var(--habitat-accent) 74%, var(--habitat-highlight));
-          box-shadow: 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 44%, transparent), 0 14px 36px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
+          box-shadow: 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 44%, transparent), 0 8px 20px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
         }
 
         /* habitat-semantic-state: focus */

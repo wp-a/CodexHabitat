@@ -130,6 +130,40 @@ struct ThemeVisualHierarchyTests {
     }
 
     @Test
+    func compiledComposerFocusShadowsRemainRestrained() throws {
+        let profile = try hierarchyProfile()
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let selector = "\(root) \(profile.selectors.composer):focus-within"
+
+        for definition in BuiltInThemeCatalog.all {
+            let css = try compiledCSS(for: definition, profile: profile)
+            let finalFocusRule = try #require(
+                hierarchyRuleBodies(containingSelector: selector, in: css).last {
+                    $0.contains("box-shadow:")
+                }
+            )
+
+            #expect(
+                finalFocusRule.contains("border-color:"),
+                "\(definition.id) loses composer focus feedback"
+            )
+            #expect(
+                !finalFocusRule.contains("36px"),
+                "\(definition.id) keeps the long composer focus shadow"
+            )
+            #expect(
+                try hierarchyLongestShadowLength(in: finalFocusRule) <= 20,
+                "\(definition.id) composer focus shadow exceeds 20px"
+            )
+
+            if definition.styleFamily == .gameCinematic {
+                #expect(finalFocusRule.contains("box-shadow:"))
+                #expect(try hierarchyLongestShadowLength(in: finalFocusRule) <= 20)
+            }
+        }
+    }
+
+    @Test
     func everyStyleFamilyKeepsADistinctMaterialSignature() throws {
         let profile = try hierarchyProfile()
         let suggestions = try #require(profile.selectors.homeSuggestions)
@@ -226,6 +260,19 @@ private func hierarchyRuleBodies(selector: String, in css: String) -> [String] {
     let escaped = NSRegularExpression.escapedPattern(for: selector)
     guard let expression = try? NSRegularExpression(
         pattern: escaped + #"\s*\{([^}]*)\}"#,
+        options: .dotMatchesLineSeparators
+    ) else { return [] }
+    let range = NSRange(css.startIndex..<css.endIndex, in: css)
+    return expression.matches(in: css, range: range).compactMap { match in
+        guard let bodyRange = Range(match.range(at: 1), in: css) else { return nil }
+        return String(css[bodyRange])
+    }
+}
+
+private func hierarchyRuleBodies(containingSelector selector: String, in css: String) -> [String] {
+    let escaped = NSRegularExpression.escapedPattern(for: selector)
+    guard let expression = try? NSRegularExpression(
+        pattern: escaped + #"(?:\s*,[^{}]*)?\s*\{([^}]*)\}"#,
         options: .dotMatchesLineSeparators
     ) else { return [] }
     let range = NSRange(css.startIndex..<css.endIndex, in: css)
