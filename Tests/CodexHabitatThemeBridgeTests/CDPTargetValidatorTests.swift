@@ -23,6 +23,22 @@ func validLoopbackPageTargetUsesTheOwnedPortAndAppScheme() throws {
     )
 }
 
+@Test
+func codexRootDocumentRemainsAValidatedMainPageCandidate() throws {
+    let validator = CDPTargetValidator(port: 55_000)
+    let target = CDPTarget(
+        id: "page-root",
+        type: "page",
+        title: "Codex",
+        url: URL(string: "app://codex/")!,
+        webSocketDebuggerURL: URL(
+            string: "ws://127.0.0.1:55000/devtools/page/page-root"
+        )!
+    )
+
+    #expect(try validator.classification(of: target) == .mainPage)
+}
+
 @Test(arguments: [
     (
         "ws://192.168.1.9:55000/devtools/page/page-1",

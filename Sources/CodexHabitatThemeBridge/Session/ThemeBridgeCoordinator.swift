@@ -23,6 +23,8 @@ struct ThemeBridgeApplyResult: Equatable, Sendable {
 }
 
 actor ThemeBridgeCoordinator {
+    static let defaultReadinessAttempts = 225
+
     private let verifier: any CodexBundleVerifying
     private let session: any ThemeSessionManaging
     private let listenerVerifier: any LoopbackListenerVerifying
@@ -42,7 +44,7 @@ actor ThemeBridgeCoordinator {
         profileStore: CompatibilityProfileStore,
         compiler: ThemeCompiler,
         restarter: any CodexApplicationRestarting,
-        readinessAttempts: Int = 40
+        readinessAttempts: Int = ThemeBridgeCoordinator.defaultReadinessAttempts
     ) {
         self.verifier = verifier
         self.session = session

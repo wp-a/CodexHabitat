@@ -3,6 +3,11 @@ import Testing
 @testable import CodexHabitatThemeBridge
 
 @Test
+func liveCoordinatorAllowsASlowColdStartWindow() {
+    #expect(ThemeBridgeCoordinator.defaultReadinessAttempts == 225)
+}
+
+@Test
 func successfulApplyRestartsOnceChecksLayoutAndWritesPrivateScreenshot() async throws {
     let fixture = try CoordinatorFixture()
     defer { fixture.cleanup() }

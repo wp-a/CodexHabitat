@@ -68,6 +68,12 @@ struct CDPTargetValidator: Sendable {
         else {
             throw CDPTargetValidationError.nonAppPage
         }
+        if pageURL.path == "/" {
+            guard pageURL.query == nil else {
+                throw CDPTargetValidationError.queryOrFragmentNotAllowed
+            }
+            return .mainPage
+        }
         if pageURL.path == "/avatar-overlay-composition-surface.html" {
             try validatePetSurfaceQuery(pageURL)
             return .officialAuxiliaryPage
