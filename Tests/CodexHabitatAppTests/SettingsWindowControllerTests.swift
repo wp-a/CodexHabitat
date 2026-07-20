@@ -91,6 +91,8 @@ func releaseVerificationPinsTheExpectedMonotonicBuildNumber() throws {
 
     #expect(verifier.contains("HABITAT_EXPECTED_BUILD_NUMBER"))
     #expect(verifier.contains("bundle build does not match expected build"))
+    #expect(builder.contains("Print :CFBundleVersion"))
+    #expect(!builder.contains("BUILD_NUMBER=\"${BUILD_NUMBER:-11}\""))
     #expect(builder.contains("HABITAT_EXPECTED_BUILD_NUMBER=\"$BUILD_NUMBER\""))
 }
 
