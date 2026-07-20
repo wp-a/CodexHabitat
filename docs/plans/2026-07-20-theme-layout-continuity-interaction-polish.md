@@ -327,7 +327,7 @@ Run:
 ```bash
 scripts/build-app.sh --adhoc
 scripts/verify-release.sh "dist/Codex Habitat.app"
-scripts/package-dmg.sh --adhoc
+scripts/package-dmg.sh
 ```
 
 Mount the DMG read-only, verify the app bundle, helper, build number, architecture, signatures, resources, and absence of unsafe update/CDP paths, then unmount it.
