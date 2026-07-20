@@ -18,6 +18,7 @@ html[data-codex-habitat-theme="1"] {
   --habitat-task-banner-fade-start: {{task-banner-fade-start}};
   --habitat-task-banner-fade-end: {{task-banner-fade-end}};
   --habitat-safe-scrim: {{safe-scrim}};
+  --habitat-task-safe-scrim: {{task-safe-scrim}};
   --habitat-task-reading-scrim: {{task-reading-scrim}};
   --habitat-home-strength: {{home-strength}};
   --habitat-task-strength: {{task-strength}};

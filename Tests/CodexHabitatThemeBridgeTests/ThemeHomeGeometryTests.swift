@@ -15,9 +15,13 @@ func everyBundledThemePreservesCodexHomeGeometry() throws {
     for definition in BuiltInThemeCatalog.all {
         let theme = try #require(BridgeTheme.builtIn(id: definition.id))
         let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
-        for selector in selectors {
+        for (index, selector) in selectors.enumerated() {
             let ruleDeclarations = try homeRuleDeclarations(selector: selector, in: css)
-            #expect(!ruleDeclarations.isEmpty, "\(definition.id) omits \(selector)")
+            if index == 0 {
+                #expect(!ruleDeclarations.isEmpty, "\(definition.id) omits \(selector)")
+            } else {
+                #expect(ruleDeclarations.isEmpty, "\(definition.id) applies home cleanup outside home")
+            }
             for declarations in ruleDeclarations {
                 let geometry = declarations.filter(isHomeGeometryProperty).sorted()
                 #expect(

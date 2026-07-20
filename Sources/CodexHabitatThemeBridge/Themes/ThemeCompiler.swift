@@ -356,6 +356,7 @@ struct ThemeCompiler {
             ),
             "vignette-strength": Self.cssPercent(theme.appearance.vignetteStrength * 100),
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
+            "task-safe-scrim": Self.taskSafeScrim(for: theme.appearance.safeSide),
             "task-reading-scrim": Self.taskReadingScrim(for: theme.appearance.safeSide),
             "blur-radius": Self.cssNumber(theme.appearance.blurRadius) + "px",
             "tinted-blur-radius": Self.cssNumber(theme.appearance.blurRadius * 0.55) + "px",
@@ -419,12 +420,8 @@ struct ThemeCompiler {
 
         if let homeContent = profile.selectors.homeContent {
             rules.append("""
-            \(root) \(homeContent),
             \(root)[data-codex-habitat-route="home"] \(homeContent) {
               background: transparent;
-              border-color: transparent;
-              outline: none;
-              box-shadow: none;
               backdrop-filter: none;
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) p {
@@ -436,8 +433,6 @@ struct ThemeCompiler {
             rules.append("""
             \(root)[data-codex-habitat-route="home"] \(suggestions) {
               background: transparent;
-              border-color: transparent;
-              box-shadow: none;
               backdrop-filter: none;
             }
             """)
@@ -535,7 +530,6 @@ struct ThemeCompiler {
               background-color: transparent;
               background-image: none;
               backdrop-filter: none;
-              box-shadow: none;
             }
             """
         } ?? ""
@@ -656,7 +650,7 @@ struct ThemeCompiler {
             \(overlay) {
               inset: 0;
               opacity: 1;
-              background-image: var(--habitat-safe-scrim);
+              background-image: var(--habitat-task-safe-scrim);
               border: 0;
               border-radius: 0;
               box-shadow: none;
@@ -689,7 +683,7 @@ struct ThemeCompiler {
             \(overlay) {
               inset: 0;
               opacity: 1;
-              background-image: var(--habitat-safe-scrim);
+              background-image: var(--habitat-task-safe-scrim);
               border: 0;
               border-radius: 0;
               box-shadow: none;
@@ -703,7 +697,7 @@ struct ThemeCompiler {
             }
             \(readingSurfaceRules("""
               background-color: transparent;
-              background-image: linear-gradient(to bottom, transparent 0 30%, color-mix(in srgb, var(--habitat-surface) 72%, transparent) 64%, color-mix(in srgb, var(--habitat-surface) 94%, transparent) 100%), var(--habitat-safe-scrim);
+              background-image: linear-gradient(to bottom, transparent 0 30%, color-mix(in srgb, var(--habitat-surface) 72%, transparent) 64%, color-mix(in srgb, var(--habitat-surface) 94%, transparent) 100%), var(--habitat-task-safe-scrim);
               background-repeat: no-repeat;
               background-size: 100% 100%;
               backdrop-filter: none;
@@ -720,7 +714,7 @@ struct ThemeCompiler {
             \(overlay) {
               inset: 0;
               opacity: 0;
-              background-image: var(--habitat-safe-scrim);
+              background-image: var(--habitat-task-safe-scrim);
               border: 0;
               border-radius: 0;
               box-shadow: none;
@@ -1216,6 +1210,21 @@ struct ThemeCompiler {
     }
 
     private static func safeScrim(for safeSide: HabitatThemeSafeSide) -> String {
+        let chromeWash = "linear-gradient(to bottom, color-mix(in srgb, var(--habitat-surface) 22%, transparent) 0%, transparent 14% 78%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 100%)"
+        let directional = switch safeSide {
+        case .leading:
+            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 52%, transparent 78%)"
+        case .trailing:
+            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 52%, transparent 78%)"
+        case .center:
+            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 56%, transparent 82%)"
+        case .none:
+            "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent))"
+        }
+        return "\(chromeWash), \(directional)"
+    }
+
+    private static func taskSafeScrim(for safeSide: HabitatThemeSafeSide) -> String {
         let chromeWash = "linear-gradient(to bottom, color-mix(in srgb, var(--habitat-surface) 22%, transparent) 0%, transparent 14% 78%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 100%)"
         let directional = switch safeSide {
         case .leading:

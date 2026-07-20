@@ -456,6 +456,155 @@ func trailingSafeSideShapesTheScrimWithoutMovingHomeContent() throws {
 }
 
 @Test
+func homeSafeScrimUsesContentOpacityForTheReadingWash() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let cases: [(HabitatThemeSafeSide, String, String?)] = [
+        (.leading, "linear-gradient(to right", "52%"),
+        (.trailing, "linear-gradient(to left", "52%"),
+        (.center, "radial-gradient(ellipse at center", "56%"),
+        (.none, "linear-gradient(color-mix", nil),
+    ]
+
+    for (safeSide, gradient, vignetteStop) in cases {
+        let appearance = HabitatThemeAppearance(
+            category: .custom,
+            styleFamily: .cozyWorld,
+            background: "background.jpg",
+            artFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.5),
+            safeSide: safeSide,
+            backgroundStrength: 0.42,
+            panelOpacity: 0.88,
+            blurRadius: 8,
+            density: .comfortable,
+            homeContentOpacity: 0.67,
+            vignetteStrength: 0.23
+        )
+        let css = try ThemeCompiler.bundled().compile(
+            theme: BridgeTheme(
+                tokens: .workbench,
+                appearance: BridgeThemeAppearance(appearance),
+                artBlobURL: nil
+            ),
+            profile: profile
+        )
+        let root = try cssRuleBody(
+            selector: "html[data-codex-habitat-theme=\"1\"]",
+            in: css
+        )
+        let scrim = try cssDeclarationValue("--habitat-safe-scrim", in: root)
+
+        #expect(scrim.contains(gradient), "\(safeSide.rawValue) loses its reading wash shape")
+        #expect(
+            scrim.contains("var(--habitat-home-content-opacity)"),
+            "\(safeSide.rawValue) does not consume homeContentOpacity"
+        )
+        #expect(!scrim.contains("linear-gradient(transparent, transparent)"))
+        if let vignetteStop {
+            #expect(scrim.contains("var(--habitat-vignette-strength)"))
+            #expect(scrim.contains(vignetteStop), "\(safeSide.rawValue) loses its vignette falloff")
+        } else {
+            #expect(!scrim.contains("var(--habitat-vignette-strength)"))
+        }
+    }
+}
+
+@Test
+func changingHomeContentOpacityDoesNotChangeTaskScrims() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    func compiledCSS(homeContentOpacity: Double) throws -> String {
+        let appearance = HabitatThemeAppearance(
+            category: .custom,
+            styleFamily: .cozyWorld,
+            background: "background.jpg",
+            artFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.5),
+            safeSide: .leading,
+            backgroundStrength: 0.42,
+            panelOpacity: 0.88,
+            blurRadius: 8,
+            density: .comfortable,
+            homeContentOpacity: homeContentOpacity,
+            taskContentOpacity: 0.72,
+            vignetteStrength: 0.23
+        )
+        return try ThemeCompiler.bundled().compile(
+            theme: BridgeTheme(
+                tokens: .workbench,
+                appearance: BridgeThemeAppearance(appearance),
+                artBlobURL: nil
+            ),
+            profile: profile
+        )
+    }
+
+    let lowRoot = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"]",
+        in: compiledCSS(homeContentOpacity: 0.40)
+    )
+    let highRoot = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"]",
+        in: compiledCSS(homeContentOpacity: 0.78)
+    )
+    let lowHomeOpacity = try cssDeclarationValue("--habitat-home-content-opacity", in: lowRoot)
+    let highHomeOpacity = try cssDeclarationValue("--habitat-home-content-opacity", in: highRoot)
+    let lowHomeScrim = try cssDeclarationValue("--habitat-safe-scrim", in: lowRoot)
+    let highHomeScrim = try cssDeclarationValue("--habitat-safe-scrim", in: highRoot)
+    let lowTaskSafeScrim = try cssDeclarationValue("--habitat-task-safe-scrim", in: lowRoot)
+    let highTaskSafeScrim = try cssDeclarationValue("--habitat-task-safe-scrim", in: highRoot)
+    let lowTaskReadingScrim = try cssDeclarationValue("--habitat-task-reading-scrim", in: lowRoot)
+    let highTaskReadingScrim = try cssDeclarationValue("--habitat-task-reading-scrim", in: highRoot)
+
+    #expect(lowHomeOpacity != highHomeOpacity)
+    #expect(lowHomeScrim == highHomeScrim)
+    #expect(lowHomeScrim.contains("var(--habitat-home-content-opacity)"))
+    #expect(lowTaskSafeScrim == highTaskSafeScrim)
+    #expect(lowTaskReadingScrim == highTaskReadingScrim)
+    #expect(!lowTaskSafeScrim.contains("var(--habitat-home-content-opacity)"))
+    #expect(!lowTaskReadingScrim.contains("var(--habitat-home-content-opacity)"))
+}
+
+@Test
+func taskModesUseTaskOnlyScrimsOnTheirOverlayAndTranscript() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
+    let shell = try #require(profile.selectors.appShell)
+    let transcript = try #require(profile.selectors.taskTranscript)
+
+    for mode in [HabitatThemeTaskMode.ambient, .banner, .off] {
+        let appearance = HabitatThemeAppearance(
+            category: .custom,
+            styleFamily: .cozyWorld,
+            background: "background.jpg",
+            artFocus: HabitatThemeFocalPoint(x: 0.5, y: 0.5),
+            safeSide: .leading,
+            backgroundStrength: 0.42,
+            panelOpacity: 0.88,
+            blurRadius: 8,
+            density: .comfortable,
+            taskMode: mode
+        )
+        let css = try ThemeCompiler.bundled().compile(
+            theme: BridgeTheme(
+                tokens: .workbench,
+                appearance: BridgeThemeAppearance(appearance),
+                artBlobURL: nil
+            ),
+            profile: profile
+        )
+        let overlay = try cssRuleBody(selector: "\(root) \(shell)::after", in: css)
+
+        #expect(overlay.contains("background-image: var(--habitat-task-safe-scrim)"))
+        #expect(!overlay.contains("background-image: var(--habitat-safe-scrim)"))
+        if mode != .off {
+            let transcriptRules = try cssRuleBodies(selector: "\(root) \(transcript)", in: css)
+            let expectedScrim = mode == .ambient
+                ? "var(--habitat-task-reading-scrim)"
+                : "var(--habitat-task-safe-scrim)"
+            #expect(transcriptRules.contains { $0.contains(expectedScrim) })
+        }
+    }
+}
+
+@Test
 func routeArtworkScaleUsesTheRouteFocusAsItsTransformOrigin() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "night-shift"))
@@ -780,6 +929,16 @@ private func currentCompleteSurfaceProfile() throws -> CompatibilityProfile {
     try #require(
         try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
     )
+}
+
+private func cssDeclarationValue(_ property: String, in body: String) throws -> String {
+    let expression = try NSRegularExpression(
+        pattern: NSRegularExpression.escapedPattern(for: property) + #"\s*:\s*([^;]+)"#
+    )
+    let range = NSRange(body.startIndex..<body.endIndex, in: body)
+    let match = try #require(expression.firstMatch(in: body, range: range))
+    let valueRange = try #require(Range(match.range(at: 1), in: body))
+    return String(body[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 private func normalizedStyleRecipe(_ recipe: String) -> String {

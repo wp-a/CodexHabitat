@@ -209,6 +209,7 @@ export function enumerateFixtureScenarios(payload, themeTemplateSource) {
 
 export function assertSceneDifferences(sceneMetrics) {
   requireMetrics(Array.isArray(sceneMetrics) && sceneMetrics.length > 0, "metrics are missing");
+  assertSceneMaterialHierarchy(sceneMetrics);
   for (const metric of sceneMetrics) {
     requireMetrics(
       Number.isFinite(metric.nonblankRatio) && metric.nonblankRatio >= MINIMUM_NONBLANK_RATIO,
@@ -248,6 +249,58 @@ export function assertSceneDifferences(sceneMetrics) {
             + MINIMUM_CROSS_THEME_PHASH_DISTANCE,
         );
       }
+    }
+  }
+}
+
+export function assertSceneMaterialHierarchy(sceneMetrics) {
+  requireMetrics(Array.isArray(sceneMetrics) && sceneMetrics.length > 0, "metrics are missing");
+  for (const metric of sceneMetrics) {
+    const context = `${metric.themeID}/${metric.route}/${metric.viewport}`;
+    requireApproximateAlpha(
+      metric.composerContextBackgroundAlpha,
+      0,
+      `${context} composer context background alpha`,
+    );
+    requireMetrics(
+      Number.isFinite(metric.composerBackgroundAlpha)
+        && metric.composerBackgroundAlpha >= 0.84 - 1 / 255
+        && metric.composerBackgroundAlpha <= 0.90 + 1 / 255,
+      `${context} composer background alpha is ${metric.composerBackgroundAlpha}`,
+    );
+    requireMaterialChain(
+      metric.composerMaterialChain,
+      ["composer", "composer-context", "main-surface", "app-shell"],
+      [metric.composerBackgroundAlpha, metric.composerContextBackgroundAlpha],
+      `${context} composer material chain`,
+    );
+
+    if (metric.route === "home") {
+      requireApproximateAlpha(
+        metric.homeContentBackgroundAlpha,
+        0,
+        `${context} home content background alpha`,
+      );
+      requireApproximateAlpha(
+        metric.homeSuggestionsBackgroundAlpha,
+        0,
+        `${context} home suggestions background alpha`,
+      );
+      requireApproximateAlpha(
+        metric.homeActionBackgroundAlpha,
+        0.68,
+        `${context} home action background alpha`,
+      );
+      requireMaterialChain(
+        metric.homeMaterialChain,
+        ["home-action", "home-suggestions", "home-content", "main-surface", "app-shell"],
+        [
+          metric.homeActionBackgroundAlpha,
+          metric.homeSuggestionsBackgroundAlpha,
+          metric.homeContentBackgroundAlpha,
+        ],
+        `${context} home material chain`,
+      );
     }
   }
 }
@@ -350,6 +403,29 @@ function requireSha256(value) {
 
 function requireMetrics(value, message) {
   if (!value) throw new Error(message);
+}
+
+function requireApproximateAlpha(actual, expected, message) {
+  requireMetrics(
+    Number.isFinite(actual) && Math.abs(actual - expected) <= 1 / 255,
+    `${message} is ${actual}`,
+  );
+}
+
+function requireMaterialChain(chain, expectedSurfaces, expectedAlphas, message) {
+  requireMetrics(Array.isArray(chain), `${message} is missing`);
+  requireMetrics(
+    chain.length === expectedSurfaces.length
+      && expectedSurfaces.every((surface, index) => chain[index]?.surface === surface),
+    `${message} is ${JSON.stringify(chain)}`,
+  );
+  for (let index = 0; index < expectedAlphas.length; index += 1) {
+    requireApproximateAlpha(
+      chain[index].backgroundAlpha,
+      expectedAlphas[index],
+      `${message} ${chain[index].surface} alpha`,
+    );
+  }
 }
 
 function groupBy(values, keyForValue) {

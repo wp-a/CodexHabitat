@@ -582,6 +582,116 @@ async function inspectFixturePage(
       `task message card opacity is ${messageCardOpacity}`,
     );
   }
+  const materialHierarchy = await page.evaluate(({ profileSelectors, activeRoute }) => {
+    const appShell = document.querySelector(profileSelectors.appShell);
+    const mainSurface = document.querySelector(profileSelectors.mainSurface);
+    const composer = document.querySelector(profileSelectors.composer);
+    const composerContext = document.querySelector(profileSelectors.composerContext);
+    if (
+      !(appShell instanceof HTMLElement)
+      || !(mainSurface instanceof HTMLElement)
+      || !(composer instanceof HTMLElement)
+      || !(composerContext instanceof HTMLElement)
+    ) {
+      throw new Error("composer material path is missing");
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("unable to inspect computed background alpha");
+    const computedBackground = (node) => {
+      const color = getComputedStyle(node).backgroundColor;
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = "#ff00ff";
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return {
+        computedBackgroundColor: color,
+        backgroundAlpha: context.getImageData(0, 0, 1, 1).data[3] / 255,
+      };
+    };
+    const ancestorChain = (node, surfaceForNode) => {
+      const chain = [];
+      for (let current = node; current instanceof HTMLElement; current = current.parentElement) {
+        const surface = surfaceForNode(current) ?? `dom:${current.tagName.toLowerCase()}`;
+        chain.push({ surface, ...computedBackground(current) });
+        if (current === appShell) break;
+      }
+      return chain;
+    };
+    const composerMaterialChain = ancestorChain(composer, (node) => {
+      if (node === composer) return "composer";
+      if (node === composerContext) return "composer-context";
+      if (node === mainSurface) return "main-surface";
+      if (node === appShell) return "app-shell";
+      return null;
+    });
+
+    let homeMaterialChain = null;
+    if (activeRoute === "home") {
+      const homeContent = document.querySelector(profileSelectors.homeContent);
+      const homeSuggestions = document.querySelector(profileSelectors.homeSuggestions);
+      const homeAction = homeSuggestions?.querySelector(":scope > :where(button, [role=button])");
+      if (
+        !(homeContent instanceof HTMLElement)
+        || !(homeSuggestions instanceof HTMLElement)
+        || !(homeAction instanceof HTMLElement)
+      ) {
+        throw new Error("home material path is missing");
+      }
+      homeMaterialChain = ancestorChain(homeAction, (node) => {
+        if (node === homeAction) return "home-action";
+        if (node === homeSuggestions) return "home-suggestions";
+        if (node === homeContent) return "home-content";
+        if (node === mainSurface) return "main-surface";
+        if (node === appShell) return "app-shell";
+        return null;
+      });
+    }
+
+    const alphaFor = (chain, surface) =>
+      chain?.find((entry) => entry.surface === surface)?.backgroundAlpha ?? null;
+    return {
+      homeContentBackgroundAlpha: alphaFor(homeMaterialChain, "home-content"),
+      homeSuggestionsBackgroundAlpha: alphaFor(homeMaterialChain, "home-suggestions"),
+      homeActionBackgroundAlpha: alphaFor(homeMaterialChain, "home-action"),
+      composerContextBackgroundAlpha: alphaFor(composerMaterialChain, "composer-context"),
+      composerBackgroundAlpha: alphaFor(composerMaterialChain, "composer"),
+      homeMaterialChain,
+      composerMaterialChain,
+    };
+  }, { profileSelectors: selectors, activeRoute: routeName });
+  const alphaTolerance = 1 / 255;
+  assert(
+    Number.isFinite(materialHierarchy.composerContextBackgroundAlpha)
+      && materialHierarchy.composerContextBackgroundAlpha <= alphaTolerance,
+    `composer context background alpha is ${materialHierarchy.composerContextBackgroundAlpha}`,
+  );
+  assert(
+    Number.isFinite(materialHierarchy.composerBackgroundAlpha)
+      && materialHierarchy.composerBackgroundAlpha >= 0.84 - alphaTolerance
+      && materialHierarchy.composerBackgroundAlpha <= 0.90 + alphaTolerance,
+    `composer background alpha is ${materialHierarchy.composerBackgroundAlpha}`,
+  );
+  if (routeName === "home") {
+    assert(
+      Number.isFinite(materialHierarchy.homeContentBackgroundAlpha)
+        && materialHierarchy.homeContentBackgroundAlpha <= alphaTolerance,
+      `home content background alpha is ${materialHierarchy.homeContentBackgroundAlpha}`,
+    );
+    assert(
+      Number.isFinite(materialHierarchy.homeSuggestionsBackgroundAlpha)
+        && materialHierarchy.homeSuggestionsBackgroundAlpha <= alphaTolerance,
+      `home suggestions background alpha is ${materialHierarchy.homeSuggestionsBackgroundAlpha}`,
+    );
+    assert(
+      Number.isFinite(materialHierarchy.homeActionBackgroundAlpha)
+        && Math.abs(materialHierarchy.homeActionBackgroundAlpha - 0.68) <= alphaTolerance,
+      `home action background alpha is ${materialHierarchy.homeActionBackgroundAlpha}`,
+    );
+  }
 
   return {
     styleCount,
@@ -602,6 +712,7 @@ async function inspectFixturePage(
     finalScrollTop,
     artworkOpacity: scene.artworkOpacity,
     taskModeOff,
+    ...materialHierarchy,
   };
 }
 

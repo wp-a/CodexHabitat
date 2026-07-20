@@ -13,6 +13,7 @@ import {
   MINIMUM_CROSS_THEME_PHASH_DISTANCE,
   MINIMUM_ROUTE_PHASH_DISTANCE,
   REQUIRED_SURFACE_SELECTORS,
+  assertSceneMaterialHierarchy,
   assertSceneDifferences,
   classifyFixtureRequest,
   enumerateFixtureScenarios,
@@ -171,6 +172,29 @@ test("scene difference checks reject blank or visually identical captures", () =
   assert.throws(() => assertSceneDifferences(identicalTheme), /cross-theme pHash distance/);
 });
 
+test("scene material checks enforce one computed background layer on real DOM paths", () => {
+  const healthy = representativeMetrics();
+  assert.doesNotThrow(() => assertSceneMaterialHierarchy(healthy));
+
+  for (const [field, value, expected] of [
+    ["homeContentBackgroundAlpha", 0.2, /home content background alpha/],
+    ["homeSuggestionsBackgroundAlpha", 0.2, /home suggestions background alpha/],
+    ["homeActionBackgroundAlpha", 0.8, /home action background alpha/],
+    ["composerContextBackgroundAlpha", 0.2, /composer context background alpha/],
+    ["composerBackgroundAlpha", 0.5, /composer background alpha/],
+  ]) {
+    const invalid = structuredClone(healthy);
+    invalid.find(({ route }) => route === "home")[field] = value;
+    assert.throws(() => assertSceneMaterialHierarchy(invalid), expected);
+  }
+
+  const missingAncestor = structuredClone(healthy);
+  missingAncestor[0].homeMaterialChain = missingAncestor[0].homeMaterialChain.filter(
+    ({ surface }) => surface !== "home-suggestions",
+  );
+  assert.throws(() => assertSceneMaterialHierarchy(missingAncestor), /home material chain/);
+});
+
 function representativePayload() {
   const themes = Array.from({ length: 24 }, (_, index) => ({
     id: `fixture-theme-${String(index + 1).padStart(2, "0")}`,
@@ -242,6 +266,24 @@ function representativeMetrics() {
     viewport: "wide",
     perceptualHash,
     nonblankRatio: 0.8,
+    homeContentBackgroundAlpha: index % 2 === 0 ? 0 : null,
+    homeSuggestionsBackgroundAlpha: index % 2 === 0 ? 0 : null,
+    homeActionBackgroundAlpha: index % 2 === 0 ? 0.68 : null,
+    composerContextBackgroundAlpha: 0,
+    composerBackgroundAlpha: 0.86,
+    homeMaterialChain: index % 2 === 0 ? [
+      { surface: "home-action", backgroundAlpha: 0.68 },
+      { surface: "home-suggestions", backgroundAlpha: 0 },
+      { surface: "home-content", backgroundAlpha: 0 },
+      { surface: "main-surface", backgroundAlpha: 0 },
+      { surface: "app-shell", backgroundAlpha: 0 },
+    ] : null,
+    composerMaterialChain: [
+      { surface: "composer", backgroundAlpha: 0.86 },
+      { surface: "composer-context", backgroundAlpha: 0 },
+      { surface: "main-surface", backgroundAlpha: 0 },
+      { surface: "app-shell", backgroundAlpha: 0 },
+    ],
   }));
 }
 
