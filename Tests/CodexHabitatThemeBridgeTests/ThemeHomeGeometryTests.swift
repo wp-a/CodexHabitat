@@ -9,21 +9,22 @@ func everyBundledThemePreservesCodexHomeGeometry() throws {
         try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
     )
     let homeContent = try #require(profile.selectors.homeContent)
-    let selector = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"] \(homeContent)"
+    let selectors = auditedHomeContentSelectors(homeContent)
 
     #expect(BuiltInThemeCatalog.all.count == 24)
     for definition in BuiltInThemeCatalog.all {
         let theme = try #require(BridgeTheme.builtIn(id: definition.id))
         let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
-        let ruleDeclarations = try homeRuleDeclarations(selector: selector, in: css)
-
-        #expect(!ruleDeclarations.isEmpty, "\(definition.id) omits the home content treatment")
-        for declarations in ruleDeclarations {
-            let geometry = declarations.filter(isHomeGeometryProperty).sorted()
-            #expect(
-                geometry.isEmpty,
-                "\(definition.id) overrides Codex home geometry with \(geometry.joined(separator: ", "))"
-            )
+        for selector in selectors {
+            let ruleDeclarations = try homeRuleDeclarations(selector: selector, in: css)
+            #expect(!ruleDeclarations.isEmpty, "\(definition.id) omits \(selector)")
+            for declarations in ruleDeclarations {
+                let geometry = declarations.filter(isHomeGeometryProperty).sorted()
+                #expect(
+                    geometry.isEmpty,
+                    "\(definition.id) overrides \(selector) with \(geometry.joined(separator: ", "))"
+                )
+            }
         }
     }
 }
@@ -85,6 +86,26 @@ func homeGeometryAuditAllowsNonLayoutDeclarationsInsideMediaRules() throws {
     #expect(declarations.filter(isHomeGeometryProperty).isEmpty)
 }
 
+@Test
+func homeGeometryAuditIncludesRouteNeutralGroupedRules() throws {
+    let homeContent = "main [role=\"main\"]"
+    let routeNeutral = "html[data-codex-habitat-theme=\"1\"] \(homeContent)"
+    let css = """
+    .unrelated-selector,
+    \(routeNeutral) {
+      max-inline-size: 44rem;
+      color: red;
+    }
+    """
+
+    let geometry = try auditedHomeContentSelectors(homeContent).flatMap { selector in
+        try homeRuleDeclarations(selector: selector, in: css)
+            .flatMap { $0.filter(isHomeGeometryProperty) }
+    }
+
+    #expect(geometry == ["max-inline-size"])
+}
+
 private func homeWidthTheme(_ width: Double) -> BridgeTheme {
     let appearance = HabitatThemeAppearance(
         category: .custom,
@@ -103,6 +124,13 @@ private func homeWidthTheme(_ width: Double) -> BridgeTheme {
         appearance: BridgeThemeAppearance(appearance),
         artBlobURL: nil
     )
+}
+
+private func auditedHomeContentSelectors(_ homeContent: String) -> [String] {
+    [
+        "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"] \(homeContent)",
+        "html[data-codex-habitat-theme=\"1\"] \(homeContent)",
+    ]
 }
 
 private func homeRuleDeclarations(selector: String, in css: String) throws -> [[String]] {
