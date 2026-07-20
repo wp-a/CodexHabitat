@@ -64,7 +64,15 @@ struct IntegrationsSettingsView: View {
                     .foregroundStyle(bridge.state == .active ? .green : .secondary)
                 }
 
-                if bridge.state == .active {
+                Button {
+                    confirmsRestart = true
+                } label: {
+                    Label("Apply Selected Theme to Codex", systemImage: "paintbrush")
+                }
+                .disabled(!bridge.canApply || !model.selectedThemeSupportsCodexBridge)
+                .accessibilityIdentifier("integrations.theme-bridge.apply")
+
+                if bridge.canRestore {
                     Button {
                         Task {
                             await bridge.restore()
@@ -75,14 +83,6 @@ struct IntegrationsSettingsView: View {
                     }
                     .disabled(bridge.isBusy)
                     .accessibilityIdentifier("integrations.theme-bridge.restore")
-                } else {
-                    Button {
-                        confirmsRestart = true
-                    } label: {
-                        Label("Apply Selected Theme to Codex", systemImage: "paintbrush")
-                    }
-                    .disabled(bridge.state != .ready || !model.selectedThemeSupportsCodexBridge)
-                    .accessibilityIdentifier("integrations.theme-bridge.apply")
                 }
 
                 if !model.selectedThemeSupportsCodexBridge {
@@ -105,11 +105,13 @@ struct IntegrationsSettingsView: View {
             nativeThemeCopyStatus = nil
         }
         .alert(
-            "Restart Codex with the selected theme?",
+            bridge.state == .active
+                ? "Switch Codex to the selected theme?"
+                : "Restart Codex with the selected theme?",
             isPresented: $confirmsRestart
         ) {
             Button("Cancel", role: .cancel) {}
-            Button("Restart and Apply") {
+            Button(bridge.state == .active ? "Switch Theme" : "Restart and Apply") {
                 Task {
                     await bridge.enable(
                         themeID: model.settings.selectedThemeID,
@@ -119,7 +121,9 @@ struct IntegrationsSettingsView: View {
                 }
             }
         } message: {
-            Text("Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance.")
+            Text(bridge.state == .active
+                ? "The current bridge theme will be replaced without restarting Codex."
+                : "Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance.")
         }
     }
 

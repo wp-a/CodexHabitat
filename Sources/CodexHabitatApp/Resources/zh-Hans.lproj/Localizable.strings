@@ -2,6 +2,7 @@
 "Account quota" = "账户配额";
 "Appearance" = "外观";
 "Apply Selected Theme to Codex" = "将所选主题应用到 Codex";
+"Applying and checking layout" = "正在应用并检查布局";
 "Approval required in Login Items" = "需要在登录项中批准";
 "Auto-detect" = "自动检测";
 "Available" = "可用";
@@ -131,7 +132,9 @@
 "Working" = "工作中";
 "Quit Codex Habitat" = "退出 Codex Habitat";
 "Restart and Apply" = "重启并应用";
-"Restarting and checking layout" = "正在重启并检查布局";
+"Switch Codex to the selected theme?" = "将 Codex 切换为所选主题？";
+"Switch Theme" = "切换主题";
+"The current bridge theme will be replaced without restarting Codex." = "将直接替换当前桥接主题，不会重启 Codex。";
 "Settings could not be loaded. Defaults are active." = "无法加载设置，已使用默认值。";
 "Settings could not be saved." = "无法保存设置。";
 "The repaired settings could not be saved." = "无法保存修复后的设置。";

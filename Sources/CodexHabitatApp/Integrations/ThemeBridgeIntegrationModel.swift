@@ -39,7 +39,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         case .unavailable: "Helper unavailable"
         case .checking: "Checking official Codex"
         case .ready: "Ready"
-        case .applying: "Restarting and checking layout"
+        case .applying: "Applying and checking layout"
         case .active: "Theme session active"
         case .restoring: "Restoring official appearance"
         case .failed: "Theme bridge action failed"
@@ -48,6 +48,10 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
 
     var isBusy: Bool {
         [.checking, .applying, .restoring].contains(state)
+    }
+
+    var canApply: Bool {
+        runner != nil && [.ready, .active, .failed].contains(state)
     }
 
     var canRestore: Bool {

@@ -14,6 +14,7 @@ struct ThemeBridgeIntegrationModelTests {
         let inactive = ThemeBridgeIntegrationModel(runner: inactiveRunner)
         await inactive.refresh()
         #expect(inactive.state == .ready)
+        #expect(inactive.canApply)
         #expect(!inactive.canRestore)
         #expect(inactiveRunner.invocations == [["verify"], ["status"]])
 
@@ -24,7 +25,28 @@ struct ThemeBridgeIntegrationModelTests {
         let active = ThemeBridgeIntegrationModel(runner: activeRunner)
         await active.refresh()
         #expect(active.state == .active)
+        #expect(active.canApply)
         #expect(active.canRestore)
+    }
+
+    @Test
+    func activeSessionCanApplyAnotherThemeAndMoveTheWatcher() async {
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
+        ])
+        let model = ThemeBridgeIntegrationModel(runner: runner)
+
+        await model.enable(themeID: "workbench")
+        await model.enable(themeID: "night-shift")
+
+        #expect(model.state == .active)
+        #expect(model.canApply)
+        #expect(runner.invocations == [
+            ["apply", "--authorized", "--theme", "workbench"],
+            ["apply", "--authorized", "--theme", "night-shift"],
+        ])
+        #expect(runner.watchedThemes == ["workbench", "night-shift"])
     }
 
     @Test
@@ -84,6 +106,7 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(model.state == .ready)
         await model.enable(themeID: "workbench")
         #expect(model.state == .failed)
+        #expect(model.canApply)
         #expect(model.canRestore)
         #expect(model.statusText == "Theme bridge action failed")
         #expect(!model.statusText.contains("sensitive"))

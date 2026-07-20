@@ -143,6 +143,27 @@ func themeGalleryDoesNotRefreshTheEntireResourceLibraryOnAppearance() throws {
     #expect(!source.contains(".onAppear(perform: model.refreshResources)"))
 }
 
+@Test
+func themeGalleryCanSafelySubmitTheSelectedThemeToCodex() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemesSettingsView.swift"
+        ),
+        encoding: .utf8
+    )
+
+    #expect(source.contains("confirmsCodexApply = true"))
+    #expect(source.contains("await bridge.enable("))
+    #expect(source.contains("model.setThemeBridgeEnabled(bridge.state == .active)"))
+    let selectionStart = try #require(source.range(of: "private func selectTheme("))
+    let selectionImplementation = source[selectionStart.lowerBound...]
+    #expect(selectionImplementation.contains("bridge.canApply"))
+}
+
 @Test @MainActor
 func settingsWindowOpensAtAStableMinimumSizeAndIsReused() {
     let root = FileManager.default.temporaryDirectory

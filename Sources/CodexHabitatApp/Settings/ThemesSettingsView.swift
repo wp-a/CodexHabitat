@@ -70,10 +70,12 @@ actor ThemePreviewStore {
 
 struct ThemesSettingsView: View {
     @ObservedObject var model: HabitatAppModel
+    @ObservedObject private var bridge = ThemeBridgeIntegrationModel.shared
     @State private var packageIDToRemove: String?
     @State private var themeStudioModel: ThemeStudioModel?
     @State private var selectedFilter: ThemeGalleryFilter
     @State private var searchText = ""
+    @State private var confirmsCodexApply = false
     private let opensThemeStudioForVisualQA: Bool
     private let columns = [GridItem(.adaptive(minimum: 190, maximum: 240), spacing: 12)]
 
@@ -95,6 +97,13 @@ struct ThemesSettingsView: View {
                 Text(L10n.format("%d available", model.availableThemes.count))
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button {
+                    confirmsCodexApply = true
+                } label: {
+                    Label("Apply Selected Theme to Codex", systemImage: "paintbrush")
+                }
+                .disabled(!bridge.canApply || !model.selectedThemeSupportsCodexBridge)
+                .accessibilityIdentifier("themes.apply-to-codex")
                 Button(action: openThemeStudio) {
                     Label("Create Theme", systemImage: "plus")
                 }
@@ -157,7 +166,7 @@ struct ThemesSettingsView: View {
                         ThemeChoiceCard(
                             theme: theme,
                             isSelected: model.settings.selectedThemeID == theme.id,
-                            action: { model.selectTheme(theme.id) },
+                            action: { selectTheme(theme.id) },
                             editAction: model.isThemeStudioEditableTheme(theme.id)
                                 ? { openThemeStudio(editingThemeID: theme.id) }
                                 : nil
@@ -181,6 +190,10 @@ struct ThemesSettingsView: View {
             }
         }
         .task {
+            await bridge.refresh()
+            model.setThemeBridgeEnabled(bridge.state == .active)
+        }
+        .task {
             guard opensThemeStudioForVisualQA, themeStudioModel == nil else { return }
             await Task.yield()
             openThemeStudio()
@@ -188,6 +201,27 @@ struct ThemesSettingsView: View {
         .resourceReplacementConfirmation(model: model)
         .sheet(item: $themeStudioModel) { studio in
             ThemeStudioView(model: studio, onSaved: themeSaved)
+        }
+        .alert(
+            bridge.state == .active
+                ? "Switch Codex to the selected theme?"
+                : "Restart Codex with the selected theme?",
+            isPresented: $confirmsCodexApply
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button(bridge.state == .active ? "Switch Theme" : "Restart and Apply") {
+                Task {
+                    await bridge.enable(
+                        themeID: model.settings.selectedThemeID,
+                        approvedThemeIDs: model.codexBridgeThemeIDs
+                    )
+                    model.setThemeBridgeEnabled(bridge.state == .active)
+                }
+            }
+        } message: {
+            Text(bridge.state == .active
+                ? "The current bridge theme will be replaced without restarting Codex."
+                : "Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance.")
         }
         .confirmationDialog(
             "Remove this Habitat pack?",
@@ -214,6 +248,18 @@ struct ThemesSettingsView: View {
             by: selectedFilter,
             search: searchText
         )
+    }
+
+    private func selectTheme(_ themeID: String) {
+        let changesSelection = model.settings.selectedThemeID != themeID
+        model.selectTheme(themeID)
+        guard changesSelection,
+              bridge.canApply,
+              model.codexBridgeThemeIDs.contains(themeID)
+        else {
+            return
+        }
+        confirmsCodexApply = true
     }
 
     private var emptyGallery: some View {

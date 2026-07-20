@@ -2,6 +2,7 @@
 "Account quota" = "Account quota";
 "Appearance" = "Appearance";
 "Apply Selected Theme to Codex" = "Apply Selected Theme to Codex";
+"Applying and checking layout" = "Applying and checking layout";
 "Approval required in Login Items" = "Approval required in Login Items";
 "Auto-detect" = "Auto-detect";
 "Available" = "Available";
@@ -131,7 +132,9 @@
 "Working" = "Working";
 "Quit Codex Habitat" = "Quit Codex Habitat";
 "Restart and Apply" = "Restart and Apply";
-"Restarting and checking layout" = "Restarting and checking layout";
+"Switch Codex to the selected theme?" = "Switch Codex to the selected theme?";
+"Switch Theme" = "Switch Theme";
+"The current bridge theme will be replaced without restarting Codex." = "The current bridge theme will be replaced without restarting Codex.";
 "Settings could not be loaded. Defaults are active." = "Settings could not be loaded. Defaults are active.";
 "Settings could not be saved." = "Settings could not be saved.";
 "The repaired settings could not be saved." = "The repaired settings could not be saved.";
