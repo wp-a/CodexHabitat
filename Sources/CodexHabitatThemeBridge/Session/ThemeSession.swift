@@ -86,6 +86,7 @@ final class ThemeSession: ThemeSessionManaging, @unchecked Sendable {
             arguments: [
                 "--remote-debugging-address=127.0.0.1",
                 "--remote-debugging-port=\(port)",
+                "--remote-allow-origins=http://127.0.0.1:\(port)",
             ]
         )
         defer { launcher.releaseLaunchedProcess(pid: pid) }

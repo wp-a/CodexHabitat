@@ -3,7 +3,7 @@ import Testing
 @testable import CodexHabitatThemeBridge
 
 @Test
-func startRequiresAuthorizationUsesLoopbackFlagsAndPersistsPrivateIdentity() throws {
+func startRequiresAuthorizationUsesExactLoopbackOriginAndPersistsPrivateIdentity() throws {
     let fixture = ThemeSessionFixture()
     defer { fixture.cleanup() }
 
@@ -23,7 +23,9 @@ func startRequiresAuthorizationUsesLoopbackFlagsAndPersistsPrivateIdentity() thr
     #expect(fixture.launcher.invocations[0].arguments == [
         "--remote-debugging-address=127.0.0.1",
         "--remote-debugging-port=55000",
+        "--remote-allow-origins=http://127.0.0.1:55000",
     ])
+    #expect(!fixture.launcher.invocations[0].arguments.contains { $0.contains("*") })
     let attributes = try FileManager.default.attributesOfItem(
         atPath: fixture.store.recordURL.path
     )
