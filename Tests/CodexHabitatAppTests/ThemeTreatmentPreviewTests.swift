@@ -31,7 +31,6 @@ func fourPrototypeThemesResolveDistinctCompletePreviewTreatments() throws {
     #expect(workbench.taskHeaderOpacity == 0.64)
     #expect(workbench.homeContentOpacity == 0.54)
     #expect(workbench.taskContentOpacity == 0.68)
-    #expect(workbench.homeContentWidth == 0.52)
     #expect(workbench.vignetteStrength == 0.46)
     #expect(workbench.density == .comfortable)
 
@@ -84,7 +83,6 @@ func previewModelUsesResolvedCompatibilityDefaults() {
     #expect(model.taskHeaderOpacity == appearance.resolvedTaskHeaderOpacity)
     #expect(model.homeContentOpacity == appearance.resolvedHomeContentOpacity)
     #expect(model.taskContentOpacity == appearance.resolvedTaskContentOpacity)
-    #expect(model.homeContentWidth == appearance.resolvedHomeContentWidth)
     #expect(model.vignetteStrength == appearance.resolvedVignetteStrength)
 }
 
@@ -101,7 +99,6 @@ func previewSignatureChangesForEveryRouteCompositionField() {
         previewSceneAppearance(taskHeaderOpacity: 0.73),
         previewSceneAppearance(homeContentOpacity: 0.61),
         previewSceneAppearance(taskContentOpacity: 0.77),
-        previewSceneAppearance(homeContentWidth: 0.63),
         previewSceneAppearance(vignetteStrength: 0.51),
     ]
     let signatures = appearances.map {
@@ -116,6 +113,28 @@ func previewSignatureChangesForEveryRouteCompositionField() {
     }
 
     #expect(Set(signatures).count == appearances.count)
+}
+
+@Test
+func previewIgnoresLegacyHomeContentWidth() {
+    let narrow = ThemeTreatmentPreviewModel(
+        appearance: previewSceneAppearance(homeContentWidth: 0.46),
+        surfaceHex: "#101820",
+        panelHex: "#182633",
+        panelAltHex: "#24384A",
+        textHex: "#F4FAFF",
+        accentHex: "#16C6D9"
+    )
+    let wide = ThemeTreatmentPreviewModel(
+        appearance: previewSceneAppearance(homeContentWidth: 0.68),
+        surfaceHex: "#101820",
+        panelHex: "#182633",
+        panelAltHex: "#24384A",
+        textHex: "#F4FAFF",
+        accentHex: "#16C6D9"
+    )
+
+    #expect(narrow.treatmentSignature == wide.treatmentSignature)
 }
 
 @Test
@@ -206,7 +225,9 @@ func previewRouteMasksAndSelectedRecipeMetricMatchTheCompilerContract() throws {
     #expect(source.contains("recipe.selectedEdgeWidth"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.bannerArtworkFraction"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.frameMatteThickness"))
+    #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.homeContentFraction"))
     #expect(source.contains("artworkCrop.drawRect"))
+    #expect(!source.contains("model.homeContentWidth"))
     #expect(!source.contains("* 0.26"))
 }
 

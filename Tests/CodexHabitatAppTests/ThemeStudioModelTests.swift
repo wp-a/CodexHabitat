@@ -19,6 +19,9 @@ func themeStudioDoesNotExposeLegacyDeadAppearanceSliders() throws {
 
     #expect(!source.contains("\"Background strength\","))
     #expect(!source.contains("\"Panel opacity\","))
+    #expect(!source.contains("\"Home content width\","))
+    #expect(!source.contains("value: model.homeContentWidth"))
+    #expect(!source.contains("setter: model.setHomeContentWidth"))
 }
 
 @Test @MainActor

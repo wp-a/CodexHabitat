@@ -10,6 +10,7 @@ enum ThemeTreatmentPreviewRoute: Equatable, Hashable, Sendable {
 enum ThemeTreatmentPreviewSceneMetrics {
     static let bannerArtworkFraction = 0.52
     static let frameMatteThickness = 6.0
+    static let homeContentFraction = 0.56
 }
 
 struct ThemeTreatmentPreviewRecipe: Equatable, Sendable {
@@ -111,7 +112,6 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
     let taskHeaderOpacity: Double
     let homeContentOpacity: Double
     let taskContentOpacity: Double
-    let homeContentWidth: Double
     let vignetteStrength: Double
     let surfaceHex: String
     let panelHex: String
@@ -163,7 +163,6 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
         taskHeaderOpacity = appearance.resolvedTaskHeaderOpacity
         homeContentOpacity = appearance.resolvedHomeContentOpacity
         taskContentOpacity = appearance.resolvedTaskContentOpacity
-        homeContentWidth = appearance.resolvedHomeContentWidth
         vignetteStrength = appearance.resolvedVignetteStrength
         self.surfaceHex = surfaceHex
         self.panelHex = panelHex
@@ -194,7 +193,6 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
             Self.number(taskHeaderOpacity),
             Self.number(homeContentOpacity),
             Self.number(taskContentOpacity),
-            Self.number(homeContentWidth),
             Self.number(vignetteStrength),
         ].joined(separator: "|")
     }
@@ -428,7 +426,7 @@ struct ThemeTreatmentPreview: View {
         if route == .home {
             chromeSurface(opacity: model.homeContentOpacity)
                 .frame(
-                    width: size.width * model.homeContentWidth,
+                    width: size.width * ThemeTreatmentPreviewSceneMetrics.homeContentFraction,
                     height: size.height * (model.homeMode == .quiet ? 0.56 : 0.46)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: innerRadius))
@@ -436,7 +434,10 @@ struct ThemeTreatmentPreview: View {
                     stageEdge
                 }
                 .overlay(alignment: .topLeading) {
-                    contentMarks(width: size.width * model.homeContentWidth)
+                    contentMarks(
+                        width: size.width
+                            * ThemeTreatmentPreviewSceneMetrics.homeContentFraction
+                    )
                 }
         } else {
             chromeSurface(opacity: model.taskContentOpacity)

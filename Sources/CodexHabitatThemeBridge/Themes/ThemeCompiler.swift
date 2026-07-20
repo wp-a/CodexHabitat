@@ -354,7 +354,6 @@ struct ThemeCompiler {
             "task-content-opacity": Self.cssPercent(
                 theme.appearance.taskContentOpacity * 100
             ),
-            "home-content-width": Self.cssPercent(theme.appearance.homeContentWidth * 100),
             "vignette-strength": Self.cssPercent(theme.appearance.vignetteStrength * 100),
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "task-reading-scrim": Self.taskReadingScrim(for: theme.appearance.safeSide),

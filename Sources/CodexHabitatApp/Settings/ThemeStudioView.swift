@@ -294,15 +294,6 @@ struct ThemeStudioView: View {
                 displayScale: 100
             )
             valueSlider(
-                "Home content width",
-                value: model.homeContentWidth,
-                range: 0.46...0.68,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setHomeContentWidth,
-                displayScale: 100
-            )
-            valueSlider(
                 "Vignette strength",
                 value: model.vignetteStrength,
                 range: 0...0.70,

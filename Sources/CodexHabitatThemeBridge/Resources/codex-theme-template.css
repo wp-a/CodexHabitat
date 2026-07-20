@@ -27,7 +27,6 @@ html[data-codex-habitat-theme="1"] {
   --habitat-task-header-opacity: {{task-header-opacity}};
   --habitat-home-content-opacity: {{home-content-opacity}};
   --habitat-task-content-opacity: {{task-content-opacity}};
-  --habitat-home-content-width: {{home-content-width}};
   --habitat-vignette-strength: {{vignette-strength}};
   --habitat-composer-opacity: {{composer-opacity}};
   --habitat-blur-radius: {{blur-radius}};
