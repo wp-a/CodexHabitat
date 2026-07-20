@@ -193,6 +193,17 @@ test("scene material checks enforce one computed background layer on real DOM pa
     ({ surface }) => surface !== "home-suggestions",
   );
   assert.throws(() => assertSceneMaterialHierarchy(missingAncestor), /home material chain/);
+
+  for (const [metricIndex, chainField, surface, expected] of [
+    [0, "homeMaterialChain", "main-surface", /home material chain main-surface alpha/],
+    [1, "composerMaterialChain", "main-surface", /composer material chain main-surface alpha/],
+  ]) {
+    const opaqueAncestor = structuredClone(healthy);
+    opaqueAncestor[metricIndex][chainField].find(
+      (entry) => entry.surface === surface,
+    ).backgroundAlpha = 0.2;
+    assert.throws(() => assertSceneMaterialHierarchy(opaqueAncestor), expected);
+  }
 });
 
 function representativePayload() {
@@ -276,13 +287,13 @@ function representativeMetrics() {
       { surface: "home-suggestions", backgroundAlpha: 0 },
       { surface: "home-content", backgroundAlpha: 0 },
       { surface: "main-surface", backgroundAlpha: 0 },
-      { surface: "app-shell", backgroundAlpha: 0 },
+      { surface: "app-shell", backgroundAlpha: 1 },
     ] : null,
     composerMaterialChain: [
       { surface: "composer", backgroundAlpha: 0.86 },
       { surface: "composer-context", backgroundAlpha: 0 },
       { surface: "main-surface", backgroundAlpha: 0 },
-      { surface: "app-shell", backgroundAlpha: 0 },
+      { surface: "app-shell", backgroundAlpha: 1 },
     ],
   }));
 }

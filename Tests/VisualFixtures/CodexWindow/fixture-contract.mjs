@@ -270,8 +270,9 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
     );
     requireMaterialChain(
       metric.composerMaterialChain,
-      ["composer", "composer-context", "main-surface", "app-shell"],
-      [metric.composerBackgroundAlpha, metric.composerContextBackgroundAlpha],
+      ["composer", "composer-context", "main-surface"],
+      [metric.composerBackgroundAlpha, metric.composerContextBackgroundAlpha, 0],
+      "app-shell",
       `${context} composer material chain`,
     );
 
@@ -293,12 +294,14 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
       );
       requireMaterialChain(
         metric.homeMaterialChain,
-        ["home-action", "home-suggestions", "home-content", "main-surface", "app-shell"],
+        ["home-action", "home-suggestions", "home-content", "main-surface"],
         [
           metric.homeActionBackgroundAlpha,
           metric.homeSuggestionsBackgroundAlpha,
           metric.homeContentBackgroundAlpha,
+          0,
         ],
+        "app-shell",
         `${context} home material chain`,
       );
     }
@@ -412,20 +415,38 @@ function requireApproximateAlpha(actual, expected, message) {
   );
 }
 
-function requireMaterialChain(chain, expectedSurfaces, expectedAlphas, message) {
+function requireMaterialChain(
+  chain,
+  expectedForegroundSurfaces,
+  expectedForegroundAlphas,
+  expectedSceneBaseSurface,
+  message,
+) {
   requireMetrics(Array.isArray(chain), `${message} is missing`);
+  const expectedSurfaces = [...expectedForegroundSurfaces, expectedSceneBaseSurface];
   requireMetrics(
     chain.length === expectedSurfaces.length
       && expectedSurfaces.every((surface, index) => chain[index]?.surface === surface),
     `${message} is ${JSON.stringify(chain)}`,
   );
-  for (let index = 0; index < expectedAlphas.length; index += 1) {
+  requireMetrics(
+    expectedForegroundAlphas.length === expectedForegroundSurfaces.length,
+    `${message} foreground alpha contract is invalid`,
+  );
+  for (let index = 0; index < expectedForegroundAlphas.length; index += 1) {
     requireApproximateAlpha(
       chain[index].backgroundAlpha,
-      expectedAlphas[index],
+      expectedForegroundAlphas[index],
       `${message} ${chain[index].surface} alpha`,
     );
   }
+  const sceneBase = chain.at(-1);
+  requireMetrics(
+    Number.isFinite(sceneBase.backgroundAlpha)
+      && sceneBase.backgroundAlpha >= 0
+      && sceneBase.backgroundAlpha <= 1,
+    `${message} sceneBase ${sceneBase.surface} alpha is ${sceneBase.backgroundAlpha}`,
+  );
 }
 
 function groupBy(values, keyForValue) {
