@@ -122,6 +122,13 @@ struct ThemesSettingsView: View {
 
             ResourceOperationStatusView(state: model.resourceOperationState)
 
+            if bridge.state == .failed {
+                Label(L10n.text(bridge.statusText), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("themes.bridge.failure")
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 ScrollView(.horizontal) {
                     Picker("Theme category", selection: $selectedFilter) {

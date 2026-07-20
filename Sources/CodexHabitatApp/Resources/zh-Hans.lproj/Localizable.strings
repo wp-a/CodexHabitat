@@ -19,8 +19,12 @@
 "Click through the overlay" = "允许点击穿透悬浮层";
 "Codex Habitat" = "Codex Habitat";
 "Codex connection" = "Codex 连接";
+"Codex did not open the local theme port" = "Codex 未能打开本地主题端口";
+"Codex layout safety check rejected the theme" = "Codex 布局安全检查拒绝了该主题";
 "Codex native theme" = "Codex 原生主题";
 "Codex resting" = "Codex 空闲中";
+"Codex theme process could not be verified" = "无法验证 Codex 主题进程";
+"Codex theme surface was not ready in time" = "Codex 主题界面未能及时就绪";
 "Codex working" = "Codex 工作中";
 "Compact, local modules shown beside the pet" = "显示在宠物旁的紧凑本地组件";
 "Complete" = "已完成";
@@ -121,10 +125,12 @@
 "System" = "跟随系统";
 "Task complete" = "任务已完成";
 "Theme bridge action failed" = "主题桥操作失败";
+"Theme monitor did not start" = "主题监视器未启动";
 "Theme session active" = "主题会话已启用";
 "Themes" = "主题";
 "Tokens" = "Token 用量";
 "Try Again" = "重试";
+"This Codex version is not supported" = "当前 Codex 版本暂不受支持";
 "Unavailable" = "不可用";
 "Use validated local companions or optionally browse Petdex" = "使用已验证的本地宠物，或选择浏览 Petdex";
 "Variant" = "外观模式";

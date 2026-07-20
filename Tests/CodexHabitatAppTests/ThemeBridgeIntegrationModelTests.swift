@@ -109,7 +109,37 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(model.canApply)
         #expect(model.canRestore)
         #expect(model.statusText == "Theme bridge action failed")
+        #expect(model.failure == .unknown)
         #expect(!model.statusText.contains("sensitive"))
+    }
+
+    @Test
+    func knownHelperFailureIsShownSafelyAndRecordedLocally() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "ThemeBridgeDiagnostics-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = DiagnosticStore(root: root)
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(
+                exitCode: 1,
+                output: "theme-bridge: targetUnavailable"
+            ),
+        ])
+        let model = ThemeBridgeIntegrationModel(
+            runner: runner,
+            diagnosticStore: store,
+            appVersion: "0.1.0"
+        )
+
+        await model.enable(themeID: "workbench")
+
+        #expect(model.state == .failed)
+        #expect(model.failure == .targetUnavailable)
+        #expect(model.statusText == "Codex theme surface was not ready in time")
+        let events = try await store.events()
+        #expect(events.map(\.code) == [.themeTargetUnavailable])
     }
 
     @Test

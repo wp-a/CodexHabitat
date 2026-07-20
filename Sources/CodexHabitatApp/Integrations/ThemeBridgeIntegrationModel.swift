@@ -24,13 +24,64 @@ enum ThemeBridgeIntegrationState: Equatable {
     case failed
 }
 
+enum ThemeBridgeFailure: Equatable {
+    case listenerUnavailable
+    case targetUnavailable
+    case layoutRejected
+    case processRejected
+    case unsupportedVersion
+    case watcherUnavailable
+    case unknown
+
+    var statusText: String {
+        switch self {
+        case .listenerUnavailable: "Codex did not open the local theme port"
+        case .targetUnavailable: "Codex theme surface was not ready in time"
+        case .layoutRejected: "Codex layout safety check rejected the theme"
+        case .processRejected: "Codex theme process could not be verified"
+        case .unsupportedVersion: "This Codex version is not supported"
+        case .watcherUnavailable: "Theme monitor did not start"
+        case .unknown: "Theme bridge action failed"
+        }
+    }
+
+    var diagnosticCode: DiagnosticCode {
+        switch self {
+        case .listenerUnavailable: .themeListenerUnavailable
+        case .targetUnavailable: .themeTargetUnavailable
+        case .layoutRejected: .themeLayoutRejected
+        case .processRejected: .themeProcessRejected
+        case .unsupportedVersion: .themeUnsupportedVersion
+        case .watcherUnavailable: .themeWatchFailed
+        case .unknown: .themeApplyFailed
+        }
+    }
+
+    static func classify(helperOutput: String) -> ThemeBridgeFailure {
+        if helperOutput.contains("listenerNotOwned") { return .listenerUnavailable }
+        if helperOutput.contains("targetUnavailable") { return .targetUnavailable }
+        if helperOutput.contains("healthCheckFailed") { return .layoutRejected }
+        if helperOutput.contains("unsupportedCodexVersion") { return .unsupportedVersion }
+        for marker in [
+            "activeSessionMismatch", "processInspectionFailed", "unexpectedExecutable",
+            "unexpectedProcessAncestry", "processIdentityChanged", "terminationFailed",
+        ] where helperOutput.contains(marker) {
+            return .processRejected
+        }
+        return .unknown
+    }
+}
+
 @MainActor
 final class ThemeBridgeIntegrationModel: ObservableObject {
     @Published private(set) var state = ThemeBridgeIntegrationState.checking
+    @Published private(set) var failure: ThemeBridgeFailure?
 
     static let shared = ThemeBridgeIntegrationModel.live()
 
     private let runner: (any ThemeBridgeCommandExecuting)?
+    private let diagnosticStore: DiagnosticStore?
+    private let appVersion: String?
     private var watchHealthTask: Task<Void, Never>?
     private static let builtInThemeIDs = Set(BuiltInThemeCatalog.all.map(\.id))
 
@@ -42,7 +93,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         case .applying: "Applying and checking layout"
         case .active: "Theme session active"
         case .restoring: "Restoring official appearance"
-        case .failed: "Theme bridge action failed"
+        case .failed: failure?.statusText ?? "Theme bridge action failed"
         }
     }
 
@@ -58,13 +109,45 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         runner != nil && [.active, .failed].contains(state)
     }
 
-    init(runner: (any ThemeBridgeCommandExecuting)?) {
+    init(
+        runner: (any ThemeBridgeCommandExecuting)?,
+        diagnosticStore: DiagnosticStore? = nil,
+        appVersion: String? = nil
+    ) {
         self.runner = runner
+        self.diagnosticStore = diagnosticStore
+        self.appVersion = appVersion
         if runner == nil { state = .unavailable }
     }
 
-    static func live() -> ThemeBridgeIntegrationModel {
-        ThemeBridgeIntegrationModel(runner: ThemeBridgeHelperRunner.locate())
+    static func live(
+        fileManager: FileManager = .default,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        bundle: Bundle = .main
+    ) -> ThemeBridgeIntegrationModel {
+        let root: URL
+        if let configured = environment["CODEX_HABITAT_HOME"]?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ), !configured.isEmpty {
+            root = URL(fileURLWithPath: configured, isDirectory: true)
+        } else {
+            let support = fileManager.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first ?? fileManager.homeDirectoryForCurrentUser.appending(
+                path: "Library/Application Support",
+                directoryHint: .isDirectory
+            )
+            root = support.appending(path: "Codex Habitat", directoryHint: .isDirectory)
+        }
+        let version = bundle.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String
+        return ThemeBridgeIntegrationModel(
+            runner: ThemeBridgeHelperRunner.locate(bundle: bundle, fileManager: fileManager),
+            diagnosticStore: DiagnosticStore(root: AppDirectories(root: root).diagnostics),
+            appVersion: version
+        )
     }
 
     func refresh() async {
@@ -73,6 +156,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             return
         }
         state = .checking
+        failure = nil
         do {
             let verification = try await runner.run(arguments: ["verify"])
             guard verification.exitCode == 0 else {
@@ -94,16 +178,17 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         guard let runner,
               Self.builtInThemeIDs.contains(themeID) || approvedThemeIDs.contains(themeID)
         else {
-            state = .failed
+            await fail(.processRejected)
             return
         }
         state = .applying
+        failure = nil
         do {
             let result = try await runner.run(arguments: [
                 "apply", "--authorized", "--theme", themeID,
             ])
             guard result.exitCode == 0 else {
-                state = .failed
+                await fail(.classify(helperOutput: result.output))
                 return
             }
             do {
@@ -111,17 +196,18 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
                 guard await runner.confirmWatching() else {
                     stopWatching()
                     _ = try? await runner.run(arguments: ["restore"])
-                    state = .failed
+                    await fail(.watcherUnavailable)
                     return
                 }
                 state = .active
+                await record(.themeApplied)
                 startWatchHealthMonitor()
             } catch {
                 _ = try? await runner.run(arguments: ["restore"])
-                state = .failed
+                await fail(.watcherUnavailable)
             }
         } catch {
-            state = .failed
+            await fail(.unknown)
         }
     }
 
@@ -134,9 +220,19 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         state = .restoring
         do {
             let result = try await runner.run(arguments: ["restore"])
-            state = result.exitCode == 0 ? .ready : .failed
+            if result.exitCode == 0 {
+                failure = nil
+                state = .ready
+                await record(.themeRestored)
+            } else {
+                failure = .unknown
+                state = .failed
+                await record(.themeRestoreFailed)
+            }
         } catch {
+            failure = .unknown
             state = .failed
+            await record(.themeRestoreFailed)
         }
     }
 
@@ -157,12 +253,12 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             try runner.startWatching(themeID: themeID)
             guard await runner.confirmWatching() else {
                 stopWatching()
-                state = .failed
+                await fail(.watcherUnavailable)
                 return
             }
             startWatchHealthMonitor()
         } catch {
-            state = .failed
+            await fail(.watcherUnavailable)
         }
     }
 
@@ -192,6 +288,21 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         watchHealthTask?.cancel()
         watchHealthTask = nil
         runner?.stopWatching()
+    }
+
+    private func fail(_ failure: ThemeBridgeFailure) async {
+        self.failure = failure
+        state = .failed
+        await record(failure.diagnosticCode)
+    }
+
+    private func record(_ code: DiagnosticCode) async {
+        guard let diagnosticStore else { return }
+        try? await diagnosticStore.record(DiagnosticEvent(
+            module: .themeBridge,
+            code: code,
+            appVersion: appVersion
+        ))
     }
 }
 
