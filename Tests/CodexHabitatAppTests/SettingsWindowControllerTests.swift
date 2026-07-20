@@ -161,7 +161,10 @@ func themeGalleryCanSafelySubmitTheSelectedThemeToCodex() throws {
     #expect(source.contains("model.setThemeBridgeEnabled(bridge.state == .active)"))
     let selectionStart = try #require(source.range(of: "private func selectTheme("))
     let selectionImplementation = source[selectionStart.lowerBound...]
-    #expect(selectionImplementation.contains("bridge.canApply"))
+    #expect(!selectionImplementation.contains("changesSelection"))
+    #expect(!selectionImplementation.contains("bridge.canApply"))
+    #expect(selectionImplementation.contains("model.codexBridgeThemeIDs.contains(themeID)"))
+    #expect(source.contains(".disabled(!bridge.canApply)"))
 }
 
 @Test @MainActor

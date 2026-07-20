@@ -225,6 +225,7 @@ struct ThemesSettingsView: View {
                     model.setThemeBridgeEnabled(bridge.state == .active)
                 }
             }
+            .disabled(!bridge.canApply)
         } message: {
             Text(bridge.state == .active
                 ? "The current bridge theme will be replaced without restarting Codex."
@@ -258,12 +259,8 @@ struct ThemesSettingsView: View {
     }
 
     private func selectTheme(_ themeID: String) {
-        let changesSelection = model.settings.selectedThemeID != themeID
         model.selectTheme(themeID)
-        guard changesSelection,
-              bridge.canApply,
-              model.codexBridgeThemeIDs.contains(themeID)
-        else {
+        guard model.codexBridgeThemeIDs.contains(themeID) else {
             return
         }
         confirmsCodexApply = true
