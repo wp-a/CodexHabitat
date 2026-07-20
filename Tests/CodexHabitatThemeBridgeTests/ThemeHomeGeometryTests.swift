@@ -47,6 +47,10 @@ func legacyHomeContentWidthDecodesWithoutChangingCompiledCSS() throws {
 
 @Test(arguments: [
     "width", "min-width", "max-width",
+    "height", "min-height", "max-height",
+    "inline-size", "min-inline-size", "max-inline-size",
+    "block-size", "min-block-size", "max-block-size",
+    "aspect-ratio", "contain-size",
     "margin", "margin-top", "margin-inline-start",
     "padding", "padding-left", "padding-block-end",
     "position", "inset", "inset-inline", "top", "right", "bottom", "left",
@@ -142,6 +146,10 @@ private func normalizedSelector(_ selector: Substring) -> String {
 private func isHomeGeometryProperty(_ property: String) -> Bool {
     let exact: Set<String> = [
         "width", "min-width", "max-width",
+        "height", "min-height", "max-height",
+        "inline-size", "min-inline-size", "max-inline-size",
+        "block-size", "min-block-size", "max-block-size",
+        "aspect-ratio", "contain-size",
         "margin", "padding",
         "position", "inset", "top", "right", "bottom", "left",
         "transform", "translate", "display", "float",
