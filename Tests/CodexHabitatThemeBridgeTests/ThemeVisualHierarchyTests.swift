@@ -127,6 +127,48 @@ struct ThemeVisualHierarchyTests {
     }
 
     @Test
+    func sharedRefinedShellUsesOneQuietIdleBoundaryPerSurface() throws {
+        let profile = try hierarchyProfile()
+        let suggestions = try #require(profile.selectors.homeSuggestions)
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let actionSelector = "\(root) \(suggestions) :where(button, [role=\"button\"])"
+        let composerSelector = "\(root) \(profile.selectors.composer)"
+        let sidebarSelector = "\(root) \(profile.selectors.sidebar)"
+        let stageSelector = "\(root) \(profile.selectors.mainSurface)"
+
+        for family in HabitatThemeStyleFamily.allCases {
+            let treatment = ThemeCompiler.styleTreatment(for: family, profile: profile)
+            let action = try hierarchyRuleBody(selector: actionSelector, in: treatment)
+            let composer = try hierarchyRuleBody(selector: composerSelector, in: treatment)
+            let sidebar = try hierarchyRuleBody(selector: sidebarSelector, in: treatment)
+            let stage = try hierarchyRuleBody(selector: stageSelector, in: treatment)
+
+            #expect(
+                action.contains(
+                    "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent)"
+                ),
+                "\(family.rawValue) does not use the shared quiet idle action boundary"
+            )
+            #expect(
+                hierarchyPropertyCount("border", in: action) == 1,
+                "\(family.rawValue) stacks multiple idle action borders"
+            )
+            #expect(!action.contains("outline:"), "\(family.rawValue) adds an idle action outline")
+            #expect(!composer.contains("0 0 0 2px"), "\(family.rawValue) adds an idle composer halo")
+            #expect(!composer.contains("border-left-width: 4px"), "\(family.rawValue) adds an idle composer rail")
+            #expect(!composer.contains("border-top-width: 3px"), "\(family.rawValue) adds an idle composer rail")
+            #expect(
+                !sidebar.contains("border-right") && !sidebar.contains("inset -"),
+                "\(family.rawValue) owns the shared sidebar edge"
+            )
+            #expect(
+                !stage.contains("border-inline-start") && !stage.contains("inset 8px 0"),
+                "\(family.rawValue) owns the shared stage edge"
+            )
+        }
+    }
+
+    @Test
     func gameCinematicCardsUseFineTintedBoundariesAndShortShadows() throws {
         let profile = try hierarchyProfile()
         let suggestions = try #require(profile.selectors.homeSuggestions)
@@ -304,6 +346,10 @@ private func hierarchyRuleBodies(containingSelector selector: String, in css: St
         guard let bodyRange = Range(match.range(at: 1), in: css) else { return nil }
         return String(css[bodyRange])
     }
+}
+
+private func hierarchyPropertyCount(_ property: String, in body: String) -> Int {
+    body.components(separatedBy: "\(property):").count - 1
 }
 
 private func hierarchyBorderRadius(in body: String) throws -> Double {

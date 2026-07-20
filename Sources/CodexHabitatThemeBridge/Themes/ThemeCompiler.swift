@@ -793,57 +793,57 @@ struct ThemeCompiler {
         let declarations: (sidebar: String, composer: String, popover: String) = switch family {
         case .arcade:
             (
-                "border-right-width: 2px; box-shadow: inset -3px 0 0 var(--habitat-secondary);",
-                "border-radius: 4px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--habitat-highlight) 34%, transparent), 0 8px 24px color-mix(in srgb, var(--habitat-accent) 22%, transparent);",
-                "border-radius: 4px; border-width: 2px;"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 4px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 18%, transparent);",
+                "border-radius: 4px; border-width: 1px;"
             )
         case .retroMessenger:
             (
-                "border-right-width: 1px; box-shadow: inset -1px 0 0 color-mix(in srgb, white 58%, transparent), inset 0 34px 0 color-mix(in srgb, var(--habitat-secondary) 30%, transparent);",
-                "border-radius: 6px; border-top-color: color-mix(in srgb, white 72%, var(--habitat-accent)); box-shadow: inset 0 1px 0 color-mix(in srgb, white 76%, transparent), 0 5px 14px color-mix(in srgb, var(--habitat-text) 14%, transparent);",
-                "border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 70%, transparent);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 26%, transparent);",
+                "border-radius: 6px; border-width: 1px;"
             )
         case .greenChat:
             (
-                "border-right-width: 4px; border-right-color: var(--habitat-secondary); box-shadow: inset -1px 0 0 color-mix(in srgb, white 45%, transparent);",
-                "border-radius: 5px; border-left-width: 4px; border-left-color: var(--habitat-accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--habitat-text) 12%, transparent);",
-                "border-radius: 5px; border-top-width: 3px; border-top-color: var(--habitat-secondary);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 5px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 18%, transparent);",
+                "border-radius: 5px; border-width: 1px;"
             )
         case .classicDesktop:
             (
-                "border-right: 2px outset var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white, inset -1px -1px 0 color-mix(in srgb, black 55%, transparent);",
-                "border-radius: 0; border: 2px inset var(--habitat-panel-alt); box-shadow: none;",
-                "border-radius: 0; border: 2px outset var(--habitat-panel-alt); box-shadow: 2px 2px 0 color-mix(in srgb, black 55%, transparent);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-panel-alt) 30%, transparent);",
+                "border-radius: 0; border-width: 1px;"
             )
         case .gameCinematic:
             (
-                "border-right-width: 2px; border-right-color: color-mix(in srgb, var(--habitat-attention) 62%, transparent); box-shadow: inset -8px 0 18px color-mix(in srgb, var(--habitat-text) 10%, transparent);",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 54%, var(--habitat-highlight)); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 24%, transparent), 0 8px 18px color-mix(in srgb, black 22%, transparent);",
-                "border-radius: 3px; border-block-start-width: 2px; border-block-start-color: var(--habitat-highlight);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 20%, transparent);",
+                "border-radius: 3px; border-width: 1px;"
             )
         case .cozyWorld:
             (
-                "border-right-width: 1px; box-shadow: inset -6px 0 14px color-mix(in srgb, var(--habitat-secondary) 14%, transparent);",
-                "border-radius: 8px; border-width: 1px; box-shadow: 0 7px 18px color-mix(in srgb, var(--habitat-text) 12%, transparent), inset 0 1px 0 color-mix(in srgb, white 35%, transparent);",
-                "border-radius: 8px; box-shadow: 0 8px 22px color-mix(in srgb, var(--habitat-secondary) 16%, transparent);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 20%, transparent);",
+                "border-radius: 8px; border-width: 1px;"
             )
         case .animeEnergy:
             (
-                "border-right-width: 3px; border-right-color: var(--habitat-highlight); box-shadow: inset -9px 0 0 color-mix(in srgb, var(--habitat-accent) 18%, transparent);",
-                "border-radius: 2px; border-top-width: 3px; border-bottom-width: 1px; border-top-color: var(--habitat-highlight); box-shadow: 7px 7px 0 color-mix(in srgb, var(--habitat-secondary) 20%, transparent);",
-                "border-radius: 2px; border-left-width: 3px; border-left-color: var(--habitat-secondary);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 2px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 24%, transparent);",
+                "border-radius: 2px; border-width: 1px;"
             )
         case .fantasyAdventure:
             (
-                "border-right-width: 2px; border-right-color: color-mix(in srgb, var(--habitat-highlight) 58%, var(--habitat-accent)); box-shadow: inset -4px 0 12px color-mix(in srgb, var(--habitat-accent) 18%, transparent);",
-                "border-radius: 7px; border-width: 2px; outline: 1px solid color-mix(in srgb, var(--habitat-highlight) 28%, transparent); outline-offset: 2px; box-shadow: inset 0 0 18px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);",
-                "border-radius: 7px; border-width: 2px; box-shadow: inset 0 0 14px color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 18%, transparent);",
+                "border-radius: 7px; border-width: 1px;"
             )
         case .pixelWorld:
             (
-                "border-right-width: 3px; border-right-style: solid; box-shadow: inset -3px 0 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;",
-                "border-radius: 0; border-width: 2px; box-shadow: 4px 4px 0 color-mix(in srgb, var(--habitat-text) 42%, transparent); image-rendering: pixelated;",
-                "border-radius: 0; border-width: 2px; box-shadow: 3px 3px 0 color-mix(in srgb, var(--habitat-text) 38%, transparent);"
+                "",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-text) 22%, transparent); image-rendering: pixelated;",
+                "border-radius: 0; border-width: 1px;"
             )
         }
         let shell = profile.selectors.appShell ?? "body"
@@ -1071,26 +1071,8 @@ struct ThemeCompiler {
     }
 
     private static func styleStage(for family: HabitatThemeStyleFamily) -> String {
-        switch family {
-        case .arcade:
-            "border-inline-start: 2px solid color-mix(in srgb, var(--habitat-secondary) 58%, transparent);"
-        case .retroMessenger:
-            "box-shadow: inset 1px 0 0 color-mix(in srgb, white 44%, transparent);"
-        case .greenChat:
-            "box-shadow: inset 4px 0 0 color-mix(in srgb, var(--habitat-secondary) 34%, transparent);"
-        case .classicDesktop:
-            "outline: 1px solid var(--habitat-panel-alt); outline-offset: -1px;"
-        case .gameCinematic:
-            "box-shadow: inset 8px 0 24px color-mix(in srgb, black 16%, transparent);"
-        case .cozyWorld:
-            "border-radius: 8px 0 0 0; box-shadow: inset 4px 0 12px color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
-        case .animeEnergy:
-            "border-inline-start: 3px solid color-mix(in srgb, var(--habitat-highlight) 46%, transparent);"
-        case .fantasyAdventure:
-            "outline: 1px solid color-mix(in srgb, var(--habitat-highlight) 28%, transparent); outline-offset: -1px;"
-        case .pixelWorld:
-            "border-inline-start: 3px solid color-mix(in srgb, var(--habitat-text) 30%, transparent); image-rendering: pixelated;"
-        }
+        _ = family
+        return ""
     }
 
     private static func styleSelected(for family: HabitatThemeStyleFamily) -> String {
@@ -1117,25 +1099,26 @@ struct ThemeCompiler {
     }
 
     private static func styleHomeAction(for family: HabitatThemeStyleFamily) -> String {
-        switch family {
+        let shared = "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 16%, transparent);"
+        return switch family {
         case .arcade:
-            "border: 2px solid var(--habitat-secondary); border-radius: 4px; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--habitat-highlight) 48%, transparent);"
+            "\(shared) border-radius: 4px; border-color: color-mix(in srgb, var(--habitat-secondary) 34%, var(--habitat-accent));"
         case .retroMessenger:
-            "border: 1px solid var(--habitat-accent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 76%, transparent), inset 0 -2px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
+            "\(shared) border-radius: 6px; border-top-color: color-mix(in srgb, white 36%, var(--habitat-accent));"
         case .greenChat:
-            "border: 1px solid var(--habitat-secondary); border-inline-start: 4px solid var(--habitat-accent); border-radius: 5px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 42%, transparent);"
+            "\(shared) border-radius: 5px; border-inline-color: color-mix(in srgb, var(--habitat-secondary) 34%, var(--habitat-accent));"
         case .classicDesktop:
-            "border: 2px outset var(--habitat-panel-alt); border-radius: 0; box-shadow: 2px 2px 0 color-mix(in srgb, black 48%, transparent);"
+            "\(shared) border-radius: 0; border-style: outset;"
         case .gameCinematic:
-            "border: 1px solid color-mix(in srgb, var(--habitat-accent) 56%, var(--habitat-highlight)); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 26%, transparent), 0 5px 14px color-mix(in srgb, black 22%, transparent);"
+            "\(shared) border-radius: 6px; border-color: color-mix(in srgb, var(--habitat-highlight) 42%, var(--habitat-accent));"
         case .cozyWorld:
-            "border: 1px solid var(--habitat-secondary); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 38%, transparent), 0 5px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+            "\(shared) border-radius: 8px; border-color: color-mix(in srgb, white 20%, var(--habitat-accent));"
         case .animeEnergy:
-            "border: 2px solid var(--habitat-highlight); border-block-end: 1px solid var(--habitat-secondary); border-radius: 2px; box-shadow: 4px 4px 0 color-mix(in srgb, var(--habitat-secondary) 20%, transparent);"
+            "\(shared) border-radius: 2px; border-style: dashed;"
         case .fantasyAdventure:
-            "border: 2px double color-mix(in srgb, var(--habitat-highlight) 72%, var(--habitat-accent)); border-radius: 7px; box-shadow: inset 0 0 10px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+            "\(shared) border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 18%, transparent);"
         case .pixelWorld:
-            "border: 2px solid var(--habitat-text); border-radius: 0; box-shadow: 3px 3px 0 color-mix(in srgb, var(--habitat-text) 38%, transparent); image-rendering: pixelated;"
+            "\(shared) border-radius: 0; image-rendering: pixelated;"
         }
     }
 
