@@ -22,7 +22,7 @@ func fourPrototypeThemesResolveDistinctCompletePreviewTreatments() throws {
     #expect(workbench.taskStrength == 0.56)
     #expect(workbench.sidebarOpacity == 0.54)
     #expect(workbench.headerOpacity == 0.20)
-    #expect(workbench.composerOpacity == 0.96)
+    #expect(workbench.composerOpacity == 0.84)
     #expect(workbench.homeArtFocus == HabitatThemeFocalPoint(x: 0.82, y: 0.50))
     #expect(workbench.taskArtFocus == HabitatThemeFocalPoint(x: 0.78, y: 0.48))
     #expect(workbench.homeArtScale == 1.10)
