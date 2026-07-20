@@ -888,16 +888,48 @@ struct ThemeCompiler {
           font-weight: 600;
         }
         """
-        let homeActionRule = profile.selectors.homeSuggestions.map { suggestions in
+        let homeActionSelector = profile.selectors.homeSuggestions.map { suggestions in
+            "\(suggestions) :where(button, [role=\"button\"])"
+        }
+        let sidebarActionSelector = "\(profile.selectors.sidebar) :where(a, button, [role=\"button\"])"
+        let sidebarHoverSelector = "\(sidebarActionSelector):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"]):hover"
+        let homeActionRule = homeActionSelector.map { action in
             """
             /* habitat-surface: home-actions */
-            \(root) \(suggestions) :where(button, [role="button"]) {
+            \(root) \(action) {
               color: var(--habitat-text);
               background-color: color-mix(in srgb, var(--habitat-panel-alt) 80%, transparent);
               \(styleHomeAction(for: family))
+              transition: background-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 90ms linear, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
             }
             """
         } ?? ""
+        let homeHoverRule = homeActionSelector.map { action in
+            """
+            \(root) \(action):hover {
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 90%, transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 62%, var(--habitat-highlight));
+            }
+            """
+        } ?? ""
+        let homeActiveRule = homeActionSelector.map { action in
+            """
+            \(root) \(action):active {
+              opacity: 0.86;
+              transform: translateY(1px);
+            }
+            """
+        } ?? ""
+        let motionSurfaces = [
+            homeActionSelector,
+            Optional(sidebarActionSelector),
+        ].compactMap { $0 } + composerSurfaces
+        let motionStates = [
+            homeActionSelector.map { "\($0):hover" },
+            homeActionSelector.map { "\($0):active" },
+            Optional(sidebarHoverSelector),
+            Optional("\(sidebarActionSelector):active"),
+        ].compactMap { $0 } + composerSurfaces.map { "\($0):focus-within" }
         return """
         /* habitat-style-family: \(family.rawValue) */
 
@@ -928,7 +960,10 @@ struct ThemeCompiler {
         \(homeActionRule)
 
         /* habitat-surface: composer */
-        \(scopedSelectors(composerSurfaces, root: root)) { \(declarations.composer) }
+        \(scopedSelectors(composerSurfaces, root: root)) {
+          \(declarations.composer)
+          transition: border-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
 
         /* habitat-surface: selected-navigation */
         \(selectedSurfaceRule)
@@ -938,6 +973,29 @@ struct ThemeCompiler {
 
         /* habitat-semantic-state: primary */
         \(root) button[type="submit"] { \(declarations.composer) }
+
+        /* habitat-semantic-state: interactive */
+        \(root) \(sidebarActionSelector) {
+          transition: background-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 90ms linear, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+          \(homeHoverRule)
+          \(root) \(sidebarHoverSelector) {
+            background-color: color-mix(in srgb, var(--habitat-panel-alt) 54%, transparent);
+          }
+        }
+
+        \(homeActiveRule)
+        \(root) \(sidebarActionSelector):active {
+          opacity: 0.82;
+          transform: translateX(1px);
+        }
+
+        \(scopedSelectors(composerSurfaces.map { "\($0):focus-within" }, root: root)) {
+          border-color: color-mix(in srgb, var(--habitat-accent) 74%, var(--habitat-highlight));
+          box-shadow: 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 44%, transparent), 0 14px 36px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
+        }
 
         /* habitat-semantic-state: focus */
         \(root) :focus-visible {
@@ -961,6 +1019,13 @@ struct ThemeCompiler {
         \(root) [aria-invalid="true"] {
           border-color: var(--habitat-error);
           box-shadow: inset 3px 0 0 var(--habitat-error);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          \(scopedSelectors(motionSurfaces + motionStates, root: root)) {
+            transition: none;
+            transform: none;
+          }
         }
         """
     }
