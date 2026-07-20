@@ -627,6 +627,7 @@ async function assertSemanticTextColors(page, routeName) {
     ];
     if (activeRoute === "home") {
       checks.push([".fixture-home p", muted]);
+      checks.push(['[class~="group/home-suggestions"] :where(button, [role="button"])', text]);
     } else {
       checks.push(
         [".fixture-message h2", text],

@@ -908,6 +908,16 @@ struct ThemeCompiler {
           font-weight: 600;
         }
         """
+        let homeActionRule = profile.selectors.homeSuggestions.map { suggestions in
+            """
+            /* habitat-surface: home-actions */
+            \(root) \(suggestions) :where(button, [role="button"]) {
+              color: var(--habitat-text);
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 80%, transparent);
+              \(styleHomeAction(for: family))
+            }
+            """
+        } ?? ""
         return """
         /* habitat-style-family: \(family.rawValue) */
 
@@ -934,6 +944,8 @@ struct ThemeCompiler {
 
         /* habitat-surface: content */
         \(scopedSelectors(contentSurfaces, root: root)) { \(declarations.popover) }
+
+        \(homeActionRule)
 
         /* habitat-surface: composer */
         \(scopedSelectors(composerSurfaces, root: root)) { \(declarations.composer) }
@@ -1039,6 +1051,29 @@ struct ThemeCompiler {
             "box-shadow: inset 3px 0 0 var(--habitat-highlight), inset 0 0 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent); border-radius: 7px;"
         case .pixelWorld:
             "box-shadow: inset 3px 0 0 var(--habitat-highlight), 3px 3px 0 color-mix(in srgb, black 38%, transparent); border-radius: 0;"
+        }
+    }
+
+    private static func styleHomeAction(for family: HabitatThemeStyleFamily) -> String {
+        switch family {
+        case .arcade:
+            "border: 2px solid var(--habitat-secondary); border-radius: 4px; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--habitat-highlight) 48%, transparent);"
+        case .retroMessenger:
+            "border: 1px solid var(--habitat-accent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 76%, transparent), inset 0 -2px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
+        case .greenChat:
+            "border: 1px solid var(--habitat-secondary); border-inline-start: 4px solid var(--habitat-accent); border-radius: 5px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 42%, transparent);"
+        case .classicDesktop:
+            "border: 2px outset var(--habitat-panel-alt); border-radius: 0; box-shadow: 2px 2px 0 color-mix(in srgb, black 48%, transparent);"
+        case .gameCinematic:
+            "border: 1px solid var(--habitat-attention); border-block-start: 3px solid var(--habitat-highlight); border-radius: 3px; box-shadow: 0 6px 16px color-mix(in srgb, black 24%, transparent);"
+        case .cozyWorld:
+            "border: 1px solid var(--habitat-secondary); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 38%, transparent), 0 5px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+        case .animeEnergy:
+            "border: 2px solid var(--habitat-highlight); border-block-end: 1px solid var(--habitat-secondary); border-radius: 2px; box-shadow: 4px 4px 0 color-mix(in srgb, var(--habitat-secondary) 20%, transparent);"
+        case .fantasyAdventure:
+            "border: 2px double color-mix(in srgb, var(--habitat-highlight) 72%, var(--habitat-accent)); border-radius: 7px; box-shadow: inset 0 0 10px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+        case .pixelWorld:
+            "border: 2px solid var(--habitat-text); border-radius: 0; box-shadow: 3px 3px 0 color-mix(in srgb, var(--habitat-text) 38%, transparent); image-rendering: pixelated;"
         }
     }
 

@@ -599,7 +599,7 @@ func everyStyleRecipeCoversRequiredHostSurfaces() throws {
         }
         for surface in [
             "shell", "sidebar", "header", "stage", "transcript", "content",
-            "composer", "selected-navigation", "fades-and-resize",
+            "home-actions", "composer", "selected-navigation", "fades-and-resize",
         ] {
             #expect(
                 recipe.contains("habitat-surface: \(surface)"),
@@ -626,6 +626,24 @@ func everyStyleRecipeCoversRequiredHostSurfaces() throws {
 
     let normalized = recipes.map(normalizedStyleRecipe)
     #expect(Set(normalized).count == HabitatThemeStyleFamily.allCases.count)
+}
+
+@Test
+func everyStyleFamilyOwnsDistinctHomeActionChrome() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let suggestions = try #require(profile.selectors.homeSuggestions)
+    let selector = "html[data-codex-habitat-theme=\"1\"] \(suggestions) :where(button, [role=\"button\"])"
+    let rules = try HabitatThemeStyleFamily.allCases.map { family in
+        let treatment = ThemeCompiler.styleTreatment(for: family, profile: profile)
+        let rule = try cssRuleBody(selector: selector, in: treatment)
+        #expect(rule.contains("color: var(--habitat-text)"), "\(family.rawValue) keeps host action text")
+        #expect(rule.contains("background-color:"), "\(family.rawValue) has no action fill")
+        #expect(rule.contains("border"), "\(family.rawValue) has no action structure")
+        #expect(!rule.contains("backdrop-filter"), "\(family.rawValue) blurs a repeated action")
+        return normalizedStyleRecipe(rule)
+    }
+
+    #expect(Set(rules).count == HabitatThemeStyleFamily.allCases.count)
 }
 
 @Test
