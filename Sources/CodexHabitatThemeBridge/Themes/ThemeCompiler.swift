@@ -892,7 +892,9 @@ struct ThemeCompiler {
             "\(suggestions) :where(button, [role=\"button\"])"
         }
         let sidebarActionSelector = "\(profile.selectors.sidebar) :where(a, button, [role=\"button\"])"
-        let sidebarHoverSelector = "\(sidebarActionSelector):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"]):hover"
+        let sidebarInteractiveSelector = "\(sidebarActionSelector):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"])"
+        let sidebarHoverSelector = "\(sidebarInteractiveSelector):hover"
+        let sidebarActiveSelector = "\(sidebarInteractiveSelector):active"
         let homeActionRule = homeActionSelector.map { action in
             """
             /* habitat-surface: home-actions */
@@ -928,7 +930,7 @@ struct ThemeCompiler {
             homeActionSelector.map { "\($0):hover" },
             homeActionSelector.map { "\($0):active" },
             Optional(sidebarHoverSelector),
-            Optional("\(sidebarActionSelector):active"),
+            Optional(sidebarActiveSelector),
         ].compactMap { $0 } + composerSurfaces.map { "\($0):focus-within" }
         return """
         /* habitat-style-family: \(family.rawValue) */
@@ -987,7 +989,7 @@ struct ThemeCompiler {
         }
 
         \(homeActiveRule)
-        \(root) \(sidebarActionSelector):active {
+        \(root) \(sidebarActiveSelector) {
           opacity: 0.82;
           transform: translateX(1px);
         }

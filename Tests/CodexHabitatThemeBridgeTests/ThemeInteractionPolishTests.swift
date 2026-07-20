@@ -130,7 +130,9 @@ private func expectNativeInteractionContract(
             && rule.declarations["transition"] != nil
     })
     #expect(sidebarBase.declarations["transition"] != nil, "\(context) lacks sidebar transition")
-    let sidebarHoverSelector = "\(sidebarAction):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"]):hover"
+    let sidebarInteractiveSelector = "\(sidebarAction):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"])"
+    let sidebarHoverSelector = "\(sidebarInteractiveSelector):hover"
+    let sidebarActiveSelector = "\(sidebarInteractiveSelector):active"
     let sidebarHover = try #require(rules.first { rule in
         rule.selectors.contains { selector in
             selector == sidebarHoverSelector
@@ -140,7 +142,11 @@ private func expectNativeInteractionContract(
         sidebarHover.declarations["background-color"] != nil,
         "\(context) lacks sidebar hover fill"
     )
-    let sidebarActive = try #require(rule(for: "\(sidebarAction):active", in: rules))
+    #expect(
+        rule(for: "\(sidebarAction):active", in: rules) == nil,
+        "\(context) lets selected sidebar actions receive press feedback"
+    )
+    let sidebarActive = try #require(rule(for: sidebarActiveSelector, in: rules))
     #expect(sidebarActive.declarations["opacity"] != nil, "\(context) lacks sidebar press feedback")
 
     let composerSurfaces = [
@@ -162,7 +168,7 @@ private func expectNativeInteractionContract(
         "\(homeAction):active",
         sidebarAction,
         sidebarHoverSelector,
-        "\(sidebarAction):active",
+        sidebarActiveSelector,
     ] + composerSurfaces.flatMap { surface in
         ["\(root) \(surface)", "\(root) \(surface):focus-within"]
     }
