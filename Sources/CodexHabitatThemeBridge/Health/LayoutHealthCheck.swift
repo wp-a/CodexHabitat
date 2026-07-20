@@ -1,6 +1,12 @@
 import Foundation
 
+enum LayoutHealthRoute: String, Codable, Equatable, Sendable {
+    case home
+    case task
+}
+
 struct LayoutHealthSnapshot: Codable, Equatable, Sendable {
+    let route: LayoutHealthRoute
     let appShellVisible: Bool
     let sidebarVisible: Bool
     let mainSurfaceVisible: Bool
@@ -13,6 +19,36 @@ struct LayoutHealthSnapshot: Codable, Equatable, Sendable {
     let popoversWithinViewport: Bool
     let controlsWithinViewport: Bool
     let horizontalOverflowPixels: Double
+
+    init(
+        route: LayoutHealthRoute = .task,
+        appShellVisible: Bool,
+        sidebarVisible: Bool,
+        mainSurfaceVisible: Bool,
+        headerVisible: Bool,
+        composerVisible: Bool,
+        composerAcceptsPointerEvents: Bool,
+        composerHitTestable: Bool,
+        threadCanScroll: Bool,
+        requiredSurfaceAnnotationsPresent: Bool,
+        popoversWithinViewport: Bool,
+        controlsWithinViewport: Bool,
+        horizontalOverflowPixels: Double
+    ) {
+        self.route = route
+        self.appShellVisible = appShellVisible
+        self.sidebarVisible = sidebarVisible
+        self.mainSurfaceVisible = mainSurfaceVisible
+        self.headerVisible = headerVisible
+        self.composerVisible = composerVisible
+        self.composerAcceptsPointerEvents = composerAcceptsPointerEvents
+        self.composerHitTestable = composerHitTestable
+        self.threadCanScroll = threadCanScroll
+        self.requiredSurfaceAnnotationsPresent = requiredSurfaceAnnotationsPresent
+        self.popoversWithinViewport = popoversWithinViewport
+        self.controlsWithinViewport = controlsWithinViewport
+        self.horizontalOverflowPixels = horizontalOverflowPixels
+    }
 }
 
 enum LayoutHealthFailure: String, Equatable, Hashable, Sendable {
@@ -50,12 +86,14 @@ struct LayoutHealthCheck: Sendable {
         if !snapshot.sidebarVisible { failures.append(.sidebarMissingOrHidden) }
         if !snapshot.mainSurfaceVisible { failures.append(.mainSurfaceMissingOrHidden) }
         if !snapshot.headerVisible { failures.append(.headerMissingOrHidden) }
-        if !snapshot.composerVisible { failures.append(.composerMissingOrHidden) }
-        if !snapshot.composerAcceptsPointerEvents {
-            failures.append(.composerPointerEventsDisabled)
+        if snapshot.route == .task {
+            if !snapshot.composerVisible { failures.append(.composerMissingOrHidden) }
+            if !snapshot.composerAcceptsPointerEvents {
+                failures.append(.composerPointerEventsDisabled)
+            }
+            if !snapshot.composerHitTestable { failures.append(.composerHitTestingFailed) }
+            if !snapshot.threadCanScroll { failures.append(.threadNotScrollable) }
         }
-        if !snapshot.composerHitTestable { failures.append(.composerHitTestingFailed) }
-        if !snapshot.threadCanScroll { failures.append(.threadNotScrollable) }
         if requiresSurfaceAnnotations, !snapshot.requiredSurfaceAnnotationsPresent {
             failures.append(.requiredSurfaceAnnotationMissing)
         }
@@ -73,6 +111,7 @@ struct LayoutHealthCheck: Sendable {
         let composer = Self.javaScriptString(profile.selectors.composer)
         let thread = Self.javaScriptString(profile.selectors.threadScroll)
         let popover = Self.javaScriptString(profile.selectors.popover)
+        let homeMarker = Self.javaScriptString(profile.selectors.homeMarker)
         let annotations = Self.javaScriptJSON(HostSurfaceAnnotationPlan(profile: profile).entries)
         let shellLookup = appShell.map { "document.querySelector(\($0))" }
             ?? "document.body"
@@ -99,6 +138,7 @@ struct LayoutHealthCheck: Sendable {
           const header = document.querySelector(\(header));
           const composer = document.querySelector(\(composer));
           const thread = document.querySelector(\(thread));
+          const isHome = !!document.querySelector(\(homeMarker));
           const popovers = Array.from(document.querySelectorAll(\(popover))).filter(visible);
           const composerStyle = composer ? getComputedStyle(composer) : null;
           const composerRect = composer ? composer.getBoundingClientRect() : null;
@@ -116,6 +156,7 @@ struct LayoutHealthCheck: Sendable {
             ([node, surface]) => node.getAttribute(surfaceAttribute) === surface
           );
           return {
+            route: isHome ? "home" : "task",
             appShellVisible: visible(appShell),
             sidebarVisible: visible(sidebar),
             mainSurfaceVisible: visible(main),
@@ -128,7 +169,8 @@ struct LayoutHealthCheck: Sendable {
               ["auto", "scroll"].includes(getComputedStyle(thread).overflowY)),
             requiredSurfaceAnnotationsPresent,
             popoversWithinViewport: popovers.every(inside),
-            controlsWithinViewport: [sidebar, main, header, composer].every(inside),
+            controlsWithinViewport:
+              (isHome ? [sidebar, main, header] : [sidebar, main, header, composer]).every(inside),
             horizontalOverflowPixels: Math.max(0,
               document.documentElement.scrollWidth - document.documentElement.clientWidth),
           };
