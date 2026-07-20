@@ -19,6 +19,7 @@ public enum DiagnosticCode: String, Codable, CaseIterable, Sendable {
     case themeApplyFailed
     case themeListenerUnavailable
     case themeTargetUnavailable
+    case themeRuntimeUnavailable
     case themeLayoutRejected
     case themeProcessRejected
     case themeUnsupportedVersion

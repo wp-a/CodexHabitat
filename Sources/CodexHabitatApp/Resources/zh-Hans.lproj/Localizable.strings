@@ -24,6 +24,7 @@
 "Codex native theme" = "Codex 原生主题";
 "Codex resting" = "Codex 空闲中";
 "Codex theme process could not be verified" = "无法验证 Codex 主题进程";
+"Codex theme runtime connection failed" = "Codex 主题运行时连接失败";
 "Codex theme surface was not ready in time" = "Codex 主题界面未能及时就绪";
 "Codex working" = "Codex 工作中";
 "Compact, local modules shown beside the pet" = "显示在宠物旁的紧凑本地组件";

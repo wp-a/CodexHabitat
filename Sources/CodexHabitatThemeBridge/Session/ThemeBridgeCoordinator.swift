@@ -12,6 +12,7 @@ enum ThemeBridgeCoordinatorError: Error, Equatable {
     case unsupportedCodexVersion(String)
     case listenerNotOwned
     case targetUnavailable
+    case runtimeUnavailable
     case healthCheckFailed
     case staleSession
     case restorationFailed
@@ -99,19 +100,32 @@ actor ThemeBridgeCoordinator {
             var reports: [LayoutHealthReport] = []
             for target in ready.targets {
                 let installingClient = installingClients[target.id] ?? ready.client
-                try await installingClient.installStyle(
-                    css,
-                    homeMarker: profile.selectors.homeMarker,
-                    annotations: HostSurfaceAnnotationPlan(profile: profile),
-                    on: target
-                )
+                do {
+                    try await installingClient.installStyle(
+                        css,
+                        homeMarker: profile.selectors.homeMarker,
+                        annotations: HostSurfaceAnnotationPlan(profile: profile),
+                        on: target
+                    )
+                } catch let error as CDPTargetValidationError {
+                    throw error
+                } catch {
+                    throw ThemeBridgeCoordinatorError.runtimeUnavailable
+                }
                 installedTargets.append(target)
                 installingClients[target.id] = installingClient
                 maintainedTargetIDs.insert(target.id)
-                let snapshot = try await ready.client.healthSnapshot(
-                    on: target,
-                    check: installedHealthCheck
-                )
+                let snapshot: LayoutHealthSnapshot
+                do {
+                    snapshot = try await ready.client.healthSnapshot(
+                        on: target,
+                        check: installedHealthCheck
+                    )
+                } catch let error as CDPTargetValidationError {
+                    throw error
+                } catch {
+                    throw ThemeBridgeCoordinatorError.runtimeUnavailable
+                }
                 let report = installedHealthCheck.evaluate(snapshot)
                 reports.append(report)
                 guard report.passed else {
@@ -189,7 +203,14 @@ actor ThemeBridgeCoordinator {
             throw ThemeBridgeCoordinatorError.listenerNotOwned
         }
         let client = clientProvider.client(port: record.port)
-        let targets = try await client.listPageTargets()
+        let targets: [CDPTarget]
+        do {
+            targets = try await client.listPageTargets()
+        } catch let error as CDPTargetValidationError {
+            throw error
+        } catch {
+            throw ThemeBridgeCoordinatorError.targetUnavailable
+        }
         guard !targets.isEmpty else {
             throw ThemeBridgeCoordinatorError.targetUnavailable
         }
@@ -207,27 +228,58 @@ actor ThemeBridgeCoordinator {
         let installedHealthCheck = LayoutHealthCheck(profile: profile)
         var installedCount = 0
         for target in newTargets {
-            if try await client.isStyleInstalled(on: target) {
+            let isInstalled: Bool
+            do {
+                isInstalled = try await client.isStyleInstalled(on: target)
+            } catch let error as CDPTargetValidationError {
+                throw error
+            } catch {
+                throw ThemeBridgeCoordinatorError.runtimeUnavailable
+            }
+            if isInstalled {
                 maintainedTargetIDs.insert(target.id)
                 continue
             }
-            guard let snapshot = try? await client.healthSnapshot(
-                on: target,
-                check: preflightHealthCheck
-            ), preflightHealthCheck.evaluate(snapshot).passed else {
+            let preflightSnapshot: LayoutHealthSnapshot
+            do {
+                preflightSnapshot = try await client.healthSnapshot(
+                    on: target,
+                    check: preflightHealthCheck
+                )
+            } catch let error as CDPTargetValidationError {
+                throw error
+            } catch {
+                throw ThemeBridgeCoordinatorError.runtimeUnavailable
+            }
+            guard preflightHealthCheck.evaluate(preflightSnapshot).passed else {
                 continue
             }
             let installingClient = installingClients[target.id] ?? client
-            try await installingClient.installStyle(
-                css,
-                homeMarker: profile.selectors.homeMarker,
-                annotations: HostSurfaceAnnotationPlan(profile: profile),
-                on: target
-            )
+            do {
+                try await installingClient.installStyle(
+                    css,
+                    homeMarker: profile.selectors.homeMarker,
+                    annotations: HostSurfaceAnnotationPlan(profile: profile),
+                    on: target
+                )
+            } catch let error as CDPTargetValidationError {
+                throw error
+            } catch {
+                throw ThemeBridgeCoordinatorError.runtimeUnavailable
+            }
             installingClients[target.id] = installingClient
-            let report = installedHealthCheck.evaluate(
-                try await client.healthSnapshot(on: target, check: installedHealthCheck)
-            )
+            let installedSnapshot: LayoutHealthSnapshot
+            do {
+                installedSnapshot = try await client.healthSnapshot(
+                    on: target,
+                    check: installedHealthCheck
+                )
+            } catch let error as CDPTargetValidationError {
+                throw error
+            } catch {
+                throw ThemeBridgeCoordinatorError.runtimeUnavailable
+            }
+            let report = installedHealthCheck.evaluate(installedSnapshot)
             guard report.passed else {
                 do {
                     try await installingClient.removeStyle(from: target)
@@ -246,50 +298,68 @@ actor ThemeBridgeCoordinator {
         healthCheck: LayoutHealthCheck
     ) async throws -> (client: any CDPControlling, targets: [CDPTarget]) {
         let client = clientProvider.client(port: record.port)
-        var listenerOwned = false
-        var foundUnhealthyTargets = false
+        var sawOwnedListener = false
+        var sawMainTarget = false
+        var sawRuntimeFailure = false
+        var sawDecodedUnhealthySnapshot = false
         for attempt in 0..<readinessAttempts {
             do {
-                listenerOwned = try listenerVerifier.verify(
+                guard try listenerVerifier.verify(
                     port: record.port,
                     owner: record.process
-                )
-                if listenerOwned {
-                    let targets = try await client.listPageTargets()
-                    if !targets.isEmpty {
-                        var healthyTargets: [CDPTarget] = []
-                        for target in targets {
-                            guard let snapshot = try? await client.healthSnapshot(
+                ) else {
+                    continue
+                }
+                sawOwnedListener = true
+                let targets: [CDPTarget]
+                do {
+                    targets = try await client.listPageTargets()
+                } catch let error as CDPTargetValidationError {
+                    throw error
+                } catch {
+                    continue
+                }
+                if !targets.isEmpty {
+                    sawMainTarget = true
+                    var healthyTargets: [CDPTarget] = []
+                    for target in targets {
+                        do {
+                            let snapshot = try await client.healthSnapshot(
                                 on: target,
                                 check: healthCheck
-                            ) else {
-                                continue
-                            }
+                            )
                             if healthCheck.evaluate(snapshot).passed {
                                 healthyTargets.append(target)
+                            } else {
+                                sawDecodedUnhealthySnapshot = true
                             }
+                        } catch let error as CDPTargetValidationError {
+                            throw error
+                        } catch {
+                            sawRuntimeFailure = true
                         }
-                        if !healthyTargets.isEmpty {
-                            return (client, healthyTargets)
-                        }
-                        foundUnhealthyTargets = true
+                    }
+                    if !healthyTargets.isEmpty {
+                        return (client, healthyTargets)
                     }
                 }
             } catch let error as CDPTargetValidationError {
                 throw error
-            } catch {
-                listenerOwned = false
-            }
+            } catch {}
             if attempt + 1 < readinessAttempts {
                 try await Task.sleep(for: .milliseconds(200))
             }
         }
-        if listenerOwned, foundUnhealthyTargets {
+        if sawDecodedUnhealthySnapshot {
             throw ThemeBridgeCoordinatorError.healthCheckFailed
         }
-        throw listenerOwned
-            ? ThemeBridgeCoordinatorError.targetUnavailable
-            : ThemeBridgeCoordinatorError.listenerNotOwned
+        if sawMainTarget, sawRuntimeFailure {
+            throw ThemeBridgeCoordinatorError.runtimeUnavailable
+        }
+        if sawOwnedListener {
+            throw ThemeBridgeCoordinatorError.targetUnavailable
+        }
+        throw ThemeBridgeCoordinatorError.listenerNotOwned
     }
 
     private func failClose(

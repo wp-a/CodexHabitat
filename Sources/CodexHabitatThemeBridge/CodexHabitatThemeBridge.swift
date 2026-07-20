@@ -110,7 +110,7 @@ enum CodexHabitatThemeBridge {
                 Foundation.exit(64)
             }
         } catch {
-            print("theme-bridge: \(String(describing: error))")
+            print(ThemeBridgeErrorPresenter.line(for: error))
             Foundation.exit(1)
         }
     }

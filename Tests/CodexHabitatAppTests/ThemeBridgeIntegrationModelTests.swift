@@ -124,7 +124,7 @@ struct ThemeBridgeIntegrationModelTests {
         let runner = StubThemeBridgeRunner(results: [
             ThemeBridgeCommandResult(
                 exitCode: 1,
-                output: "theme-bridge: targetUnavailable"
+                output: "theme-bridge: code=targetUnavailable"
             ),
         ])
         let model = ThemeBridgeIntegrationModel(
@@ -140,6 +140,54 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(model.statusText == "Codex theme surface was not ready in time")
         let events = try await store.events()
         #expect(events.map(\.code) == [.themeTargetUnavailable])
+    }
+
+    @Test
+    func stableHelperStageCodesMapToDistinctFailures() {
+        #expect(ThemeBridgeFailure.classify(
+            helperOutput: "theme-bridge: code=listenerUnavailable"
+        ) == .listenerUnavailable)
+        #expect(ThemeBridgeFailure.classify(
+            helperOutput: "theme-bridge: code=targetUnavailable"
+        ) == .targetUnavailable)
+        #expect(ThemeBridgeFailure.classify(
+            helperOutput: "theme-bridge: code=runtimeUnavailable"
+        ) == .runtimeUnavailable)
+        #expect(ThemeBridgeFailure.classify(
+            helperOutput: "theme-bridge: code=domHealthRejected"
+        ) == .layoutRejected)
+        #expect(ThemeBridgeFailure.classify(
+            helperOutput: "theme-bridge: code=processRejected"
+        ) == .processRejected)
+    }
+
+    @Test
+    func runtimeFailureIsShownSafelyAndRecordedLocally() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "ThemeBridgeRuntimeDiagnostics-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = DiagnosticStore(root: root)
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(
+                exitCode: 1,
+                output: "theme-bridge: code=runtimeUnavailable"
+            ),
+        ])
+        let model = ThemeBridgeIntegrationModel(
+            runner: runner,
+            diagnosticStore: store,
+            appVersion: "0.1.0"
+        )
+
+        await model.enable(themeID: "workbench")
+
+        #expect(model.state == .failed)
+        #expect(model.failure == .runtimeUnavailable)
+        #expect(model.statusText == "Codex theme runtime connection failed")
+        let events = try await store.events()
+        #expect(events.map(\.code) == [.themeRuntimeUnavailable])
     }
 
     @Test

@@ -27,6 +27,7 @@ enum ThemeBridgeIntegrationState: Equatable {
 enum ThemeBridgeFailure: Equatable {
     case listenerUnavailable
     case targetUnavailable
+    case runtimeUnavailable
     case layoutRejected
     case processRejected
     case unsupportedVersion
@@ -37,6 +38,7 @@ enum ThemeBridgeFailure: Equatable {
         switch self {
         case .listenerUnavailable: "Codex did not open the local theme port"
         case .targetUnavailable: "Codex theme surface was not ready in time"
+        case .runtimeUnavailable: "Codex theme runtime connection failed"
         case .layoutRejected: "Codex layout safety check rejected the theme"
         case .processRejected: "Codex theme process could not be verified"
         case .unsupportedVersion: "This Codex version is not supported"
@@ -49,6 +51,7 @@ enum ThemeBridgeFailure: Equatable {
         switch self {
         case .listenerUnavailable: .themeListenerUnavailable
         case .targetUnavailable: .themeTargetUnavailable
+        case .runtimeUnavailable: .themeRuntimeUnavailable
         case .layoutRejected: .themeLayoutRejected
         case .processRejected: .themeProcessRejected
         case .unsupportedVersion: .themeUnsupportedVersion
@@ -58,17 +61,17 @@ enum ThemeBridgeFailure: Equatable {
     }
 
     static func classify(helperOutput: String) -> ThemeBridgeFailure {
-        if helperOutput.contains("listenerNotOwned") { return .listenerUnavailable }
-        if helperOutput.contains("targetUnavailable") { return .targetUnavailable }
-        if helperOutput.contains("healthCheckFailed") { return .layoutRejected }
-        if helperOutput.contains("unsupportedCodexVersion") { return .unsupportedVersion }
-        for marker in [
-            "activeSessionMismatch", "processInspectionFailed", "unexpectedExecutable",
-            "unexpectedProcessAncestry", "processIdentityChanged", "terminationFailed",
-        ] where helperOutput.contains(marker) {
-            return .processRejected
+        let marker = "theme-bridge: code="
+        guard helperOutput.hasPrefix(marker) else { return .unknown }
+        switch helperOutput.dropFirst(marker.count) {
+        case "listenerUnavailable": return .listenerUnavailable
+        case "targetUnavailable": return .targetUnavailable
+        case "runtimeUnavailable": return .runtimeUnavailable
+        case "domHealthRejected": return .layoutRejected
+        case "processRejected": return .processRejected
+        case "unsupportedVersion": return .unsupportedVersion
+        default: return .unknown
         }
-        return .unknown
     }
 }
 

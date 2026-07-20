@@ -60,6 +60,87 @@ func unhealthyLayoutFailsClosedRemovesStyleStopsSessionAndLaunchesNormally() asy
 }
 
 @Test
+func targetListTransportFailureDoesNotMasqueradeAsListenerFailure() async throws {
+    let fixture = try CoordinatorFixture()
+    defer { fixture.cleanup() }
+    fixture.client.listFails = true
+
+    await #expect(throws: ThemeBridgeCoordinatorError.targetUnavailable) {
+        _ = try await fixture.coordinator.apply(
+            bundleURL: fixture.bundle.bundleURL,
+            theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+            authorized: true,
+            screenshotURL: nil
+        )
+    }
+
+    #expect(fixture.client.installedTargets.isEmpty)
+    #expect(fixture.session.stopCount == 1)
+    #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+}
+
+@Test
+func healthSnapshotTransportFailureReportsRuntimeUnavailable() async throws {
+    let fixture = try CoordinatorFixture()
+    defer { fixture.cleanup() }
+    fixture.client.snapshotFailureInvocationByTargetID[fixture.target.id] = 1
+
+    await #expect(throws: ThemeBridgeCoordinatorError.runtimeUnavailable) {
+        _ = try await fixture.coordinator.apply(
+            bundleURL: fixture.bundle.bundleURL,
+            theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+            authorized: true,
+            screenshotURL: nil
+        )
+    }
+
+    #expect(fixture.client.installedTargets.isEmpty)
+    #expect(fixture.session.stopCount == 1)
+    #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+}
+
+@Test
+func styleInstallRuntimeFailureReportsRuntimeUnavailableAndFailsClosed() async throws {
+    let fixture = try CoordinatorFixture()
+    defer { fixture.cleanup() }
+    fixture.client.installFails = true
+
+    await #expect(throws: ThemeBridgeCoordinatorError.runtimeUnavailable) {
+        _ = try await fixture.coordinator.apply(
+            bundleURL: fixture.bundle.bundleURL,
+            theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+            authorized: true,
+            screenshotURL: nil
+        )
+    }
+
+    #expect(fixture.client.installedTargets.isEmpty)
+    #expect(fixture.session.stopCount == 1)
+    #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+}
+
+@Test
+func postInstallRuntimeFailureReportsRuntimeUnavailableAndFailsClosed() async throws {
+    let fixture = try CoordinatorFixture()
+    defer { fixture.cleanup() }
+    fixture.client.snapshotFailureInvocationByTargetID[fixture.target.id] = 2
+
+    await #expect(throws: ThemeBridgeCoordinatorError.runtimeUnavailable) {
+        _ = try await fixture.coordinator.apply(
+            bundleURL: fixture.bundle.bundleURL,
+            theme: BridgeTheme(tokens: .workbench, artBlobURL: nil),
+            authorized: true,
+            screenshotURL: nil
+        )
+    }
+
+    #expect(fixture.client.installedTargets == [fixture.target])
+    #expect(fixture.client.removedTargets == [fixture.target])
+    #expect(fixture.session.stopCount == 1)
+    #expect(fixture.restarter.normalLaunches == [fixture.bundle.bundleURL])
+}
+
+@Test
 func postInstallHealthFailureCleansBootstrapAndAllowsANewSession() async throws {
     let fixture = try CoordinatorFixture(postInstallHealthy: false)
     defer { fixture.cleanup() }
@@ -547,6 +628,10 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
     var removedTargets: [CDPTarget] = []
     var removeAttempts: [CDPTarget] = []
     var removeFails = false
+    var listFails = false
+    var installFails = false
+    var snapshotFailureInvocationByTargetID: [String: Int] = [:]
+    var snapshotInvocationCountByTargetID: [String: Int] = [:]
     var styledTargetIDs: Set<String> = []
 
     init(targets: [CDPTarget], snapshot: LayoutHealthSnapshot, screenshot: Data) {
@@ -555,13 +640,17 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
         self.screenshot = screenshot
     }
 
-    func listPageTargets() async throws -> [CDPTarget] { targets }
+    func listPageTargets() async throws -> [CDPTarget] {
+        if listFails { throw StubCoordinatorFailure() }
+        return targets
+    }
     func installStyle(
         _ css: String,
         homeMarker: String,
         annotations: HostSurfaceAnnotationPlan,
         on target: CDPTarget
     ) async throws {
+        if installFails { throw StubCoordinatorFailure() }
         installedTargets.append(target)
         installedHomeMarkers.append(homeMarker)
         installedAnnotationPlans.append(annotations)
@@ -580,6 +669,11 @@ private final class StubCDPController: CDPControlling, @unchecked Sendable {
         on target: CDPTarget,
         check: LayoutHealthCheck
     ) async throws -> LayoutHealthSnapshot {
+        let invocation = snapshotInvocationCountByTargetID[target.id, default: 0] + 1
+        snapshotInvocationCountByTargetID[target.id] = invocation
+        if snapshotFailureInvocationByTargetID[target.id] == invocation {
+            throw StubCoordinatorFailure()
+        }
         if var sequence = snapshotSequencesByTargetID[target.id], !sequence.isEmpty {
             let next = sequence.removeFirst()
             snapshotSequencesByTargetID[target.id] = sequence
