@@ -38,6 +38,20 @@ func currentBuildProfileOwnsCompleteSafeHostSurfaceMap() throws {
     #expect(store.profile(forVersion: "26.715.31926") == nil)
 }
 
+@Test
+func updatedBuildProfileReusesOnlyTheStaticallyAuditedExactSurfaceMap() throws {
+    let store = try CompatibilityProfileStore.bundled()
+    let previous = try #require(store.profile(forVersion: "26.715.31925"))
+    let updated = try #require(store.profile(forVersion: "26.715.52143"))
+
+    #expect(updated.id == "codex-26.715.52143")
+    #expect(updated.minimumVersion == "26.715.52143")
+    #expect(updated.maximumVersionExclusive == "26.715.52144")
+    #expect(updated.selectors == previous.selectors)
+    #expect(store.profile(forVersion: "26.715.52142") == nil)
+    #expect(store.profile(forVersion: "26.715.52144") == nil)
+}
+
 @Test(arguments: [
     "body *",
     "script",
