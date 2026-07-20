@@ -20,11 +20,16 @@
           <a href="#queue">Queue</a>
           <a href="#library">Library</a>
         </nav>
-        <section class="fixture-recents" aria-label="Recent fixtures">
+        <section class="fixture-recents" aria-label="Recent fixtures" data-fixture-dense-sidebar>
           <h2>Recent</h2>
-          <a class="is-selected" href="#selected" aria-current="page">Window composition</a>
-          <a href="#one">Surface contrast</a>
-          <a href="#two">Route transition</a>
+          <a class="is-selected" href="#selected" aria-current="page" data-fixture-sidebar-row>Window composition / 窗口构图与视觉连续性校验</a>
+          <a href="#one" data-fixture-sidebar-row>Surface contrast / 主题表面最终像素对比度审查</a>
+          <a href="#two" data-fixture-sidebar-row>Route transition / 首页与任务路由切换稳定性</a>
+          <a href="#three" data-fixture-sidebar-row>Long bilingual task title / 超长双语任务标题必须稳定截断</a>
+          <a href="#four" data-fixture-sidebar-row>Compiler boundary / 编译器安全边界与协议验证</a>
+          <a href="#five" data-fixture-sidebar-row>Local visual regression / 本地离线视觉回归检查</a>
+          <a href="#six" data-fixture-sidebar-row>Theme Studio import / 主题工作室导入导出验证</a>
+          <a href="#seven" data-fixture-sidebar-row>Release package review / 发布安装包只读复核记录</a>
         </section>
         <button class="fixture-account" type="button">Local fixture</button>
       </aside>

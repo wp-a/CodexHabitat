@@ -6,6 +6,7 @@ export const FIXTURE_ROUTES = Object.freeze(["home", "task"]);
 export const FIXTURE_VIEWPORTS = Object.freeze([
   Object.freeze({ id: "wide", width: 1512, height: 982 }),
   Object.freeze({ id: "narrow", width: 1180, height: 820 }),
+  Object.freeze({ id: "compact", width: 860, height: 720 }),
 ]);
 export const EXPECTED_THEME_COUNT = 24;
 export const EXPECTED_FIXTURE_SCENE_COUNT =
@@ -56,6 +57,15 @@ const contrastThresholds = Object.freeze({
   control: 3,
 });
 export const MAXIMUM_TASK_READING_ARTWORK_LEAK = 0.08;
+export const MAXIMUM_CENTER_DELTA_PX = 1;
+export const MAXIMUM_ROW_HEIGHT_DELTA_PX = 0.5;
+export const MINIMUM_DENSE_SIDEBAR_ROWS = 8;
+export const REQUIRED_SCENE_ARTWORK_ZONES = Object.freeze(["titlebar", "sidebar", "main"]);
+const minimumSceneTransmissionPixelRatios = Object.freeze({
+  titlebar: 0.02,
+  sidebar: 0.02,
+  main: 0.02,
+});
 
 export function summarizeContrastNodeSamples(target, nodeSamples) {
   const samples = Array.isArray(nodeSamples) ? nodeSamples : [];
@@ -148,6 +158,7 @@ export const EXPECTED_SURFACE_ANNOTATIONS = Object.freeze([
 
 export const REQUIRED_SURFACE_SELECTORS = Object.freeze([
   Object.freeze({ name: "app shell", fixtureToken: 'id="root"' }),
+  Object.freeze({ name: "synthetic titlebar", fixtureToken: 'data-fixture-surface="titlebar"' }),
   Object.freeze({ name: "sidebar", fixtureToken: 'class="app-shell-left-panel"' }),
   Object.freeze({ name: "main surface", fixtureToken: 'class="main-surface"' }),
   Object.freeze({ name: "header", fixtureToken: 'class="app-header-tint"' }),
@@ -407,6 +418,14 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
       "app-shell",
       `${context} composer material chain`,
     );
+    requireCenteredGeometry(metric.layoutGeometry?.composer, `${context} composer geometry`);
+    requireDenseSidebar(metric.denseSidebar, `${context} dense sidebar`);
+    requireSceneContinuity(
+      metric.sceneContinuity,
+      metric.sceneArtworkZones,
+      metric.sceneTransmissionZones,
+      context,
+    );
 
     if (metric.route === "task") {
       requireMetrics(
@@ -422,6 +441,7 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
     }
 
     if (metric.route === "home") {
+      requireCenteredGeometry(metric.layoutGeometry?.home, `${context} home geometry`);
       requireApproximateAlpha(
         metric.homeContentBackgroundAlpha,
         0,
@@ -449,6 +469,8 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
         "app-shell",
         `${context} home material chain`,
       );
+    } else {
+      requireMetrics(metric.layoutGeometry?.home === null, `${context} task home geometry is not null`);
     }
   }
 }
@@ -592,6 +614,156 @@ function requireMaterialChain(
       && sceneBase.backgroundAlpha <= 1,
     `${message} sceneBase ${sceneBase.surface} alpha is ${sceneBase.backgroundAlpha}`,
   );
+}
+
+function requireCenteredGeometry(geometry, message) {
+  requireMetrics(geometry && geometry.withinMain === true, `${message} is outside main`);
+  for (const field of ["centerDeltaX", "marginDeltaX", "leftMargin", "rightMargin"]) {
+    requireMetrics(Number.isFinite(geometry[field]), `${message} ${field} is ${geometry?.[field]}`);
+  }
+  requireMetrics(
+    Math.abs(geometry.centerDeltaX) <= MAXIMUM_CENTER_DELTA_PX,
+    `${message} center delta is ${geometry.centerDeltaX}`,
+  );
+  requireMetrics(
+    geometry.marginDeltaX >= 0 && geometry.marginDeltaX <= MAXIMUM_CENTER_DELTA_PX,
+    `${message} margin delta is ${geometry.marginDeltaX}`,
+  );
+  requireMetrics(
+    geometry.leftMargin >= 0 && geometry.rightMargin >= 0,
+    `${message} margins are ${geometry.leftMargin}/${geometry.rightMargin}`,
+  );
+}
+
+function requireDenseSidebar(sidebar, message) {
+  requireMetrics(sidebar && typeof sidebar === "object", `${message} is missing`);
+  requireMetrics(
+    Number.isInteger(sidebar.rowCount) && sidebar.rowCount >= MINIMUM_DENSE_SIDEBAR_ROWS,
+    `${message} row count is ${sidebar.rowCount}`,
+  );
+  requireMetrics(
+    Number.isFinite(sidebar.rowHeight) && Math.abs(sidebar.rowHeight - 36) <= 0.5,
+    `${message} row height is ${sidebar.rowHeight}`,
+  );
+  requireMetrics(
+    Number.isFinite(sidebar.rowHeightDelta)
+      && sidebar.rowHeightDelta <= MAXIMUM_ROW_HEIGHT_DELTA_PX,
+    `${message} row height delta is ${sidebar.rowHeightDelta}`,
+  );
+  requireMetrics(sidebar.truncatedCount >= 2, `${message} truncated count is ${sidebar.truncatedCount}`);
+  for (const field of ["rowsWithinViewport", "rowsDoNotOverlap", "ellipsisContractValid"]) {
+    requireMetrics(sidebar[field] === true, `${message} ${field} is ${sidebar[field]}`);
+  }
+  const selectedUsesStructuralShadow =
+    typeof sidebar.selectedShadowGeometry === "string"
+    && typeof sidebar.peerShadowGeometry === "string"
+    && sidebar.selectedShadowGeometry !== "none"
+    && sidebar.selectedShadowGeometry !== sidebar.peerShadowGeometry;
+  const selectedUsesStructuralBorder =
+    Number.isFinite(sidebar.selectedMaxBorderWidth)
+    && Number.isFinite(sidebar.peerMaxBorderWidth)
+    && sidebar.selectedMaxBorderWidth >= sidebar.peerMaxBorderWidth + 1;
+  requireMetrics(
+    Number.isFinite(sidebar.selectedFontWeight)
+      && Number.isFinite(sidebar.peerFontWeight)
+      && sidebar.selectedFontWeight >= 600
+      && sidebar.selectedFontWeight >= sidebar.peerFontWeight + 100
+      && (selectedUsesStructuralShadow || selectedUsesStructuralBorder),
+    `${message} selected structural affordance is missing`,
+  );
+}
+
+function requireSceneContinuity(continuity, artworkZones, transmissionZones, context) {
+  requireMetrics(continuity && typeof continuity === "object", `${context} scene continuity is missing`);
+  requireMetrics(
+    Number.isFinite(continuity.titlebarBackgroundAlpha)
+      && continuity.titlebarBackgroundAlpha >= 0
+      && continuity.titlebarBackgroundAlpha <= 0.18 + 1 / 255,
+    `${context} titlebar background alpha is ${continuity.titlebarBackgroundAlpha}`,
+  );
+  requireApproximateAlpha(
+    continuity.sidebarBackgroundAlpha,
+    0,
+    `${context} sidebar background alpha`,
+  );
+  requireApproximateAlpha(
+    continuity.mainBackgroundAlpha,
+    0,
+    `${context} main background alpha`,
+  );
+  requireMetrics(
+    continuity.titlebarHasIndependentArtwork === false
+      && continuity.sidebarHasIndependentArtwork === false
+      && continuity.mainHasIndependentArtwork === false,
+    `${context} a shell surface owns independent artwork`,
+  );
+  requireMetrics(
+    continuity.titlebarBackdropFilter === "none",
+    `${context} titlebar backdrop filter is ${continuity.titlebarBackdropFilter}`,
+  );
+  requireMetrics(
+    Number.isFinite(continuity.sidebarBoundaryWidth)
+      && continuity.sidebarBoundaryWidth > 0
+      && continuity.sidebarBoundaryWidth <= 2,
+    `${context} sidebar boundary width is ${continuity.sidebarBoundaryWidth}`,
+  );
+  requireMetrics(
+    Number.isFinite(continuity.mainLeftBoundaryWidth)
+      && continuity.mainLeftBoundaryWidth <= 0.5,
+    `${context} main left boundary width is ${continuity.mainLeftBoundaryWidth}`,
+  );
+
+  const artworkByID = requireExactZones(artworkZones, `${context} scene artwork zones`);
+  for (const id of REQUIRED_SCENE_ARTWORK_ZONES) {
+    const zone = artworkByID.get(id);
+    requireMetrics(
+      Number.isInteger(zone.tileCount) && zone.tileCount >= 3,
+      `${context} ${id} real artwork tile count is ${zone.tileCount}`,
+    );
+    requireMetrics(
+      Number.isFinite(zone.maximumPixelDelta) && zone.maximumPixelDelta >= 1,
+      `${context} ${id} real artwork maximum pixel delta is ${zone.maximumPixelDelta}`,
+    );
+    requireMetrics(
+      Number.isFinite(zone.meanPixelDelta) && zone.meanPixelDelta >= 0.01,
+      `${context} ${id} real artwork mean pixel delta is ${zone.meanPixelDelta}`,
+    );
+  }
+
+  const byID = requireExactZones(transmissionZones, `${context} scene transmission zones`);
+  for (const id of REQUIRED_SCENE_ARTWORK_ZONES) {
+    const zone = byID.get(id);
+    requireMetrics(
+      Number.isInteger(zone.tileCount) && zone.tileCount >= 3,
+      `${context} ${id} transmission tile count is ${zone.tileCount}`,
+    );
+    requireMetrics(
+      Number.isFinite(zone.changedPixelRatio)
+        && zone.changedPixelRatio >= 0
+        && zone.changedPixelRatio >= minimumSceneTransmissionPixelRatios[id],
+      `${context} ${id} transmission pixel ratio is ${zone.changedPixelRatio}`,
+    );
+    requireMetrics(
+      Number.isInteger(zone.qualifyingTileCount) && zone.qualifyingTileCount >= 3,
+      `${context} ${id} qualifying tile count is ${zone.qualifyingTileCount}`,
+    );
+    requireMetrics(
+      Number.isFinite(zone.qualifyingTileRatio) && zone.qualifyingTileRatio >= 0.75,
+      `${context} ${id} qualifying tile ratio is ${zone.qualifyingTileRatio}`,
+    );
+  }
+}
+
+function requireExactZones(zones, message) {
+  requireMetrics(Array.isArray(zones), `${message} are missing`);
+  const byID = new Map(zones.map((zone) => [zone.id, zone]));
+  requireMetrics(
+    zones.length === REQUIRED_SCENE_ARTWORK_ZONES.length
+      && byID.size === REQUIRED_SCENE_ARTWORK_ZONES.length
+      && REQUIRED_SCENE_ARTWORK_ZONES.every((id) => byID.has(id)),
+    `${message} are ${zones.map((zone) => zone.id).join(",")}`,
+  );
+  return byID;
 }
 
 function groupBy(values, keyForValue) {

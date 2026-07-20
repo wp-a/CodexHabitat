@@ -188,9 +188,8 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 screenshotBuffer,
                 routeName,
               );
-              const artworkPixelDelta = routeName === "home" || !taskModeOff
-                ? await measureArtworkPixelDelta(page, screenshotBuffer)
-                : 0;
+              const sceneEvidence = await measureSceneVisualEvidence(page, screenshotBuffer);
+              const artworkPixelDelta = sceneEvidence.actualArtworkPixelDelta;
               if (routeName === "home") {
                 assert(
                   artworkPixelDelta >= 0.02,
@@ -240,6 +239,8 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 artHeight: art.height,
                 artDecodeMS: art.decodeMS,
                 artworkPixelDelta,
+                sceneArtworkZones: sceneEvidence.artworkZones,
+                sceneTransmissionZones: sceneEvidence.transmissionZones,
                 screenshotPath,
                 screenshotFingerprint: sha256(screenshotBuffer),
                 sourceFingerprint: theme.sourceFingerprint,
@@ -262,7 +263,10 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
     await browser.close();
   }
 
-  assert(scenes.length === EXPECTED_FIXTURE_SCENE_COUNT, `expected 96 scenes, found ${scenes.length}`);
+  assert(
+    scenes.length === EXPECTED_FIXTURE_SCENE_COUNT,
+    `expected ${EXPECTED_FIXTURE_SCENE_COUNT} scenes, found ${scenes.length}`,
+  );
   assertSceneDifferences(scenes);
   const metadata = JSON.parse(playwrightMetadata);
   const metrics = {
@@ -508,6 +512,7 @@ async function inspectFixturePage(
   assert(popoverBounds.inViewport, "popover is outside the viewport");
   assert(!popoverBounds.overlapsComposer, "popover overlaps the composer");
   const coreBounds = await assertCoreBounds(page, selectors, routeName);
+  const shellLayout = await measureShellLayout(page, selectors, routeName);
   await assertSemanticTextColors(page, routeName);
 
   let taskCanScroll = false;
@@ -711,7 +716,7 @@ async function inspectFixturePage(
     popoverInViewport: popoverBounds.inViewport,
     popoverOverlapsComposer: popoverBounds.overlapsComposer,
     surfaceAnnotationsValid: true,
-    allControlsWithinViewport: true,
+    allControlsWithinViewport: coreBounds.allControlsWithinViewport,
     homeSuggestionMinimumViewportInset: coreBounds.homeSuggestionMinimumViewportInset,
     semanticForegroundsValid: true,
     bannerFadeValid,
@@ -723,8 +728,142 @@ async function inspectFixturePage(
     finalScrollTop,
     artworkOpacity: scene.artworkOpacity,
     taskModeOff,
+    ...shellLayout,
     ...materialHierarchy,
   };
+}
+
+async function measureShellLayout(page, selectors, routeName) {
+  return page.evaluate(({ profileSelectors, activeRoute }) => {
+    const main = document.querySelector(profileSelectors.mainSurface);
+    const composer = document.querySelector(profileSelectors.composer);
+    const sidebar = document.querySelector(profileSelectors.sidebar);
+    const titlebar = document.querySelector('[data-fixture-surface="titlebar"]');
+    if (
+      !(main instanceof HTMLElement)
+      || !(composer instanceof HTMLElement)
+      || !(sidebar instanceof HTMLElement)
+      || !(titlebar instanceof HTMLElement)
+    ) {
+      throw new Error("shell geometry surface is missing");
+    }
+
+    const mainRect = main.getBoundingClientRect();
+    const geometryFor = (node) => {
+      if (!(node instanceof HTMLElement)) return null;
+      const rect = node.getBoundingClientRect();
+      const leftMargin = rect.left - mainRect.left;
+      const rightMargin = mainRect.right - rect.right;
+      return {
+        centerDeltaX: (rect.left + rect.right - mainRect.left - mainRect.right) / 2,
+        marginDeltaX: Math.abs(leftMargin - rightMargin),
+        leftMargin,
+        rightMargin,
+        withinMain:
+          rect.width > 0
+          && rect.height > 0
+          && rect.left >= mainRect.left
+          && rect.right <= mainRect.right,
+      };
+    };
+
+    const rows = [...document.querySelectorAll("[data-fixture-sidebar-row]")]
+      .filter((node) => node instanceof HTMLElement);
+    const rowRects = rows.map((node) => node.getBoundingClientRect());
+    const rowHeights = rowRects.map(({ height }) => height);
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const selected = rows.find((node) => node.matches("[aria-current]"));
+    const peer = rows.find((node) => node !== selected);
+    const selectedStyle = selected ? getComputedStyle(selected) : null;
+    const peerStyle = peer ? getComputedStyle(peer) : null;
+    const maximumBorderWidth = (style) => style ? Math.max(
+      Number.parseFloat(style.borderTopWidth) || 0,
+      Number.parseFloat(style.borderRightWidth) || 0,
+      Number.parseFloat(style.borderBottomWidth) || 0,
+      Number.parseFloat(style.borderLeftWidth) || 0,
+    ) : 0;
+    const shadowGeometry = (style) => {
+      if (!style || style.boxShadow === "none") return "none";
+      const withoutColors = style.boxShadow
+        .replace(/\b(?:rgb|rgba|hsl|hsla|lab|lch|oklab|oklch|color)\([^)]*\)/gi, "")
+        .replace(/#[0-9a-f]{3,8}\b/gi, "")
+        .replace(/\b(?:transparent|currentcolor)\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      return withoutColors || "none";
+    };
+    const denseSidebar = {
+      rowCount: rows.length,
+      rowHeight: rowHeights.length > 0
+        ? rowHeights.reduce((total, height) => total + height, 0) / rowHeights.length
+        : 0,
+      rowHeightDelta: rowHeights.length > 0
+        ? Math.max(...rowHeights) - Math.min(...rowHeights)
+        : Number.POSITIVE_INFINITY,
+      truncatedCount: rows.filter((node) => node.scrollWidth > node.clientWidth + 0.5).length,
+      rowsWithinViewport: rowRects.every((rect) =>
+        rect.left >= sidebarRect.left
+        && rect.right <= sidebarRect.right
+        && rect.top >= sidebarRect.top
+        && rect.bottom <= sidebarRect.bottom
+        && rect.left >= 0
+        && rect.top >= 0
+        && rect.right <= innerWidth
+        && rect.bottom <= innerHeight),
+      rowsDoNotOverlap: rowRects.every((rect, index) =>
+        index === 0 || rowRects[index - 1].bottom <= rect.top + 0.01),
+      ellipsisContractValid: rows.every((node) => {
+        const style = getComputedStyle(node);
+        return style.textOverflow === "ellipsis"
+          && style.whiteSpace === "nowrap"
+          && (style.overflowX === "hidden" || style.overflowX === "clip");
+      }),
+      selectedFontWeight: Number.parseInt(selectedStyle?.fontWeight ?? "0", 10) || 0,
+      peerFontWeight: Number.parseInt(peerStyle?.fontWeight ?? "0", 10) || 0,
+      selectedShadowGeometry: shadowGeometry(selectedStyle),
+      peerShadowGeometry: shadowGeometry(peerStyle),
+      selectedMaxBorderWidth: maximumBorderWidth(selectedStyle),
+      peerMaxBorderWidth: maximumBorderWidth(peerStyle),
+    };
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("unable to inspect shell material alpha");
+    const backgroundAlpha = (style) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = "#ff00ff";
+      context.fillStyle = style.backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      return context.getImageData(0, 0, 1, 1).data[3] / 255;
+    };
+    const titlebarStyle = getComputedStyle(titlebar);
+    const sidebarStyle = getComputedStyle(sidebar);
+    const mainStyle = getComputedStyle(main);
+    const hasIndependentArtwork = (style) => style.backgroundImage.includes("url(");
+
+    return {
+      layoutGeometry: {
+        home: activeRoute === "home"
+          ? geometryFor(document.querySelector(profileSelectors.homeContent))
+          : null,
+        composer: geometryFor(composer),
+      },
+      denseSidebar,
+      sceneContinuity: {
+        titlebarBackgroundAlpha: backgroundAlpha(titlebarStyle),
+        sidebarBackgroundAlpha: backgroundAlpha(sidebarStyle),
+        mainBackgroundAlpha: backgroundAlpha(mainStyle),
+        titlebarHasIndependentArtwork: hasIndependentArtwork(titlebarStyle),
+        sidebarHasIndependentArtwork: hasIndependentArtwork(sidebarStyle),
+        mainHasIndependentArtwork: hasIndependentArtwork(mainStyle),
+        titlebarBackdropFilter: titlebarStyle.backdropFilter,
+        sidebarBoundaryWidth: Number.parseFloat(sidebarStyle.borderRightWidth) || 0,
+        mainLeftBoundaryWidth: Number.parseFloat(mainStyle.borderLeftWidth) || 0,
+      },
+    };
+  }, { profileSelectors: selectors, activeRoute: routeName });
 }
 
 async function assertSemanticTextColors(page, routeName) {
@@ -1224,6 +1363,20 @@ async function assertCoreBounds(page, selectors, routeName) {
     });
     assert(inViewport, `${selectorKey} is clipped or outside the viewport`);
   }
+  const allControlsWithinViewport = await page.locator("button, a, textarea").evaluateAll((nodes) =>
+    nodes.filter((node) => !node.closest("[hidden]")).every((node) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && rect.width > 0
+        && rect.height > 0
+        && rect.left >= 0
+        && rect.top >= 0
+        && rect.right <= innerWidth
+        && rect.bottom <= innerHeight;
+    }));
+  assert(allControlsWithinViewport, "a visible control is clipped or outside the viewport");
   if (routeName === "home") {
     const minimumInset = await page.locator(selectors.homeSuggestions).evaluate((node) => {
       const controls = Array.from(node.querySelectorAll("button, a, [role=button]"));
@@ -1237,70 +1390,168 @@ async function assertCoreBounds(page, selectors, routeName) {
       minimumInset !== null && minimumInset >= 12,
       `home suggestion controls have only ${String(minimumInset)}px viewport inset`,
     );
-    return { homeSuggestionMinimumViewportInset: minimumInset };
+    return { homeSuggestionMinimumViewportInset: minimumInset, allControlsWithinViewport };
   }
-  return { homeSuggestionMinimumViewportInset: null };
+  return { homeSuggestionMinimumViewportInset: null, allControlsWithinViewport };
 }
 
-async function measureArtworkPixelDelta(page, themedScreenshot) {
-  const revealRects = await page.evaluate(() => {
+async function measureSceneVisualEvidence(page, themedScreenshot) {
+  const zones = await page.evaluate(() => {
     const route = document.documentElement.dataset.codexHabitatRoute;
     const main = document.querySelector(".main-surface");
     const header = document.querySelector(".app-header-tint");
     const composer = document.querySelector(".composer-surface-chrome");
-    if (!(main instanceof HTMLElement) || !(header instanceof HTMLElement) || !(composer instanceof HTMLElement)) {
+    const sidebar = document.querySelector(".app-shell-left-panel");
+    const titlebar = document.querySelector('[data-fixture-surface="titlebar"]');
+    if (
+      !(main instanceof HTMLElement)
+      || !(header instanceof HTMLElement)
+      || !(composer instanceof HTMLElement)
+      || !(sidebar instanceof HTMLElement)
+      || !(titlebar instanceof HTMLElement)
+    ) {
       return [];
     }
     const asRect = (node) => {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
     };
-    const stage = asRect(main);
-    stage.top = Math.max(stage.top, header.getBoundingClientRect().bottom + 8);
-    stage.bottom = Math.min(stage.bottom, composer.getBoundingClientRect().top - 8);
-    const protectedSelector = route === "home"
-      ? ".fixture-home, .fixture-popover"
-      : ".fixture-message, .fixture-response, .fixture-popover";
-    const protectedRects = [...document.querySelectorAll(protectedSelector)].map(asRect);
     const overlaps = (left, right) => !(
       right.right <= left.left
       || right.left >= left.right
       || right.bottom <= left.top
       || right.top >= left.bottom
     );
-    const regions = [];
-    const tileSize = 32;
-    for (let top = stage.top; top < stage.bottom; top += tileSize) {
-      for (let left = stage.left; left < stage.right; left += tileSize) {
-        const tile = {
-          left,
-          top,
-          right: Math.min(left + tileSize, stage.right),
-          bottom: Math.min(top + tileSize, stage.bottom),
-        };
-        if (tile.right - tile.left < 20 || tile.bottom - tile.top < 20) continue;
-        if (protectedRects.some((rect) => overlaps(tile, rect))) continue;
-        regions.push(tile);
+    const tiled = (bounds, protectedRects, tileSize) => {
+      const regions = [];
+      for (let top = bounds.top; top < bounds.bottom; top += tileSize) {
+        for (let left = bounds.left; left < bounds.right; left += tileSize) {
+          const tile = {
+            left,
+            top,
+            right: Math.min(left + tileSize, bounds.right),
+            bottom: Math.min(top + tileSize, bounds.bottom),
+          };
+          if (tile.right - tile.left < 20 || tile.bottom - tile.top < 20) continue;
+          if (protectedRects.some((rect) => overlaps(tile, rect))) continue;
+          regions.push(tile);
+        }
       }
-    }
-    return regions;
+      return regions;
+    };
+
+    const titlebarRect = asRect(titlebar);
+    const titlebarBounds = {
+      left: titlebarRect.left + 8,
+      top: titlebarRect.top + 4,
+      right: titlebarRect.right - 8,
+      bottom: titlebarRect.bottom - 4,
+    };
+    const titlebarProtected = [
+      ...titlebar.querySelectorAll("span"),
+      ...document.querySelectorAll(".offline-fixture-label"),
+    ].map((node) => {
+      const rect = asRect(node);
+      return {
+        left: rect.left - 4,
+        top: rect.top - 4,
+        right: rect.right + 4,
+        bottom: rect.bottom + 4,
+      };
+    });
+
+    const sidebarRect = asRect(sidebar);
+    const sidebarBounds = {
+      left: sidebarRect.left + 8,
+      top: sidebarRect.top + 8,
+      right: sidebarRect.right - 8,
+      bottom: sidebarRect.bottom - 8,
+    };
+    const sidebarProtected = [...sidebar.querySelectorAll(".sidebar-resize-handle-line")]
+      .map(asRect);
+
+    const stage = asRect(main);
+    stage.top = Math.max(stage.top, header.getBoundingClientRect().bottom + 8);
+    stage.bottom = Math.min(stage.bottom, composer.getBoundingClientRect().top - 8);
+    const protectedSelector = route === "home"
+      ? ".fixture-home, .fixture-popover"
+      : ".fixture-message, .fixture-response, .fixture-popover";
+    const mainProtected = [...document.querySelectorAll(protectedSelector)].map(asRect);
+
+    return [
+      { id: "titlebar", regions: tiled(titlebarBounds, titlebarProtected, 24) },
+      { id: "sidebar", regions: tiled(sidebarBounds, sidebarProtected, 32) },
+      { id: "main", regions: tiled(stage, mainProtected, 32) },
+    ];
   });
   const override = await page.addStyleTag({
     content: 'html[data-codex-habitat-theme="1"] #root::before { opacity: 0 !important; }',
   });
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
-  const withoutArtwork = await page.screenshot({
-    animations: "disabled",
-    fullPage: false,
-    type: "png",
-  });
-  await override.evaluate((node) => node.remove());
-  return compareScreenshotRegionPixels(page, themedScreenshot, withoutArtwork, revealRects);
+  let withoutArtwork;
+  let transmissionSentinel;
+  let transmissionOff;
+  try {
+    await settleRenderedFrame(page);
+    withoutArtwork = await page.screenshot({
+      animations: "disabled",
+      fullPage: false,
+      type: "png",
+    });
+    await override.evaluate((node) => {
+      node.textContent = `
+        html[data-codex-habitat-theme="1"] #root {
+          background-image: repeating-linear-gradient(90deg, #ffffff 0 8px, #000000 8px 16px) !important;
+          background-size: 16px 16px !important;
+        }
+        html[data-codex-habitat-theme="1"] #root::before,
+        html[data-codex-habitat-theme="1"] #root::after { opacity: 0 !important; }
+      `;
+    });
+    await settleRenderedFrame(page);
+    transmissionSentinel = await page.screenshot({
+      animations: "disabled",
+      fullPage: false,
+      type: "png",
+    });
+    await override.evaluate((node) => {
+      node.textContent = `
+        html[data-codex-habitat-theme="1"] #root { background-image: none !important; }
+        html[data-codex-habitat-theme="1"] #root::before,
+        html[data-codex-habitat-theme="1"] #root::after { opacity: 0 !important; }
+      `;
+    });
+    await settleRenderedFrame(page);
+    transmissionOff = await page.screenshot({
+      animations: "disabled",
+      fullPage: false,
+      type: "png",
+    });
+  } finally {
+    await override.evaluate((node) => node.remove());
+    await settleRenderedFrame(page);
+  }
+  const artworkZones = await compareScreenshotZonePixels(
+    page,
+    themedScreenshot,
+    withoutArtwork,
+    zones,
+  );
+  const actualMain = artworkZones.find(({ id }) => id === "main");
+  const transmissionZones = await compareScreenshotZonePixels(
+    page,
+    transmissionSentinel,
+    transmissionOff,
+    zones,
+  );
+  return {
+    actualArtworkPixelDelta: actualMain?.changedPixelRatio ?? 0,
+    artworkZones,
+    transmissionZones,
+  };
 }
 
-async function compareScreenshotRegionPixels(page, left, right, regions) {
-  return page.evaluate(async ({ leftBase64, rightBase64, sampleRegions }) => {
-    if (!Array.isArray(sampleRegions) || sampleRegions.length === 0) return 0;
+async function compareScreenshotZonePixels(page, left, right, zones) {
+  return page.evaluate(async ({ leftBase64, rightBase64, sampleZones }) => {
     const decode = async (base64) => {
       const image = new Image();
       image.src = `data:image/png;base64,${base64}`;
@@ -1322,30 +1573,51 @@ async function compareScreenshotRegionPixels(page, left, right, regions) {
     }
     const scaleX = leftImage.width / innerWidth;
     const scaleY = leftImage.height / innerHeight;
-    let changed = 0;
-    let total = 0;
-    for (const region of sampleRegions) {
-      const left = Math.max(0, Math.floor(region.left * scaleX));
-      const top = Math.max(0, Math.floor(region.top * scaleY));
-      const right = Math.min(leftImage.width, Math.ceil(region.right * scaleX));
-      const bottom = Math.min(leftImage.height, Math.ceil(region.bottom * scaleY));
-      for (let y = top; y < bottom; y += 2) {
-        for (let x = left; x < right; x += 2) {
-          const offset = (y * leftImage.width + x) * 4;
-          if (Math.max(
-            Math.abs(leftImage.pixels[offset] - rightImage.pixels[offset]),
-            Math.abs(leftImage.pixels[offset + 1] - rightImage.pixels[offset + 1]),
-            Math.abs(leftImage.pixels[offset + 2] - rightImage.pixels[offset + 2]),
-          ) >= 6) changed += 1;
-          total += 1;
+    return sampleZones.map(({ id, regions }) => {
+      let changed = 0;
+      let total = 0;
+      let maximumPixelDelta = 0;
+      let summedPixelDelta = 0;
+      let qualifyingTiles = 0;
+      for (const region of regions) {
+        const left = Math.max(0, Math.floor(region.left * scaleX));
+        const top = Math.max(0, Math.floor(region.top * scaleY));
+        const right = Math.min(leftImage.width, Math.ceil(region.right * scaleX));
+        const bottom = Math.min(leftImage.height, Math.ceil(region.bottom * scaleY));
+        let tileChanged = 0;
+        let tileTotal = 0;
+        for (let y = top; y < bottom; y += 2) {
+          for (let x = left; x < right; x += 2) {
+            const offset = (y * leftImage.width + x) * 4;
+            const pixelDelta = Math.max(
+              Math.abs(leftImage.pixels[offset] - rightImage.pixels[offset]),
+              Math.abs(leftImage.pixels[offset + 1] - rightImage.pixels[offset + 1]),
+              Math.abs(leftImage.pixels[offset + 2] - rightImage.pixels[offset + 2]),
+            );
+            maximumPixelDelta = Math.max(maximumPixelDelta, pixelDelta);
+            summedPixelDelta += pixelDelta;
+            if (pixelDelta >= 6) tileChanged += 1;
+            tileTotal += 1;
+          }
         }
+        if (tileTotal > 0 && tileChanged / tileTotal >= 0.01) qualifyingTiles += 1;
+        changed += tileChanged;
+        total += tileTotal;
       }
-    }
-    return total > 0 ? changed / total : 0;
+      return {
+        id,
+        tileCount: regions.length,
+        changedPixelRatio: total > 0 ? changed / total : 0,
+        qualifyingTileCount: qualifyingTiles,
+        qualifyingTileRatio: regions.length > 0 ? qualifyingTiles / regions.length : 0,
+        maximumPixelDelta,
+        meanPixelDelta: total > 0 ? summedPixelDelta / total : 0,
+      };
+    });
   }, {
     leftBase64: left.toString("base64"),
     rightBase64: right.toString("base64"),
-    sampleRegions: regions,
+    sampleZones: zones,
   });
 }
 

@@ -39,6 +39,9 @@ test("the representative DOM is fixed and explicitly marked as offline", async (
   assert.equal(FIXTURE_LABEL, "OFFLINE THEME FIXTURE");
   assert.equal(countOccurrences(html, FIXTURE_LABEL), 1);
   assert.match(html, /data-offline-theme-fixture="true"/);
+  assert.equal(countOccurrences(html, "data-fixture-dense-sidebar"), 1);
+  assert.ok(countOccurrences(html, "data-fixture-sidebar-row") >= 8);
+  assert.match(html, /[\u3400-\u9fff]/u);
   assert.doesNotMatch(html, /data-radix-popper-content-wrapper="" hidden/);
   assert.doesNotThrow(() => validateFixtureSource(html, css));
   assert.match(fixtureSourceFingerprint(html, css), /^[a-f0-9]{64}$/);
@@ -98,11 +101,12 @@ test("routes and viewports are deterministic and release-independent", () => {
   assert.deepEqual(FIXTURE_VIEWPORTS, [
     { id: "wide", width: 1512, height: 982 },
     { id: "narrow", width: 1180, height: 820 },
+    { id: "compact", width: 860, height: 720 },
   ]);
   assert.ok(Object.isFrozen(FIXTURE_ROUTES));
   assert.ok(Object.isFrozen(FIXTURE_VIEWPORTS));
   assert.ok(FIXTURE_VIEWPORTS.every(Object.isFrozen));
-  assert.equal(EXPECTED_FIXTURE_SCENE_COUNT, 96);
+  assert.equal(EXPECTED_FIXTURE_SCENE_COUNT, 144);
   assert.ok(MINIMUM_ROUTE_PHASH_DISTANCE >= 12);
   assert.ok(MINIMUM_CROSS_THEME_PHASH_DISTANCE >= 12);
   assert.equal(EXPORTER_CONTRACT_MARKER, "offline-theme-fixture-payload-v1");
@@ -113,7 +117,7 @@ test("routes and viewports are deterministic and release-independent", () => {
   );
 });
 
-test("the exporter payload is strict, profile-owned, and expands to exactly 96 scenes", () => {
+test("the exporter payload is strict, profile-owned, and expands to exactly 144 scenes", () => {
   const payload = representativePayload();
 
   assert.doesNotThrow(() => validateFixturePayload(payload, representativeTemplate));
@@ -257,6 +261,39 @@ test("scene material checks enforce one computed background layer on real DOM pa
     ).backgroundAlpha = 0.2;
     assert.throws(() => assertSceneMaterialHierarchy(opaqueAncestor), expected);
   }
+
+  for (const [mutate, expected] of [
+    [(metric) => { metric.layoutGeometry.composer.centerDeltaX = 1.01; }, /composer geometry center delta/],
+    [(metric) => { metric.layoutGeometry.home.marginDeltaX = 1.01; }, /home geometry margin delta/],
+    [(metric) => { metric.layoutGeometry.home.marginDeltaX = -1; }, /home geometry margin delta/],
+    [(metric) => { metric.denseSidebar.rowCount = 7; }, /dense sidebar row count/],
+    [(metric) => { metric.denseSidebar.rowHeightDelta = 0.51; }, /row height delta/],
+    [(metric) => { metric.denseSidebar.truncatedCount = 1; }, /truncated count/],
+    [(metric) => { metric.denseSidebar.rowsWithinViewport = false; }, /rowsWithinViewport/],
+    [(metric) => { metric.denseSidebar.rowsDoNotOverlap = false; }, /rowsDoNotOverlap/],
+    [(metric) => { metric.denseSidebar.ellipsisContractValid = false; }, /ellipsisContractValid/],
+    [(metric) => { metric.denseSidebar.selectedFontWeight = 500; }, /selected structural affordance/],
+    [(metric) => {
+      metric.denseSidebar.selectedShadowGeometry = metric.denseSidebar.peerShadowGeometry;
+    }, /selected structural affordance/],
+    [(metric) => { metric.sceneContinuity.titlebarBackgroundAlpha = 0.3; }, /titlebar background alpha/],
+    [(metric) => { metric.sceneContinuity.titlebarHasIndependentArtwork = true; }, /owns independent artwork/],
+    [(metric) => { metric.sceneContinuity.titlebarBackdropFilter = "blur(8px)"; }, /backdrop filter/],
+    [(metric) => { metric.sceneContinuity.mainLeftBoundaryWidth = 1; }, /main left boundary width/],
+    [(metric) => { metric.sceneArtworkZones.find(({ id }) => id === "titlebar").maximumPixelDelta = 0; }, /titlebar real artwork maximum pixel delta/],
+    [(metric) => { metric.sceneArtworkZones.find(({ id }) => id === "sidebar").meanPixelDelta = 0; }, /sidebar real artwork mean pixel delta/],
+    [(metric) => { metric.sceneTransmissionZones.find(({ id }) => id === "titlebar").tileCount = 0; }, /titlebar transmission tile count/],
+    [(metric) => { metric.sceneTransmissionZones.find(({ id }) => id === "sidebar").changedPixelRatio = 0.019; }, /sidebar transmission pixel ratio/],
+    [(metric) => { metric.sceneTransmissionZones.find(({ id }) => id === "main").qualifyingTileCount = 2; }, /main qualifying tile count/],
+    [(metric) => { metric.sceneTransmissionZones.find(({ id }) => id === "main").qualifyingTileRatio = 0.74; }, /main qualifying tile ratio/],
+    [(metric) => {
+      metric.sceneTransmissionZones[1] = structuredClone(metric.sceneTransmissionZones[0]);
+    }, /scene transmission zones/],
+  ]) {
+    const invalid = structuredClone(healthy);
+    mutate(invalid[0]);
+    assert.throws(() => assertSceneMaterialHierarchy(invalid), expected);
+  }
 });
 
 test("pixel summaries preserve the weakest node and strongest local artwork leak", () => {
@@ -371,6 +408,64 @@ function representativeMetrics() {
     homeActionBackgroundAlpha: index % 2 === 0 ? 0.82 : null,
     composerContextBackgroundAlpha: 0,
     composerBackgroundAlpha: 0.86,
+    layoutGeometry: {
+      home: index % 2 === 0 ? {
+        centerDeltaX: 0,
+        marginDeltaX: 0,
+        leftMargin: 120,
+        rightMargin: 120,
+        withinMain: true,
+      } : null,
+      composer: {
+        centerDeltaX: 0,
+        marginDeltaX: 0,
+        leftMargin: 80,
+        rightMargin: 80,
+        withinMain: true,
+      },
+    },
+    denseSidebar: {
+      rowCount: 8,
+      rowHeight: 36,
+      rowHeightDelta: 0,
+      truncatedCount: 3,
+      rowsWithinViewport: true,
+      rowsDoNotOverlap: true,
+      ellipsisContractValid: true,
+      selectedFontWeight: 600,
+      peerFontWeight: 400,
+      selectedShadowGeometry: "inset 3px 0px 0px 0px",
+      peerShadowGeometry: "none",
+      selectedMaxBorderWidth: 1,
+      peerMaxBorderWidth: 1,
+    },
+    sceneContinuity: {
+      titlebarBackgroundAlpha: 0.16,
+      sidebarBackgroundAlpha: 0,
+      mainBackgroundAlpha: 0,
+      titlebarHasIndependentArtwork: false,
+      sidebarHasIndependentArtwork: false,
+      mainHasIndependentArtwork: false,
+      titlebarBackdropFilter: "none",
+      sidebarBoundaryWidth: 1,
+      mainLeftBoundaryWidth: 0,
+    },
+    sceneTransmissionZones: ["titlebar", "sidebar", "main"].map((id) => ({
+      id,
+      tileCount: 12,
+      changedPixelRatio: 0.2,
+      qualifyingTileCount: 10,
+      qualifyingTileRatio: 0.9,
+    })),
+    sceneArtworkZones: ["titlebar", "sidebar", "main"].map((id) => ({
+      id,
+      tileCount: 12,
+      changedPixelRatio: 0.2,
+      qualifyingTileCount: 10,
+      qualifyingTileRatio: 0.9,
+      maximumPixelDelta: 96,
+      meanPixelDelta: 12,
+    })),
     homeMaterialChain: index % 2 === 0 ? [
       { surface: "home-action", backgroundAlpha: 0.82 },
       { surface: "home-suggestions", backgroundAlpha: 0 },
