@@ -902,7 +902,15 @@ struct ThemeCompiler {
               color: var(--habitat-text);
               background-color: color-mix(in srgb, var(--habitat-panel-alt) 80%, transparent);
               \(styleHomeAction(for: family))
-              transition: background-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 90ms linear, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+            """
+        } ?? ""
+        let homeActionTransitionRule = homeActionSelector.map { action in
+            """
+            \(root) \(action) {
+              transition-property: background-color, border-color, opacity;
+              transition-duration: 140ms, 140ms, 90ms;
+              transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1), linear;
             }
             """
         } ?? ""
@@ -917,8 +925,9 @@ struct ThemeCompiler {
         let homeActiveRule = homeActionSelector.map { action in
             """
             \(root) \(action):active {
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 94%, transparent);
+              border-color: color-mix(in srgb, var(--habitat-accent) 68%, var(--habitat-highlight));
               opacity: 0.86;
-              transform: translateY(1px);
             }
             """
         } ?? ""
@@ -960,11 +969,16 @@ struct ThemeCompiler {
         \(scopedSelectors(contentSurfaces, root: root)) { \(declarations.popover) }
 
         \(homeActionRule)
+        \(homeActionTransitionRule)
 
         /* habitat-surface: composer */
         \(scopedSelectors(composerSurfaces, root: root)) {
           \(declarations.composer)
-          transition: border-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        \(scopedSelectors(composerSurfaces, root: root)) {
+          transition-property: border-color, box-shadow;
+          transition-duration: 140ms, 160ms;
+          transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         /* habitat-surface: selected-navigation */
@@ -978,7 +992,9 @@ struct ThemeCompiler {
 
         /* habitat-semantic-state: interactive */
         \(root) \(sidebarActionSelector) {
-          transition: background-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 90ms linear, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+          transition-property: background-color, opacity;
+          transition-duration: 140ms, 90ms;
+          transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), linear;
         }
 
         @media (hover: hover) and (pointer: fine) {
@@ -990,8 +1006,8 @@ struct ThemeCompiler {
 
         \(homeActiveRule)
         \(root) \(sidebarActiveSelector) {
+          background-color: color-mix(in srgb, var(--habitat-panel-alt) 68%, transparent);
           opacity: 0.82;
-          transform: translateX(1px);
         }
 
         \(scopedSelectors(composerSurfaces.map { "\($0):focus-within" }, root: root)) {
@@ -1025,8 +1041,7 @@ struct ThemeCompiler {
 
         @media (prefers-reduced-motion: reduce) {
           \(scopedSelectors(motionSurfaces + motionStates, root: root)) {
-            transition: none;
-            transform: none;
+            transition-duration: 0s;
           }
         }
         """

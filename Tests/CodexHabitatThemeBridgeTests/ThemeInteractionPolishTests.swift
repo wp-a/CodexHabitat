@@ -47,38 +47,96 @@ struct ThemeInteractionPolishTests {
     }
 
     @Test
-    func interactionRulesNeverMutateLayout() throws {
+    func interactionRulesUseScopedPropertyAllowlists() throws {
         let profile = try completeInteractionProfile()
         let styles = HabitatThemeStyleFamily.allCases.map {
             ThemeCompiler.styleTreatment(for: $0, profile: profile)
         }
 
         for (family, css) in zip(HabitatThemeStyleFamily.allCases, styles) {
-            for rule in parseCSSRules(css).filter(\.isInteractionRule) {
-                for (property, value) in rule.declarations {
-                    #expect(
-                        !isLayoutProperty(property, value: value),
-                        "\(family.rawValue) interaction rule mutates layout with \(property)"
-                    )
-                    guard property == "transition" else { continue }
-                    for item in splitTopLevel(value, separator: ",") {
-                        let transitionedProperty = item
-                            .split(whereSeparator: \.isWhitespace)
-                            .first
-                            .map(String.init) ?? ""
-                        #expect(
-                            transitionedProperty != "all",
-                            "\(family.rawValue) uses transition: all"
-                        )
-                        #expect(
-                            !isLayoutProperty(transitionedProperty, value: ""),
-                            "\(family.rawValue) transitions layout property \(transitionedProperty)"
-                        )
-                    }
-                }
+            let rules = parseCSSRules(css)
+            let stateRules = rules.filter { $0.isInteractionStateRule && !$0.isReducedMotionRule }
+            let baseTransitionRules = rules.filter {
+                !$0.isInteractionStateRule && !$0.isReducedMotionRule && $0.hasTransitionDeclaration
+            }
+            let reducedRules = rules.filter(\.isReducedMotionRule)
+
+            #expect(!stateRules.isEmpty, "\(family.rawValue) has no interaction states")
+            #expect(!baseTransitionRules.isEmpty, "\(family.rawValue) has no transition bases")
+            #expect(!reducedRules.isEmpty, "\(family.rawValue) has no reduced-motion rule")
+
+            for rule in stateRules {
+                #expect(
+                    interactionStateDeclarationsAreAllowed(rule.declarations),
+                    "\(family.rawValue) state rule overrides native properties: \(rule.declarations.keys.sorted())"
+                )
+            }
+            for rule in baseTransitionRules {
+                #expect(
+                    Set(rule.declarations.keys).isSubset(of: baseTransitionDeclarationAllowlist),
+                    "\(family.rawValue) transition base mixes visual declarations"
+                )
+                #expect(rule.declarations["transition"] == nil, "\(family.rawValue) uses transition shorthand")
+                let transitionedProperties = splitTopLevel(
+                    rule.declarations["transition-property"] ?? "",
+                    separator: ","
+                ).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                #expect(
+                    !transitionedProperties.isEmpty
+                        && Set(transitionedProperties).isSubset(of: interactionStatePropertyAllowlist),
+                    "\(family.rawValue) transitions unsupported properties: \(transitionedProperties)"
+                )
+                #expect(rule.declarations["transition-duration"] != nil)
+                #expect(rule.declarations["transition-timing-function"] != nil)
+            }
+            for rule in reducedRules {
+                #expect(
+                    Set(rule.declarations.keys).isSubset(of: reducedMotionDeclarationAllowlist),
+                    "\(family.rawValue) reduced motion overrides native properties"
+                )
+                #expect(
+                    rule.declarations["transition"] == "none"
+                        || rule.declarations["transition-duration"] == "0s",
+                    "\(family.rawValue) does not disable interaction transitions"
+                )
+                #expect(rule.declarations["transform"] == nil)
             }
         }
     }
+
+    @Test(arguments: [
+        "border", "border-width", "font-size", "line-height", "transform", "width",
+    ])
+    func interactionStateAllowlistRejectsNativeAndLayoutProperties(_ property: String) {
+        #expect(
+            !interactionStateDeclarationsAreAllowed([property: "test-value"]),
+            "state allowlist accepted \(property)"
+        )
+    }
+
+    @Test(arguments: [
+        "color", "background-color", "border-color", "box-shadow", "opacity",
+    ])
+    func interactionStateAllowlistAcceptsSemanticVisualProperties(_ property: String) {
+        #expect(interactionStateDeclarationsAreAllowed([property: "test-value"]))
+    }
+}
+
+private let interactionStatePropertyAllowlist: Set<String> = [
+    "color", "background-color", "border-color", "box-shadow", "opacity",
+]
+
+private let baseTransitionDeclarationAllowlist: Set<String> = [
+    "transition-property", "transition-duration", "transition-timing-function",
+]
+
+private let reducedMotionDeclarationAllowlist: Set<String> = [
+    "transition", "transition-property", "transition-duration", "transition-timing-function",
+]
+
+private func interactionStateDeclarationsAreAllowed(_ declarations: [String: String]) -> Bool {
+    !declarations.isEmpty
+        && Set(declarations.keys).isSubset(of: interactionStatePropertyAllowlist)
 }
 
 private struct ParsedCSSRule {
@@ -86,15 +144,22 @@ private struct ParsedCSSRule {
     let declarations: [String: String]
     let mediaQueries: [String]
 
-    var isInteractionRule: Bool {
+    var isInteractionStateRule: Bool {
         selectors.contains { selector in
             selector.contains(":hover")
                 || selector.contains(":active")
                 || selector.contains(":focus-within")
-                || selector.contains(":focus-visible")
         }
-            || declarations["transition"] != nil
-            || mediaQueries.contains { normalizedMedia($0).contains("prefers-reduced-motion:reduce") }
+    }
+
+    var isReducedMotionRule: Bool {
+        mediaQueries.contains { normalizedMedia($0).contains("prefers-reduced-motion:reduce") }
+    }
+
+    var hasTransitionDeclaration: Bool {
+        declarations.keys.contains { property in
+            property == "transition" || property.hasPrefix("transition-")
+        }
     }
 }
 
@@ -115,21 +180,22 @@ private func expectNativeInteractionContract(
     let homeAction = "\(root) \(suggestions) :where(button, [role=\"button\"])"
     let sidebarAction = "\(root) \(profile.selectors.sidebar) :where(a, button, [role=\"button\"])"
 
-    let homeBase = try #require(rule(for: homeAction, in: rules))
-    #expect(homeBase.declarations["transition"] != nil, "\(context) lacks home transition")
+    let homeBase = try #require(transitionRule(for: homeAction, in: rules))
+    #expect(homeBase.declarations["transition-property"] != nil, "\(context) lacks home transition")
     let homeHover = try #require(rules.first { rule in
         rule.selectors.contains("\(homeAction):hover") && isFinePointerHover(rule)
     })
     #expect(homeHover.declarations["background-color"] != nil, "\(context) lacks home hover fill")
     let homeActive = try #require(rule(for: "\(homeAction):active", in: rules))
     #expect(homeActive.declarations["opacity"] != nil, "\(context) lacks home press feedback")
+    #expect(homeActive.declarations["background-color"] != nil, "\(context) lacks home press fill")
 
     let sidebarBase = try #require(rules.first { rule in
         rule.selectors.contains(sidebarAction)
             && rule.mediaQueries.isEmpty
-            && rule.declarations["transition"] != nil
+            && rule.declarations["transition-property"] != nil
     })
-    #expect(sidebarBase.declarations["transition"] != nil, "\(context) lacks sidebar transition")
+    #expect(sidebarBase.declarations["transition-property"] != nil, "\(context) lacks sidebar transition")
     let sidebarInteractiveSelector = "\(sidebarAction):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"])"
     let sidebarHoverSelector = "\(sidebarInteractiveSelector):hover"
     let sidebarActiveSelector = "\(sidebarInteractiveSelector):active"
@@ -148,6 +214,7 @@ private func expectNativeInteractionContract(
     )
     let sidebarActive = try #require(rule(for: sidebarActiveSelector, in: rules))
     #expect(sidebarActive.declarations["opacity"] != nil, "\(context) lacks sidebar press feedback")
+    #expect(sidebarActive.declarations["background-color"] != nil, "\(context) lacks sidebar press fill")
 
     let composerSurfaces = [
         Optional(profile.selectors.composer),
@@ -179,13 +246,21 @@ private func expectNativeInteractionContract(
                     normalizedMedia($0).contains("prefers-reduced-motion:reduce")
                 }
         })
-        #expect(reducedRule.declarations["transition"] == "none", "\(context) keeps reduced motion")
-        #expect(reducedRule.declarations["transform"] == "none", "\(context) keeps reduced transform")
+        #expect(reducedRule.declarations["transition-duration"] == "0s", "\(context) keeps reduced motion")
+        #expect(reducedRule.declarations["transform"] == nil, "\(context) clears a native transform")
     }
 }
 
 private func rule(for selector: String, in rules: [ParsedCSSRule]) -> ParsedCSSRule? {
     rules.first { $0.selectors.contains(selector) && $0.mediaQueries.isEmpty }
+}
+
+private func transitionRule(for selector: String, in rules: [ParsedCSSRule]) -> ParsedCSSRule? {
+    rules.first {
+        $0.selectors.contains(selector)
+            && $0.mediaQueries.isEmpty
+            && $0.declarations["transition-property"] != nil
+    }
 }
 
 private func isFinePointerHover(_ rule: ParsedCSSRule) -> Bool {
@@ -197,28 +272,6 @@ private func isFinePointerHover(_ rule: ParsedCSSRule) -> Bool {
 
 private func normalizedMedia(_ query: String) -> String {
     query.replacingOccurrences(of: #"\s+"#, with: "", options: .regularExpression)
-}
-
-private func isLayoutProperty(_ property: String, value: String) -> Bool {
-    let property = property.lowercased()
-    let exact: Set<String> = [
-        "width", "min-width", "max-width", "height", "min-height", "max-height",
-        "inline-size", "min-inline-size", "max-inline-size",
-        "block-size", "min-block-size", "max-block-size",
-        "position", "top", "right", "bottom", "left", "display", "float",
-        "aspect-ratio",
-    ]
-    if exact.contains(property) { return true }
-    if property.hasPrefix("margin") || property.hasPrefix("padding") { return true }
-    if property == "inset" || property.hasPrefix("inset-") { return true }
-    if property == "grid" || property.hasPrefix("grid-") { return true }
-    if property == "flex" || property.hasPrefix("flex-") { return true }
-    if ["gap", "row-gap", "column-gap", "order"].contains(property) { return true }
-    if property.hasPrefix("align-")
-        || property.hasPrefix("justify-")
-        || property.hasPrefix("place-") { return true }
-    if property == "contain-size" || property == "contain-intrinsic-size" { return true }
-    return property == "contain" && value.lowercased().split(whereSeparator: \.isWhitespace).contains("size")
 }
 
 private func parseCSSRules(_ css: String, mediaQueries: [String] = []) -> [ParsedCSSRule] {
