@@ -155,7 +155,7 @@ html[data-codex-habitat-theme="1"] [aria-selected="true"],
 html[data-codex-habitat-theme="1"] [aria-current],
 html[data-codex-habitat-theme="1"] [aria-pressed="true"] {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-panel-alt) 72%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-panel-alt) 64%, transparent);
   outline-color: var(--habitat-attention);
 }
 

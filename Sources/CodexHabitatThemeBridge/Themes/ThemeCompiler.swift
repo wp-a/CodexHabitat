@@ -477,7 +477,7 @@ struct ThemeCompiler {
         if let selectedNavigation = profile.selectors.selectedNavigation {
             rules.append("""
             \(root) \(selectedNavigation) {
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 78%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 64%, transparent);
               box-shadow: inset 3px 0 0 var(--habitat-accent);
             }
             """)
@@ -818,7 +818,7 @@ struct ThemeCompiler {
         case .gameCinematic:
             (
                 "border-right-width: 2px; border-right-color: color-mix(in srgb, var(--habitat-attention) 62%, transparent); box-shadow: inset -8px 0 18px color-mix(in srgb, var(--habitat-text) 10%, transparent);",
-                "border-radius: 3px; border-inline-start-width: 3px; border-inline-start-color: var(--habitat-attention); box-shadow: 0 12px 30px color-mix(in srgb, black 28%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 54%, var(--habitat-highlight)); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 24%, transparent), 0 8px 18px color-mix(in srgb, black 22%, transparent);",
                 "border-radius: 3px; border-block-start-width: 2px; border-block-start-color: var(--habitat-highlight);"
             )
         case .cozyWorld:
@@ -904,7 +904,7 @@ struct ThemeCompiler {
             /* habitat-surface: home-actions */
             \(root) \(action) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 80%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 68%, transparent);
               \(styleHomeAction(for: family))
             }
             """
@@ -1131,7 +1131,7 @@ struct ThemeCompiler {
         case .classicDesktop:
             "border: 2px outset var(--habitat-panel-alt); border-radius: 0; box-shadow: 2px 2px 0 color-mix(in srgb, black 48%, transparent);"
         case .gameCinematic:
-            "border: 1px solid var(--habitat-attention); border-block-start: 3px solid var(--habitat-highlight); border-radius: 3px; box-shadow: 0 6px 16px color-mix(in srgb, black 24%, transparent);"
+            "border: 1px solid color-mix(in srgb, var(--habitat-accent) 56%, var(--habitat-highlight)); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 26%, transparent), 0 5px 14px color-mix(in srgb, black 22%, transparent);"
         case .cozyWorld:
             "border: 1px solid var(--habitat-secondary); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 38%, transparent), 0 5px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
         case .animeEnergy:

@@ -189,7 +189,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.54, homeHeader: 0.20,
                 taskSidebar: 0.74, taskHeader: 0.64,
                 homeContent: 0.54, taskContent: 0.68,
-                composer: 0.96, contentWidth: 0.52, vignette: 0.46,
+                composer: 0.84, contentWidth: 0.52, vignette: 0.46,
                 blur: 8, density: .comfortable
             )
         ),
@@ -206,7 +206,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.52, homeHeader: 0.18,
                 taskSidebar: 0.72, taskHeader: 0.60,
                 homeContent: 0.52, taskContent: 0.66,
-                composer: 0.95, contentWidth: 0.50, vignette: 0.54,
+                composer: 0.84, contentWidth: 0.50, vignette: 0.54,
                 blur: 10, density: .comfortable
             )
         ),
@@ -223,7 +223,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.50, homeHeader: 0.14,
                 taskSidebar: 0.70, taskHeader: 0.58,
                 homeContent: 0.50, taskContent: 0.66,
-                composer: 0.96, contentWidth: 0.48, vignette: 0.56,
+                composer: 0.86, contentWidth: 0.48, vignette: 0.56,
                 blur: 4, density: .compact
             )
         ),
@@ -240,7 +240,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.70, homeHeader: 0.64,
                 taskSidebar: 0.88, taskHeader: 0.86,
                 homeContent: 0.72, taskContent: 0.84,
-                composer: 0.98, contentWidth: 0.62, vignette: 0.10,
+                composer: 0.88, contentWidth: 0.62, vignette: 0.10,
                 blur: 16, density: .comfortable
             )
         ),
@@ -257,7 +257,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.62, homeHeader: 0.54,
                 taskSidebar: 0.78, taskHeader: 0.70,
                 homeContent: 0.60, taskContent: 0.76,
-                composer: 0.94, contentWidth: 0.50, vignette: 0.18,
+                composer: 0.88, contentWidth: 0.50, vignette: 0.18,
                 blur: 14, density: .compact
             )
         ),
@@ -274,7 +274,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.72, homeHeader: 0.68,
                 taskSidebar: 0.90, taskHeader: 0.88,
                 homeContent: 0.72, taskContent: 0.84,
-                composer: 0.98, contentWidth: 0.60, vignette: 0.06,
+                composer: 0.88, contentWidth: 0.60, vignette: 0.06,
                 blur: 6, density: .compact
             )
         ),
@@ -291,7 +291,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.50, homeHeader: 0.12,
                 taskSidebar: 0.72, taskHeader: 0.60,
                 homeContent: 0.50, taskContent: 0.66,
-                composer: 0.95, contentWidth: 0.48, vignette: 0.60,
+                composer: 0.88, contentWidth: 0.48, vignette: 0.60,
                 blur: 8, density: .compact
             )
         ),
@@ -308,7 +308,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.56, homeHeader: 0.24,
                 taskSidebar: 0.74, taskHeader: 0.62,
                 homeContent: 0.58, taskContent: 0.70,
-                composer: 0.94, contentWidth: 0.50, vignette: 0.40,
+                composer: 0.86, contentWidth: 0.50, vignette: 0.40,
                 blur: 10, density: .comfortable
             )
         ),
@@ -325,7 +325,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.52, homeHeader: 0.16,
                 taskSidebar: 0.76, taskHeader: 0.66,
                 homeContent: 0.52, taskContent: 0.72,
-                composer: 0.98, contentWidth: 0.50, vignette: 0.62,
+                composer: 0.84, contentWidth: 0.50, vignette: 0.62,
                 blur: 6, density: .comfortable
             )
         ),
@@ -342,7 +342,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.76, homeHeader: 0.74,
                 taskSidebar: 0.86, taskHeader: 0.84,
                 homeContent: 0.76, taskContent: 0.82,
-                composer: 0.98, contentWidth: 0.56, vignette: 0.04,
+                composer: 0.90, contentWidth: 0.56, vignette: 0.04,
                 blur: 0, density: .compact
             )
         ),
@@ -359,7 +359,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.54, homeHeader: 0.20,
                 taskSidebar: 0.76, taskHeader: 0.64,
                 homeContent: 0.54, taskContent: 0.70,
-                composer: 0.96, contentWidth: 0.50, vignette: 0.46,
+                composer: 0.84, contentWidth: 0.50, vignette: 0.46,
                 blur: 8, density: .comfortable
             )
         ),
@@ -376,7 +376,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.56, homeHeader: 0.22,
                 taskSidebar: 0.72, taskHeader: 0.62,
                 homeContent: 0.58, taskContent: 0.68,
-                composer: 0.94, contentWidth: 0.52, vignette: 0.30,
+                composer: 0.86, contentWidth: 0.52, vignette: 0.30,
                 blur: 10, density: .comfortable
             )
         ),
@@ -393,7 +393,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.72, homeHeader: 0.62,
                 taskSidebar: 0.88, taskHeader: 0.84,
                 homeContent: 0.74, taskContent: 0.82,
-                composer: 0.98, contentWidth: 0.62, vignette: 0.08,
+                composer: 0.88, contentWidth: 0.62, vignette: 0.08,
                 blur: 12, density: .comfortable
             )
         ),
@@ -410,7 +410,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.54, homeHeader: 0.14,
                 taskSidebar: 0.74, taskHeader: 0.62,
                 homeContent: 0.54, taskContent: 0.70,
-                composer: 0.96, contentWidth: 0.48, vignette: 0.40,
+                composer: 0.86, contentWidth: 0.48, vignette: 0.40,
                 blur: 6, density: .comfortable
             )
         ),
@@ -427,7 +427,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.52, homeHeader: 0.18,
                 taskSidebar: 0.74, taskHeader: 0.62,
                 homeContent: 0.52, taskContent: 0.68,
-                composer: 0.96, contentWidth: 0.50, vignette: 0.56,
+                composer: 0.86, contentWidth: 0.50, vignette: 0.56,
                 blur: 8, density: .comfortable
             )
         ),
@@ -444,7 +444,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.64, homeHeader: 0.54,
                 taskSidebar: 0.78, taskHeader: 0.70,
                 homeContent: 0.62, taskContent: 0.74,
-                composer: 0.96, contentWidth: 0.54, vignette: 0.18,
+                composer: 0.88, contentWidth: 0.54, vignette: 0.18,
                 blur: 10, density: .comfortable
             )
         ),
@@ -461,7 +461,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.66, homeHeader: 0.56,
                 taskSidebar: 0.82, taskHeader: 0.74,
                 homeContent: 0.66, taskContent: 0.78,
-                composer: 0.96, contentWidth: 0.58, vignette: 0.14,
+                composer: 0.88, contentWidth: 0.58, vignette: 0.14,
                 blur: 12, density: .comfortable
             )
         ),
@@ -478,7 +478,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.56, homeHeader: 0.24,
                 taskSidebar: 0.78, taskHeader: 0.68,
                 homeContent: 0.58, taskContent: 0.74,
-                composer: 0.97, contentWidth: 0.52, vignette: 0.28,
+                composer: 0.84, contentWidth: 0.52, vignette: 0.28,
                 blur: 6, density: .comfortable
             )
         ),
@@ -495,7 +495,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.52, homeHeader: 0.18,
                 taskSidebar: 0.74, taskHeader: 0.62,
                 homeContent: 0.52, taskContent: 0.68,
-                composer: 0.96, contentWidth: 0.50, vignette: 0.54,
+                composer: 0.88, contentWidth: 0.50, vignette: 0.54,
                 blur: 12, density: .comfortable
             )
         ),
@@ -512,7 +512,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.68, homeHeader: 0.58,
                 taskSidebar: 0.84, taskHeader: 0.76,
                 homeContent: 0.66, taskContent: 0.80,
-                composer: 0.98, contentWidth: 0.52, vignette: 0.16,
+                composer: 0.86, contentWidth: 0.52, vignette: 0.16,
                 blur: 4, density: .compact
             )
         ),
@@ -529,7 +529,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.50, homeHeader: 0.12,
                 taskSidebar: 0.70, taskHeader: 0.58,
                 homeContent: 0.50, taskContent: 0.64,
-                composer: 0.97, contentWidth: 0.50, vignette: 0.64,
+                composer: 0.84, contentWidth: 0.50, vignette: 0.64,
                 blur: 6, density: .comfortable
             )
         ),
@@ -546,7 +546,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.62, homeHeader: 0.50,
                 taskSidebar: 0.80, taskHeader: 0.70,
                 homeContent: 0.60, taskContent: 0.76,
-                composer: 0.96, contentWidth: 0.54, vignette: 0.30,
+                composer: 0.88, contentWidth: 0.54, vignette: 0.30,
                 blur: 10, density: .comfortable
             )
         ),
@@ -563,7 +563,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.66, homeHeader: 0.56,
                 taskSidebar: 0.84, taskHeader: 0.76,
                 homeContent: 0.64, taskContent: 0.80,
-                composer: 0.98, contentWidth: 0.54, vignette: 0.12,
+                composer: 0.90, contentWidth: 0.54, vignette: 0.12,
                 blur: 2, density: .compact
             )
         ),
@@ -580,7 +580,7 @@ public enum BuiltInThemeCatalog {
                 homeSidebar: 0.50, homeHeader: 0.14,
                 taskSidebar: 0.72, taskHeader: 0.60,
                 homeContent: 0.50, taskContent: 0.66,
-                composer: 0.98, contentWidth: 0.48, vignette: 0.60,
+                composer: 0.86, contentWidth: 0.48, vignette: 0.60,
                 blur: 4, density: .compact
             )
         ),
