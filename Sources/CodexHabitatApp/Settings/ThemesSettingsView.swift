@@ -91,7 +91,7 @@ struct ThemesSettingsView: View {
     var body: some View {
         SettingsPage(
             "Themes",
-            subtitle: "Native Habitat palettes independent from Codex theming"
+            subtitle: "Preview Habitat palettes and apply supported themes to Codex"
         ) {
             HStack(spacing: 10) {
                 Text(L10n.format("%d available", model.availableThemes.count))

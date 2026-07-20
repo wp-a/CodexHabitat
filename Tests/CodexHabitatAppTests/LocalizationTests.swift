@@ -11,6 +11,10 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     #expect(localization.text("Show Habitat") == "显示 Habitat")
     #expect(localization.text("Move Habitat") == "移动 Habitat")
     #expect(localization.text("Themes") == "主题")
+    #expect(
+        localization.text("Preview Habitat palettes and apply supported themes to Codex")
+            == "预览 Habitat 配色，并将支持的主题应用到 Codex"
+    )
     #expect(localization.text("Pets") == "宠物")
     #expect(localization.text("Widgets") == "组件")
     #expect(localization.text("Apply Selected Theme to Codex") == "将所选主题应用到 Codex")
