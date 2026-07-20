@@ -863,10 +863,14 @@ struct ThemeCompiler {
             profile.selectors.stickyBand,
             profile.selectors.popover,
         ].compactMap { $0 } + (profile.selectors.toolSurfaces ?? [])
-        let composerSurfaces = [
-            Optional(profile.selectors.composer),
-            profile.selectors.composerContext,
-        ].compactMap { $0 }
+        let composerSurfaces = [profile.selectors.composer]
+        let composerContextFallback = profile.selectors.composerContext.map { context in
+            "\(context):focus-within:not(:has(\(profile.selectors.composer):focus-within))"
+        }
+        let composerFocusSurfaces = ["\(profile.selectors.composer):focus-within"]
+            + [composerContextFallback].compactMap { $0 }
+        let composerTransitionSurfaces = composerSurfaces
+            + [composerContextFallback].compactMap { $0 }
         let selectedSurfaces = [
             profile.selectors.selectedNavigation,
         ].compactMap { $0 }
@@ -934,13 +938,13 @@ struct ThemeCompiler {
         let motionSurfaces = [
             homeActionSelector,
             Optional(sidebarActionSelector),
-        ].compactMap { $0 } + composerSurfaces
+        ].compactMap { $0 } + composerTransitionSurfaces
         let motionStates = [
             homeActionSelector.map { "\($0):hover" },
             homeActionSelector.map { "\($0):active" },
             Optional(sidebarHoverSelector),
             Optional(sidebarActiveSelector),
-        ].compactMap { $0 } + composerSurfaces.map { "\($0):focus-within" }
+        ].compactMap { $0 }
         return """
         /* habitat-style-family: \(family.rawValue) */
 
@@ -975,7 +979,7 @@ struct ThemeCompiler {
         \(scopedSelectors(composerSurfaces, root: root)) {
           \(declarations.composer)
         }
-        \(scopedSelectors(composerSurfaces, root: root)) {
+        \(scopedSelectors(composerTransitionSurfaces, root: root)) {
           transition-property: border-color, box-shadow;
           transition-duration: 140ms, 160ms;
           transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -1010,7 +1014,7 @@ struct ThemeCompiler {
           opacity: 0.82;
         }
 
-        \(scopedSelectors(composerSurfaces.map { "\($0):focus-within" }, root: root)) {
+        \(scopedSelectors(composerFocusSurfaces, root: root)) {
           border-color: color-mix(in srgb, var(--habitat-accent) 74%, var(--habitat-highlight));
           box-shadow: 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 44%, transparent), 0 14px 36px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
         }

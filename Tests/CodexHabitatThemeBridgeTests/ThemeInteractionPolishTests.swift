@@ -47,6 +47,37 @@ struct ThemeInteractionPolishTests {
     }
 
     @Test
+    func nestedComposerFixtureCannotMatchTwoFocusGlows() throws {
+        let fixture = NestedComposerFixture()
+        let profile = try composerFixtureProfile(fixture)
+        let css = ThemeCompiler.styleTreatment(for: .cozyWorld, profile: profile)
+        let rules = parseCSSRules(css)
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let expectedGlowSelectors = fixture.glowSelectors(root: root)
+        let expectedMotionTargets = fixture.motionTargets(root: root)
+        let glowSelectors = rules
+            .filter { $0.declarations["box-shadow"]?.contains("0 14px 36px") == true }
+            .flatMap(\.selectors)
+
+        #expect(Set(glowSelectors) == expectedGlowSelectors)
+        #expect(!glowSelectors.contains(fixture.bareContextFocus(root: root)))
+        #expect(fixture.glowMatchCount(in: glowSelectors, root: root, composerFocused: true) == 1)
+        #expect(fixture.glowMatchCount(in: glowSelectors, root: root, composerFocused: false) == 1)
+
+        let transitionTargets = Set(rules
+            .filter { !$0.isReducedMotionRule && $0.hasTransitionDeclaration }
+            .flatMap(\.selectors)
+            .filter(fixture.isComposerSelector))
+        let reducedTargets = Set(rules
+            .filter(\.isReducedMotionRule)
+            .flatMap(\.selectors)
+            .filter(fixture.isComposerSelector))
+
+        #expect(transitionTargets == expectedMotionTargets)
+        #expect(reducedTargets == expectedMotionTargets)
+    }
+
+    @Test
     func interactionRulesUseScopedPropertyAllowlists() throws {
         let profile = try completeInteractionProfile()
         let styles = HabitatThemeStyleFamily.allCases.map {
@@ -55,9 +86,11 @@ struct ThemeInteractionPolishTests {
 
         for (family, css) in zip(HabitatThemeStyleFamily.allCases, styles) {
             let rules = parseCSSRules(css)
-            let stateRules = rules.filter { $0.isInteractionStateRule && !$0.isReducedMotionRule }
+            let stateRules = rules.filter {
+                $0.isInteractionStateRule && !$0.isReducedMotionRule && !$0.hasTransitionDeclaration
+            }
             let baseTransitionRules = rules.filter {
-                !$0.isInteractionStateRule && !$0.isReducedMotionRule && $0.hasTransitionDeclaration
+                !$0.isReducedMotionRule && $0.hasTransitionDeclaration
             }
             let reducedRules = rules.filter(\.isReducedMotionRule)
 
@@ -163,9 +196,83 @@ private struct ParsedCSSRule {
     }
 }
 
+private struct NestedComposerFixture {
+    let context = ".fixture-composer-context"
+    let composer = ".fixture-composer"
+
+    func composerFocus(root: String) -> String {
+        "\(root) \(composer):focus-within"
+    }
+
+    func bareContextFocus(root: String) -> String {
+        "\(root) \(context):focus-within"
+    }
+
+    func contextFallback(root: String) -> String {
+        "\(bareContextFocus(root: root)):not(:has(\(composer):focus-within))"
+    }
+
+    func glowSelectors(root: String) -> Set<String> {
+        [composerFocus(root: root), contextFallback(root: root)]
+    }
+
+    func motionTargets(root: String) -> Set<String> {
+        ["\(root) \(composer)", contextFallback(root: root)]
+    }
+
+    func isComposerSelector(_ selector: String) -> Bool {
+        selector.contains(composer) || selector.contains(context)
+    }
+
+    func glowMatchCount(
+        in selectors: [String],
+        root: String,
+        composerFocused: Bool
+    ) -> Int {
+        selectors.count { selector in
+            if selector == composerFocus(root: root) { return composerFocused }
+            if selector == contextFallback(root: root) { return !composerFocused }
+            return false
+        }
+    }
+}
+
 private func completeInteractionProfile() throws -> CompatibilityProfile {
     try #require(
         try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+}
+
+private func composerFixtureProfile(_ fixture: NestedComposerFixture) throws -> CompatibilityProfile {
+    let profile = try completeInteractionProfile()
+    let selectors = profile.selectors
+    return CompatibilityProfile(
+        id: "composer-nesting-fixture",
+        minimumVersion: profile.minimumVersion,
+        maximumVersionExclusive: profile.maximumVersionExclusive,
+        selectors: CompatibilitySelectors(
+            sidebar: selectors.sidebar,
+            mainSurface: selectors.mainSurface,
+            composer: fixture.composer,
+            threadScroll: selectors.threadScroll,
+            popover: selectors.popover,
+            header: selectors.header,
+            homeMarker: selectors.homeMarker,
+            appShell: selectors.appShell,
+            homeContent: selectors.homeContent,
+            homeSuggestions: selectors.homeSuggestions,
+            selectedNavigation: selectors.selectedNavigation,
+            taskTranscript: selectors.taskTranscript,
+            userMessageSurface: selectors.userMessageSurface,
+            messageSurface: selectors.messageSurface,
+            codeSurface: selectors.codeSurface,
+            toolSurfaces: selectors.toolSurfaces,
+            sidebarResizeChrome: selectors.sidebarResizeChrome,
+            topFade: selectors.topFade,
+            bottomFade: selectors.bottomFade,
+            stickyBand: selectors.stickyBand,
+            composerContext: fixture.context
+        )
     )
 }
 
@@ -216,15 +323,34 @@ private func expectNativeInteractionContract(
     #expect(sidebarActive.declarations["opacity"] != nil, "\(context) lacks sidebar press feedback")
     #expect(sidebarActive.declarations["background-color"] != nil, "\(context) lacks sidebar press fill")
 
-    let composerSurfaces = [
-        Optional(profile.selectors.composer),
-        profile.selectors.composerContext,
-    ].compactMap { $0 }
-    for surface in composerSurfaces {
-        let selector = "\(root) \(surface):focus-within"
-        let focus = try #require(rule(for: selector, in: rules))
-        #expect(focus.declarations["border-color"] != nil, "\(context) lacks composer focus border")
-        #expect(focus.declarations["box-shadow"] != nil, "\(context) lacks composer focus shadow")
+    let composer = profile.selectors.composer
+    let composerBase = "\(root) \(composer)"
+    let composerFocusSelector = "\(composerBase):focus-within"
+    let composerFocus = try #require(rule(for: composerFocusSelector, in: rules))
+    #expect(composerFocus.declarations["border-color"] != nil, "\(context) lacks composer focus border")
+    #expect(composerFocus.declarations["box-shadow"] != nil, "\(context) lacks composer focus shadow")
+    #expect(transitionRule(for: composerBase, in: rules) != nil, "\(context) lacks composer transition")
+    var composerMotionTargets = [composerBase]
+
+    if let composerContext = profile.selectors.composerContext {
+        let bareContextFocus = "\(root) \(composerContext):focus-within"
+        let contextFallback = "\(bareContextFocus):not(:has(\(composer):focus-within))"
+        #expect(
+            !rules.contains { rule in
+                rule.selectors.contains(bareContextFocus) && rule.declarations["box-shadow"] != nil
+            },
+            "\(context) gives the composer ancestor a duplicate focus shadow"
+        )
+        let fallbackFocus = try #require(rules.first { rule in
+            rule.selectors.contains(contextFallback)
+                && rule.mediaQueries.isEmpty
+                && rule.declarations["box-shadow"] != nil
+        })
+        #expect(fallbackFocus.declarations["border-color"] != nil)
+        #expect(fallbackFocus.declarations["box-shadow"] != nil)
+        #expect(transitionRule(for: contextFallback, in: rules) != nil)
+        #expect(transitionRule(for: "\(root) \(composerContext)", in: rules) == nil)
+        composerMotionTargets.append(contextFallback)
     }
 
     #expect(rule(for: "\(root) :focus-visible", in: rules) != nil, "\(context) removed keyboard focus")
@@ -236,9 +362,7 @@ private func expectNativeInteractionContract(
         sidebarAction,
         sidebarHoverSelector,
         sidebarActiveSelector,
-    ] + composerSurfaces.flatMap { surface in
-        ["\(root) \(surface)", "\(root) \(surface):focus-within"]
-    }
+    ] + composerMotionTargets
     for target in reducedTargets {
         let reducedRule = try #require(rules.first { rule in
             rule.selectors.contains(target)
