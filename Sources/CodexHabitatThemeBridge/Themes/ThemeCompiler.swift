@@ -368,10 +368,7 @@ struct ThemeCompiler {
             "popover": profile.selectors.popover,
             "header": profile.selectors.header,
             "app-shell": profile.selectors.appShell ?? "body",
-            "surface-treatment": Self.surfaceTreatment(
-                profile: profile,
-                safeSide: theme.appearance.safeSide
-            ),
+            "surface-treatment": Self.surfaceTreatment(profile: profile),
             "home-treatment": Self.homeTreatment(
                 for: theme.appearance.homeMode,
                 profile: profile
@@ -402,10 +399,7 @@ struct ThemeCompiler {
         return result
     }
 
-    static func surfaceTreatment(
-        profile: CompatibilityProfile,
-        safeSide: HabitatThemeSafeSide
-    ) -> String {
+    static func surfaceTreatment(profile: CompatibilityProfile) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"]"
         var rules: [String] = [
             """
@@ -427,24 +421,11 @@ struct ThemeCompiler {
         if let homeContent = profile.selectors.homeContent {
             rules.append("""
             \(root)[data-codex-habitat-route="home"] \(homeContent) {
-              max-width: min(100%, var(--habitat-home-content-width));
-              \(homeContentLayout(for: safeSide))
               background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent);
               backdrop-filter: none;
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) p {
               color: var(--habitat-muted-text);
-            }
-            @media (max-width: 1180px) {
-              \(root)[data-codex-habitat-route="home"] \(homeContent) {
-                max-width: min(calc(100% - 32px), 72%);
-              }
-            }
-            @media (max-width: 900px) {
-              \(root)[data-codex-habitat-route="home"] \(homeContent) {
-                max-width: calc(100% - 24px);
-                margin-inline: 12px;
-              }
             }
             """)
         }
@@ -1175,17 +1156,6 @@ struct ThemeCompiler {
             "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent))"
         }
         return "\(chromeWash), \(directional)"
-    }
-
-    private static func homeContentLayout(for safeSide: HabitatThemeSafeSide) -> String {
-        switch safeSide {
-        case .leading:
-            "margin-inline-start: clamp(16px, 2.5vw, 32px); margin-inline-end: auto;"
-        case .trailing:
-            "margin-inline-start: auto; margin-inline-end: clamp(16px, 2.5vw, 32px);"
-        case .center, .none:
-            "margin-inline-start: auto; margin-inline-end: auto;"
-        }
     }
 
     private static func scopedSelectors(_ selectors: [String], root: String) -> String {

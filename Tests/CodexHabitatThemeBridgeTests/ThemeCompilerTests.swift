@@ -434,18 +434,25 @@ func framedSceneScalesOnlyArtworkAndKeepsItsFrameStable() throws {
 }
 
 @Test
-func trailingHomeContentKeepsAVisibleViewportInset() throws {
+func trailingSafeSideShapesTheScrimWithoutMovingHomeContent() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "retro-messenger"))
     let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
     let homeContent = try #require(profile.selectors.homeContent)
+    let root = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"]",
+        in: css
+    )
     let rule = try cssRuleBody(
         selector: "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"] \(homeContent)",
         in: css
     )
 
-    #expect(rule.contains("margin-inline-start: auto"))
-    #expect(rule.contains("margin-inline-end: clamp(16px, 2.5vw, 32px)"))
+    #expect(theme.appearance.safeSide == .trailing)
+    #expect(root.contains("--habitat-safe-scrim:"))
+    #expect(root.contains("linear-gradient(to left"))
+    #expect(!rule.contains("margin-inline"))
+    #expect(!rule.contains("max-width"))
 }
 
 @Test
@@ -561,10 +568,7 @@ func fullWindowSceneUsesLayeredReadabilityAndNarrowFallbacks() throws {
     #expect(root.contains("--habitat-safe-scrim: linear-gradient(to bottom"))
     #expect(root.contains("), linear-gradient(to right"))
     #expect(root.contains("--habitat-task-reading-scrim: linear-gradient(to bottom"))
-    #expect(css.contains("@media (max-width: 1180px)"))
-    #expect(css.contains("max-width: min(calc(100% - 32px), 72%)"))
     #expect(css.contains("@media (max-width: 900px)"))
-    #expect(css.contains("max-width: calc(100% - 24px)"))
     #expect(css.contains("backdrop-filter: none"))
 }
 
