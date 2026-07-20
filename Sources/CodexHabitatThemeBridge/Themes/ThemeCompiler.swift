@@ -419,8 +419,12 @@ struct ThemeCompiler {
 
         if let homeContent = profile.selectors.homeContent {
             rules.append("""
+            \(root) \(homeContent),
             \(root)[data-codex-habitat-route="home"] \(homeContent) {
-              background-color: color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent);
+              background: transparent;
+              border-color: transparent;
+              outline: none;
+              box-shadow: none;
               backdrop-filter: none;
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) p {
@@ -431,8 +435,10 @@ struct ThemeCompiler {
         if let suggestions = profile.selectors.homeSuggestions {
             rules.append("""
             \(root)[data-codex-habitat-route="home"] \(suggestions) {
-              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-home-content-opacity), transparent);
-              border-color: color-mix(in srgb, var(--habitat-accent) 34%, transparent);
+              background: transparent;
+              border-color: transparent;
+              box-shadow: none;
+              backdrop-filter: none;
             }
             """)
         }
@@ -485,7 +491,7 @@ struct ThemeCompiler {
         if let composerContext = profile.selectors.composerContext {
             rules.append("""
             \(root) \(composerContext) {
-              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-composer-opacity), transparent);
+              background: transparent;
             }
             """)
         }
@@ -847,16 +853,12 @@ struct ThemeCompiler {
             )
         }
         let shell = profile.selectors.appShell ?? "body"
-        let stageSurfaces = [
-            profile.selectors.mainSurface,
-            profile.selectors.homeContent,
-        ].compactMap { $0 }
+        let stageSurfaces = [profile.selectors.mainSurface]
         let transcriptSurfaces = [
             profile.selectors.threadScroll,
             profile.selectors.taskTranscript,
         ].compactMap { $0 }
         let contentSurfaces = [
-            profile.selectors.homeSuggestions,
             profile.selectors.userMessageSurface,
             profile.selectors.messageSurface,
             profile.selectors.codeSurface,

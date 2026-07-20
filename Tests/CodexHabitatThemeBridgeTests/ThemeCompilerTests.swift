@@ -592,6 +592,7 @@ func everyStyleRecipeCoversRequiredHostSurfaces() throws {
     let profile = try currentCompleteSurfaceProfile()
     let selectors = profile.selectors.allSelectors.filter {
         $0 != profile.selectors.homeMarker
+            && $0 != profile.selectors.homeContent
     }
     let recipes = HabitatThemeStyleFamily.allCases.map {
         ThemeCompiler.styleTreatment(for: $0, profile: profile)

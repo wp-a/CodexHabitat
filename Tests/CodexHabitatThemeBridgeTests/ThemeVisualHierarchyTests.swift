@@ -26,6 +26,78 @@ struct ThemeVisualHierarchyTests {
     }
 
     @Test
+    func compiledComposerUsesOneMaterialLayerAtTheDeclaredOpacity() throws {
+        let profile = try hierarchyProfile()
+        let composerContext = try #require(profile.selectors.composerContext)
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let contextSelector = "\(root) \(composerContext)"
+        let composerSelector = "\(root) \(profile.selectors.composer)"
+
+        for definition in BuiltInThemeCatalog.all {
+            let opacity = definition.appearance(
+                background: "background.jpg"
+            ).resolvedComposerOpacity
+            let css = try compiledCSS(for: definition, profile: profile)
+            let contextLayers = hierarchyMaterialOpacities(
+                for: contextSelector,
+                in: css,
+                variables: ["--habitat-composer-opacity": opacity]
+            )
+            let composerLayers = hierarchyMaterialOpacities(
+                for: composerSelector,
+                in: css,
+                variables: ["--habitat-composer-opacity": opacity]
+            )
+            let composerBodies = hierarchyRuleBodies(
+                containingSelector: composerSelector,
+                in: css
+            )
+
+            #expect(contextLayers.isEmpty, "\(definition.id) fills the composer ancestor")
+            #expect(composerLayers == [opacity], "\(definition.id) composer is not one declared material layer")
+            #expect(
+                composerBodies.filter {
+                    $0.contains(
+                        "background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-composer-opacity), transparent)"
+                    )
+                }.count == 1,
+                "\(definition.id) composer does not use the declared opacity variable exactly once"
+            )
+            #expect(
+                hierarchyCompositedCoverage(contextLayers + composerLayers) == opacity,
+                "\(definition.id) composer opacity is compounded"
+            )
+            #expect((0.84...0.90).contains(hierarchyCompositedCoverage(composerLayers)))
+        }
+    }
+
+    @Test
+    func compiledHomeActionsUseOneMaterialLayerWithoutContainerShells() throws {
+        let profile = try hierarchyProfile()
+        let homeContent = try #require(profile.selectors.homeContent)
+        let suggestions = try #require(profile.selectors.homeSuggestions)
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let homeRoot = "\(root)[data-codex-habitat-route=\"home\"]"
+        let contentSelectors = ["\(homeRoot) \(homeContent)", "\(root) \(homeContent)"]
+        let suggestionsSelectors = ["\(homeRoot) \(suggestions)", "\(root) \(suggestions)"]
+        let actionSelector = "\(root) \(suggestions) :where(button, [role=\"button\"])"
+
+        for definition in BuiltInThemeCatalog.all {
+            let css = try compiledCSS(for: definition, profile: profile)
+            for selector in contentSelectors + suggestionsSelectors {
+                let shells = hierarchyOpaqueShellDeclarations(for: selector, in: css)
+                #expect(shells.isEmpty, "\(definition.id) keeps a container shell at \(selector): \(shells)")
+            }
+
+            let pathLayers = (contentSelectors + suggestionsSelectors + [actionSelector]).flatMap {
+                hierarchyMaterialOpacities(for: $0, in: css)
+            }
+            #expect(pathLayers == [0.68], "\(definition.id) home action has compounded material layers")
+            #expect(hierarchyCompositedCoverage(pathLayers) == 0.68)
+        }
+    }
+
+    @Test
     func publicComposerOpacityUpperBoundRemainsBackwardCompatible() throws {
         let profile = try hierarchyProfile()
         let appearance = HabitatThemeAppearance(
@@ -279,6 +351,71 @@ private func hierarchyRuleBodies(containingSelector selector: String, in css: St
     return expression.matches(in: css, range: range).compactMap { match in
         guard let bodyRange = Range(match.range(at: 1), in: css) else { return nil }
         return String(css[bodyRange])
+    }
+}
+
+private func hierarchyMaterialOpacities(
+    for selector: String,
+    in css: String,
+    variables: [String: Double] = [:]
+) -> [Double] {
+    hierarchyRuleBodies(containingSelector: selector, in: css).flatMap { body in
+        hierarchyDeclarations(in: body).compactMap { property, value in
+            guard property == "background" || property == "background-color" else { return nil }
+            guard value != "transparent", value != "none" else { return nil }
+            if let variable = variables.first(where: { value.contains("var(\($0.key))") }) {
+                return variable.value
+            }
+            let expression = try? NSRegularExpression(
+                pattern: #"([0-9]+(?:\.[0-9]+)?)%\s*,\s*transparent"#
+            )
+            let range = NSRange(value.startIndex..<value.endIndex, in: value)
+            guard let match = expression?.firstMatch(in: value, range: range),
+                  let valueRange = Range(match.range(at: 1), in: value),
+                  let percentage = Double(value[valueRange])
+            else { return 1 }
+            return percentage / 100
+        }
+    }
+}
+
+private func hierarchyCompositedCoverage(_ opacities: [Double]) -> Double {
+    1 - opacities.reduce(1) { remaining, opacity in
+        remaining * (1 - opacity)
+    }
+}
+
+private func hierarchyOpaqueShellDeclarations(
+    for selector: String,
+    in css: String
+) -> [String] {
+    hierarchyRuleBodies(containingSelector: selector, in: css).flatMap { body in
+        hierarchyDeclarations(in: body).compactMap { property, value in
+            let transparent = value == "none"
+                || value == "transparent"
+                || value == "0"
+                || value == "0px"
+            let isBackground = property == "background" || property == "background-color"
+            let isBackdrop = property == "backdrop-filter"
+            let isShadow = property == "box-shadow"
+            let isOutline = property == "outline"
+            let isBorder = (property == "border" || property.hasPrefix("border-"))
+                && !property.contains("radius")
+            guard isBackground || isBackdrop || isShadow || isOutline || isBorder else {
+                return nil
+            }
+            return transparent ? nil : "\(property): \(value)"
+        }
+    }
+}
+
+private func hierarchyDeclarations(in body: String) -> [(String, String)] {
+    body.split(separator: ";").compactMap { declaration in
+        guard let colon = declaration.firstIndex(of: ":") else { return nil }
+        let property = declaration[..<colon].trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = declaration[declaration.index(after: colon)...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (property, value)
     }
 }
 
