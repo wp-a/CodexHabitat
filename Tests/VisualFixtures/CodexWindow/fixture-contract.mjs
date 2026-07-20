@@ -426,6 +426,14 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
       metric.sceneTransmissionZones,
       context,
     );
+    if (metric.route === "home" && metric.viewport === "wide") {
+      requireInteractionStates(metric.interactionStates, context);
+    } else {
+      requireMetrics(
+        metric.interactionStates === null,
+        `${context} has an unexpected interaction matrix`,
+      );
+    }
 
     if (metric.route === "task") {
       requireMetrics(
@@ -764,6 +772,174 @@ function requireExactZones(zones, message) {
     `${message} are ${zones.map((zone) => zone.id).join(",")}`,
   );
   return byID;
+}
+
+function requireInteractionStates(states, context) {
+  requireMetrics(states && typeof states === "object", `${context} interaction states are missing`);
+  const normal = states.normal;
+  const reduced = states.reduced;
+  requireMetrics(normal?.media?.finePointer === true, `${context} fine pointer media is false`);
+  requireMetrics(normal?.media?.reducedMotion === false, `${context} normal media is reduced`);
+
+  for (const [name, snapshot] of Object.entries(normal?.transitions ?? {})) {
+    requireInteractionSnapshot(snapshot, `${context} normal ${name} transition`);
+    requireMetrics(
+      durationListHasMotion(snapshot.transitionDuration),
+      `${context} normal ${name} transition is disabled`,
+    );
+  }
+  requireMetrics(
+    Object.keys(normal?.transitions ?? {}).sort().join(",") === "composer,home,sidebar",
+    `${context} normal transition targets are incomplete`,
+  );
+
+  const home = normal?.home;
+  const sidebar = normal?.sidebar;
+  const composer = normal?.composer;
+  for (const [name, snapshot] of [
+    ["home idle", home?.idle],
+    ["home hover", home?.hover],
+    ["home active", home?.active],
+    ["home focus-visible", home?.focusVisible],
+    ["sidebar idle", sidebar?.idle],
+    ["sidebar hover", sidebar?.hover],
+    ["sidebar active", sidebar?.active],
+    ["sidebar selected", sidebar?.selected],
+    ["composer idle", composer?.idle],
+    ["composer focus-within", composer?.focusWithin],
+    ["composer input focus", composer?.inputFocus],
+  ]) {
+    requireInteractionSnapshot(snapshot, `${context} ${name}`);
+  }
+
+  requireStableInteractionRect(home.idle.rect, home.hover.rect, `${context} home hover`);
+  requireStableInteractionRect(home.idle.rect, home.active.rect, `${context} home active`);
+  requireStableInteractionRect(home.idle.rect, home.focusVisible.rect, `${context} home focus`);
+  requireStableInteractionRect(sidebar.idle.rect, sidebar.hover.rect, `${context} sidebar hover`);
+  requireStableInteractionRect(sidebar.idle.rect, sidebar.active.rect, `${context} sidebar active`);
+  requireStableInteractionRect(
+    composer.idle.rect,
+    composer.focusWithin.rect,
+    `${context} composer focus-within`,
+  );
+  requireMetrics(home.hover.matchesHover === true, `${context} home hover did not match`);
+  requireMetrics(home.active.matchesActive === true, `${context} home active did not match`);
+  requireMetrics(sidebar.hover.matchesHover === true, `${context} sidebar hover did not match`);
+  requireMetrics(sidebar.active.matchesActive === true, `${context} sidebar active did not match`);
+  requireMetrics(
+    visualInteractionChanged(home.idle, home.hover, ["backgroundColor", "borderColor"]),
+    `${context} home hover has no feedback`,
+  );
+  requireMetrics(
+    visualInteractionChanged(home.hover, home.active, ["backgroundColor", "borderColor", "boxShadow"]),
+    `${context} home active has no feedback`,
+  );
+  requireMetrics(home.active.opacity === home.idle.opacity, `${context} home active dims opacity`);
+  requireMetrics(
+    visualInteractionChanged(sidebar.idle, sidebar.hover, ["backgroundColor", "boxShadow"]),
+    `${context} sidebar hover has no feedback`,
+  );
+  requireMetrics(
+    visualInteractionChanged(sidebar.hover, sidebar.active, ["backgroundColor", "boxShadow"]),
+    `${context} sidebar active has no feedback`,
+  );
+  requireMetrics(
+    sidebar.active.opacity === sidebar.idle.opacity,
+    `${context} sidebar active dims opacity`,
+  );
+  requireMetrics(
+    home.focusVisible.matchesFocusVisible === true
+      && Number.parseFloat(home.focusVisible.outlineWidth) >= 2
+      && home.focusVisible.outlineStyle !== "none",
+    `${context} keyboard focus outline is invalid`,
+  );
+  requireMetrics(
+    Number.parseInt(sidebar.selected.fontWeight, 10) >= 600
+      && sidebar.selected.boxShadow !== "none",
+    `${context} selected navigation lacks structure`,
+  );
+  requireMetrics(
+    composer.focusWithin.matchesFocusWithin === true
+      && composer.focusWithin.borderColor !== composer.idle.borderColor
+      && composer.focusWithin.boxShadow !== composer.idle.boxShadow,
+    `${context} composer focus-within lacks feedback`,
+  );
+  requireMetrics(
+    composer.inputFocus.outlineStyle === "none"
+      || Number.parseFloat(composer.inputFocus.outlineWidth) === 0,
+    `${context} composer input has a duplicate outline`,
+  );
+
+  requireMetrics(reduced?.mediaMatches === true, `${context} reduced media did not match`);
+  for (const name of ["home", "sidebar", "composer"]) {
+    const snapshot = reduced?.idle?.[name];
+    requireInteractionSnapshot(snapshot, `${context} reduced ${name}`);
+    requireMetrics(
+      durationListIsZero(snapshot.transitionDuration),
+      `${context} reduced ${name} transition is not zero`,
+    );
+    requireMetrics(
+      durationListIsZero(snapshot.transitionDelay),
+      `${context} reduced ${name} delay is not zero`,
+    );
+  }
+  requireInteractionSnapshot(reduced?.homeHover, `${context} reduced home hover`);
+  requireInteractionSnapshot(
+    reduced?.composerFocusWithin,
+    `${context} reduced composer focus-within`,
+  );
+  requireMetrics(
+    reduced.homeHover.matchesHover === true
+      && visualInteractionChanged(
+        reduced.idle.home,
+        reduced.homeHover,
+        ["backgroundColor", "borderColor"],
+      ),
+    `${context} reduced home hover has no feedback`,
+  );
+  requireMetrics(
+    reduced.composerFocusWithin.matchesFocusWithin === true
+      && reduced.composerFocusWithin.borderColor !== reduced.idle.composer.borderColor
+      && reduced.composerFocusWithin.boxShadow !== reduced.idle.composer.boxShadow,
+    `${context} reduced composer focus-within has no feedback`,
+  );
+  requireMetrics(
+    reduced.runningAnimations === 0,
+    `${context} reduced running animations are ${reduced.runningAnimations}`,
+  );
+}
+
+function requireInteractionSnapshot(snapshot, message) {
+  requireMetrics(snapshot && typeof snapshot === "object", `${message} is missing`);
+  requireMetrics(snapshot.rect && typeof snapshot.rect === "object", `${message} rect is missing`);
+  for (const field of ["x", "y", "width", "height"]) {
+    requireMetrics(Number.isFinite(snapshot.rect[field]), `${message} rect ${field} is invalid`);
+  }
+  requireMetrics(
+    snapshot.transform === "none" || snapshot.transform === "matrix(1, 0, 0, 1, 0, 0)",
+    `${message} transform is ${snapshot.transform}`,
+  );
+}
+
+function requireStableInteractionRect(before, after, message) {
+  for (const field of ["x", "y", "width", "height"]) {
+    requireMetrics(
+      Math.abs(before[field] - after[field]) <= 0.25,
+      `${message} changes ${field} from ${before[field]} to ${after[field]}`,
+    );
+  }
+}
+
+function visualInteractionChanged(before, after, fields) {
+  return fields.some((field) => before[field] !== after[field]);
+}
+
+function durationListIsZero(value) {
+  return String(value).split(",").every((duration) => Number.parseFloat(duration) === 0);
+}
+
+function durationListHasMotion(value) {
+  return String(value).split(",").some((duration) => Number.parseFloat(duration) > 0);
 }
 
 function groupBy(values, keyForValue) {

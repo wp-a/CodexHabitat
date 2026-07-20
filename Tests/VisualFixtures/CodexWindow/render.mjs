@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   EXPECTED_FIXTURE_SCENE_COUNT,
   EXPECTED_SURFACE_ANNOTATIONS,
+  EXPECTED_THEME_COUNT,
   FIXTURE_CONTRAST_TARGETS,
   FIXTURE_LABEL,
   FIXTURE_ROUTES,
@@ -206,6 +207,9 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 );
               }
               const pixels = await analyzeScreenshot(page, screenshotBuffer);
+              const interactionStates = routeName === "home" && viewport.id === "wide"
+                ? await measureInteractionStates(page, payload.profile.selectors)
+                : null;
               let screenshotPath = null;
               if (resolvedOutputDirectory) {
                 const sceneDirectory = path.join(resolvedOutputDirectory, "scenes", theme.id);
@@ -241,6 +245,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 artworkPixelDelta,
                 sceneArtworkZones: sceneEvidence.artworkZones,
                 sceneTransmissionZones: sceneEvidence.transmissionZones,
+                interactionStates,
                 screenshotPath,
                 screenshotFingerprint: sha256(screenshotBuffer),
                 sourceFingerprint: theme.sourceFingerprint,
@@ -266,6 +271,13 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
   assert(
     scenes.length === EXPECTED_FIXTURE_SCENE_COUNT,
     `expected ${EXPECTED_FIXTURE_SCENE_COUNT} scenes, found ${scenes.length}`,
+  );
+  const interactionScenes = scenes.filter(({ interactionStates }) => interactionStates !== null);
+  assert(
+    interactionScenes.length === EXPECTED_THEME_COUNT
+      && new Set(interactionScenes.map(({ themeID }) => themeID)).size === EXPECTED_THEME_COUNT
+      && interactionScenes.every(({ route, viewport }) => route === "home" && viewport === "wide"),
+    `expected one wide home interaction matrix per theme, found ${interactionScenes.length}`,
   );
   assertSceneDifferences(scenes);
   const metadata = JSON.parse(playwrightMetadata);
@@ -864,6 +876,308 @@ async function measureShellLayout(page, selectors, routeName) {
       },
     };
   }, { profileSelectors: selectors, activeRoute: routeName });
+}
+
+async function measureInteractionStates(page, selectors) {
+  const homeAction = page.locator(
+    `${selectors.homeSuggestions} :where(button, [role="button"])`,
+  ).first();
+  const sidebarAction = page.locator(
+    `${selectors.sidebar} [data-fixture-sidebar-row]:not([aria-current])`,
+  ).first();
+  const selectedNavigation = page.locator(selectors.selectedNavigation).first();
+  const composer = page.locator(selectors.composer).first();
+  const composerInput = composer.locator("textarea, input").first();
+  for (const [name, locator] of [
+    ["home action", homeAction],
+    ["sidebar action", sidebarAction],
+    ["selected navigation", selectedNavigation],
+    ["composer", composer],
+    ["composer input", composerInput],
+  ]) {
+    assert(await locator.count() === 1, `${name} interaction target is missing`);
+  }
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await resetInteractionState(page);
+  const normalMedia = await page.evaluate(() => ({
+    finePointer: matchMedia("(hover: hover) and (pointer: fine)").matches,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }));
+  assert(normalMedia.finePointer, "fixture does not expose fine-pointer hover");
+  assert(!normalMedia.reducedMotion, "normal interaction fixture still prefers reduced motion");
+
+  const normalTransitions = {
+    home: await interactionSnapshot(homeAction),
+    sidebar: await interactionSnapshot(sidebarAction),
+    composer: await interactionSnapshot(composer),
+  };
+  for (const [name, snapshot] of Object.entries(normalTransitions)) {
+    assert(
+      durationListHasMotion(snapshot.transitionDuration),
+      `${name} normal interaction transition is disabled`,
+    );
+  }
+
+  const freeze = await page.addStyleTag({
+    content: `
+      [data-offline-theme-fixture="true"] * {
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+      }
+    `,
+  });
+  let normal;
+  try {
+    await resetInteractionState(page);
+    const homeIdle = await interactionSnapshot(homeAction);
+    const sidebarIdle = await interactionSnapshot(sidebarAction);
+    const selected = await interactionSnapshot(selectedNavigation);
+    const composerIdle = await interactionSnapshot(composer);
+
+    await homeAction.hover();
+    await settleRenderedFrame(page);
+    const homeHover = await interactionSnapshot(homeAction);
+    assert(homeHover.matchesHover, "home action hover selector did not match");
+
+    let homeActive;
+    try {
+      await page.mouse.down();
+      await settleRenderedFrame(page);
+      homeActive = await interactionSnapshot(homeAction);
+      assert(homeActive.matchesActive, "home action active selector did not match");
+    } finally {
+      await page.mouse.up();
+    }
+
+    await sidebarAction.hover();
+    await settleRenderedFrame(page);
+    const sidebarHover = await interactionSnapshot(sidebarAction);
+    assert(sidebarHover.matchesHover, "sidebar hover selector did not match");
+
+    let sidebarActive;
+    try {
+      await page.mouse.down();
+      await settleRenderedFrame(page);
+      sidebarActive = await interactionSnapshot(sidebarAction);
+      assert(sidebarActive.matchesActive, "sidebar active selector did not match");
+    } finally {
+      await page.mouse.up();
+    }
+
+    await resetInteractionState(page);
+    await focusWithKeyboard(page, homeAction);
+    const homeFocus = await interactionSnapshot(homeAction);
+    assert(homeFocus.matchesFocusVisible, "keyboard focus did not match :focus-visible");
+
+    await composerInput.focus();
+    await settleRenderedFrame(page);
+    const composerFocus = await interactionSnapshot(composer);
+    const composerInputFocus = await interactionSnapshot(composerInput);
+    assert(composerFocus.matchesFocusWithin, "composer did not match :focus-within");
+
+    requireStableRect(homeIdle.rect, homeHover.rect, "home hover");
+    requireStableRect(homeIdle.rect, homeActive.rect, "home active");
+    requireStableRect(homeIdle.rect, homeFocus.rect, "home keyboard focus");
+    requireStableRect(sidebarIdle.rect, sidebarHover.rect, "sidebar hover");
+    requireStableRect(sidebarIdle.rect, sidebarActive.rect, "sidebar active");
+    requireStableRect(composerIdle.rect, composerFocus.rect, "composer focus-within");
+    for (const [name, snapshot] of Object.entries({
+      homeIdle,
+      homeHover,
+      homeActive,
+      homeFocus,
+      sidebarIdle,
+      sidebarHover,
+      sidebarActive,
+      selected,
+      composerIdle,
+      composerFocus,
+    })) {
+      assert(isIdentityTransform(snapshot.transform), `${name} applies transform ${snapshot.transform}`);
+    }
+
+    assert(
+      visualStyleChanged(homeIdle, homeHover, ["backgroundColor", "borderColor"]),
+      "home hover has no visual feedback",
+    );
+    assert(
+      visualStyleChanged(homeHover, homeActive, ["backgroundColor", "borderColor", "boxShadow"]),
+      "home active has no additional visual feedback",
+    );
+    assert(homeActive.opacity === homeIdle.opacity, "home active dims content opacity");
+    assert(
+      visualStyleChanged(sidebarIdle, sidebarHover, ["backgroundColor", "boxShadow"]),
+      "sidebar hover has no visual feedback",
+    );
+    assert(
+      visualStyleChanged(sidebarHover, sidebarActive, ["backgroundColor", "boxShadow"]),
+      "sidebar active has no additional visual feedback",
+    );
+    assert(sidebarActive.opacity === sidebarIdle.opacity, "sidebar active dims content opacity");
+    assert(
+      Number.parseFloat(homeFocus.outlineWidth) >= 2 && homeFocus.outlineStyle !== "none",
+      `keyboard focus outline is ${homeFocus.outlineStyle} ${homeFocus.outlineWidth}`,
+    );
+    assert(
+      Number.parseInt(selected.fontWeight, 10) >= 600 && selected.boxShadow !== "none",
+      "selected navigation lacks structural emphasis",
+    );
+    assert(
+      composerFocus.borderColor !== composerIdle.borderColor
+        && composerFocus.boxShadow !== composerIdle.boxShadow,
+      "composer focus-within lacks border and shadow feedback",
+    );
+    assert(
+      composerInputFocus.outlineStyle === "none"
+        || Number.parseFloat(composerInputFocus.outlineWidth) === 0,
+      "composer input owns a duplicate focus outline",
+    );
+
+    normal = {
+      media: normalMedia,
+      transitions: normalTransitions,
+      home: { idle: homeIdle, hover: homeHover, active: homeActive, focusVisible: homeFocus },
+      sidebar: { idle: sidebarIdle, hover: sidebarHover, active: sidebarActive, selected },
+      composer: { idle: composerIdle, focusWithin: composerFocus, inputFocus: composerInputFocus },
+    };
+  } finally {
+    await freeze.evaluate((node) => node.remove());
+  }
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await resetInteractionState(page);
+  const reducedMedia = await page.evaluate(() =>
+    matchMedia("(prefers-reduced-motion: reduce)").matches);
+  assert(reducedMedia, "reduced-motion interaction media did not match");
+  const reducedIdle = {
+    home: await interactionSnapshot(homeAction),
+    sidebar: await interactionSnapshot(sidebarAction),
+    composer: await interactionSnapshot(composer),
+  };
+  for (const [name, snapshot] of Object.entries(reducedIdle)) {
+    assert(durationListIsZero(snapshot.transitionDuration), `${name} reduced transition is not zero`);
+    assert(durationListIsZero(snapshot.transitionDelay), `${name} reduced transition delay is not zero`);
+    assert(
+      snapshot.animationName === "none" || durationListIsZero(snapshot.animationDuration),
+      `${name} reduced animation remains active`,
+    );
+  }
+
+  await homeAction.hover();
+  await settleRenderedFrame(page);
+  const reducedHover = await interactionSnapshot(homeAction);
+  assert(reducedHover.matchesHover, "reduced home hover selector did not match");
+  assert(
+    visualStyleChanged(reducedIdle.home, reducedHover, ["backgroundColor", "borderColor"]),
+    "reduced motion removes home hover feedback",
+  );
+
+  await resetInteractionState(page);
+  await composerInput.focus();
+  await settleRenderedFrame(page);
+  const reducedComposerFocus = await interactionSnapshot(composer);
+  assert(reducedComposerFocus.matchesFocusWithin, "reduced composer focus-within did not match");
+  assert(
+    reducedComposerFocus.borderColor !== reducedIdle.composer.borderColor
+      && reducedComposerFocus.boxShadow !== reducedIdle.composer.boxShadow,
+    "reduced motion removes composer focus feedback",
+  );
+  const runningAnimations = await page.evaluate(({ homeSelector, composerSelector }) => {
+    const targets = [document.querySelector(homeSelector), document.querySelector(composerSelector)]
+      .filter((node) => node instanceof HTMLElement);
+    return targets.flatMap((node) => node.getAnimations({ subtree: true }))
+      .filter((animation) => animation.playState === "running").length;
+  }, { homeSelector: selectors.homeSuggestions, composerSelector: selectors.composer });
+  assert(runningAnimations === 0, `reduced motion keeps ${runningAnimations} animations running`);
+
+  await resetInteractionState(page);
+  return {
+    normal,
+    reduced: {
+      mediaMatches: reducedMedia,
+      idle: reducedIdle,
+      homeHover: reducedHover,
+      composerFocusWithin: reducedComposerFocus,
+      runningAnimations,
+    },
+  };
+}
+
+async function interactionSnapshot(locator) {
+  return locator.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    return {
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      backgroundColor: style.backgroundColor,
+      borderColor: style.borderColor,
+      boxShadow: style.boxShadow,
+      opacity: style.opacity,
+      transform: style.transform,
+      outlineColor: style.outlineColor,
+      outlineOffset: style.outlineOffset,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      fontWeight: style.fontWeight,
+      transitionDuration: style.transitionDuration,
+      transitionDelay: style.transitionDelay,
+      animationName: style.animationName,
+      animationDuration: style.animationDuration,
+      matchesHover: node.matches(":hover"),
+      matchesActive: node.matches(":active"),
+      matchesFocusVisible: node.matches(":focus-visible"),
+      matchesFocusWithin: node.matches(":focus-within"),
+    };
+  });
+}
+
+async function focusWithKeyboard(page, locator) {
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  for (let index = 0; index < 40; index += 1) {
+    await page.keyboard.press("Tab");
+    const matched = await locator.evaluate((node) =>
+      document.activeElement === node && node.matches(":focus-visible"));
+    if (matched) return;
+  }
+  throw new Error("unable to reach fixture target with keyboard focus");
+}
+
+async function resetInteractionState(page) {
+  await page.mouse.move(8, 8);
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await settleRenderedFrame(page);
+}
+
+function requireStableRect(before, after, context) {
+  for (const field of ["x", "y", "width", "height"]) {
+    assert(
+      Math.abs(before[field] - after[field]) <= 0.25,
+      `${context} changes ${field} from ${before[field]} to ${after[field]}`,
+    );
+  }
+}
+
+function visualStyleChanged(before, after, fields) {
+  return fields.some((field) => before[field] !== after[field]);
+}
+
+function durationListIsZero(value) {
+  return String(value).split(",").every((duration) => Number.parseFloat(duration) === 0);
+}
+
+function durationListHasMotion(value) {
+  return String(value).split(",").some((duration) => Number.parseFloat(duration) > 0);
+}
+
+function isIdentityTransform(value) {
+  return value === "none" || value === "matrix(1, 0, 0, 1, 0, 0)";
 }
 
 async function assertSemanticTextColors(page, routeName) {

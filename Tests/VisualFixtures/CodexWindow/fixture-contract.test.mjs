@@ -289,6 +289,11 @@ test("scene material checks enforce one computed background layer on real DOM pa
     [(metric) => {
       metric.sceneTransmissionZones[1] = structuredClone(metric.sceneTransmissionZones[0]);
     }, /scene transmission zones/],
+    [(metric) => { metric.interactionStates.normal.sidebar.active = null; }, /sidebar active is missing/],
+    [(metric) => { metric.interactionStates.normal.home.hover.rect.x = 0.26; }, /home hover changes x/],
+    [(metric) => {
+      metric.interactionStates.reduced.idle.home.transitionDuration = "140ms";
+    }, /reduced home transition is not zero/],
   ]) {
     const invalid = structuredClone(healthy);
     mutate(invalid[0]);
@@ -466,6 +471,7 @@ function representativeMetrics() {
       maximumPixelDelta: 96,
       meanPixelDelta: 12,
     })),
+    interactionStates: index % 2 === 0 ? representativeInteractionStates() : null,
     homeMaterialChain: index % 2 === 0 ? [
       { surface: "home-action", backgroundAlpha: 0.82 },
       { surface: "home-suggestions", backgroundAlpha: 0 },
@@ -480,6 +486,106 @@ function representativeMetrics() {
       { surface: "app-shell", backgroundAlpha: 1 },
     ],
   }));
+}
+
+function representativeInteractionStates() {
+  const snapshot = (overrides = {}) => ({
+    rect: { x: 0, y: 0, width: 180, height: 44 },
+    backgroundColor: "rgba(30, 40, 50, 0.82)",
+    borderColor: "rgba(120, 140, 160, 0.28)",
+    boxShadow: "rgba(255, 255, 255, 0.1) 0px 1px 0px 0px inset",
+    opacity: "1",
+    transform: "none",
+    outlineColor: "rgb(120, 180, 240)",
+    outlineOffset: "0px",
+    outlineStyle: "none",
+    outlineWidth: "0px",
+    fontWeight: "400",
+    transitionDuration: "0.14s, 0.14s",
+    transitionDelay: "0s",
+    animationName: "none",
+    animationDuration: "0s",
+    matchesHover: false,
+    matchesActive: false,
+    matchesFocusVisible: false,
+    matchesFocusWithin: false,
+    ...overrides,
+  });
+  const homeIdle = snapshot();
+  const sidebarIdle = snapshot({ rect: { x: 0, y: 0, width: 220, height: 36 } });
+  const composerIdle = snapshot({ rect: { x: 0, y: 0, width: 620, height: 116 } });
+  return {
+    normal: {
+      media: { finePointer: true, reducedMotion: false },
+      transitions: { home: homeIdle, sidebar: sidebarIdle, composer: composerIdle },
+      home: {
+        idle: homeIdle,
+        hover: snapshot({ backgroundColor: "rgba(34, 44, 54, 0.9)", matchesHover: true }),
+        active: snapshot({
+          backgroundColor: "rgba(38, 48, 58, 0.94)",
+          boxShadow: "rgba(120, 180, 240, 0.54) 0px 0px 0px 1px inset",
+          matchesHover: true,
+          matchesActive: true,
+        }),
+        focusVisible: snapshot({
+          outlineOffset: "2px",
+          outlineStyle: "solid",
+          outlineWidth: "2px",
+          matchesFocusVisible: true,
+        }),
+      },
+      sidebar: {
+        idle: sidebarIdle,
+        hover: snapshot({
+          rect: sidebarIdle.rect,
+          backgroundColor: "rgba(34, 44, 54, 0.54)",
+          matchesHover: true,
+        }),
+        active: snapshot({
+          rect: sidebarIdle.rect,
+          backgroundColor: "rgba(38, 48, 58, 0.68)",
+          boxShadow: "rgb(120, 180, 240) 3px 0px 0px 0px inset",
+          matchesHover: true,
+          matchesActive: true,
+        }),
+        selected: snapshot({
+          rect: sidebarIdle.rect,
+          boxShadow: "rgb(120, 180, 240) 3px 0px 0px 0px inset",
+          fontWeight: "600",
+        }),
+      },
+      composer: {
+        idle: composerIdle,
+        focusWithin: snapshot({
+          rect: composerIdle.rect,
+          borderColor: "rgb(120, 180, 240)",
+          boxShadow: "rgba(120, 180, 240, 0.58) 0px 0px 0px 2px",
+          matchesFocusWithin: true,
+        }),
+        inputFocus: snapshot({ matchesFocusVisible: true }),
+      },
+    },
+    reduced: {
+      mediaMatches: true,
+      idle: {
+        home: snapshot({ transitionDuration: "0s" }),
+        sidebar: snapshot({ transitionDuration: "0s" }),
+        composer: snapshot({ transitionDuration: "0s" }),
+      },
+      homeHover: snapshot({
+        backgroundColor: "rgba(34, 44, 54, 0.9)",
+        transitionDuration: "0s",
+        matchesHover: true,
+      }),
+      composerFocusWithin: snapshot({
+        borderColor: "rgb(120, 180, 240)",
+        boxShadow: "rgba(120, 180, 240, 0.58) 0px 0px 0px 2px",
+        transitionDuration: "0s",
+        matchesFocusWithin: true,
+      }),
+      runningAnimations: 0,
+    },
+  };
 }
 
 function representativeContrastSamples(route) {

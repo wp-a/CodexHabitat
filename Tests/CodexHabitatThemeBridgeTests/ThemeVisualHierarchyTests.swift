@@ -6,7 +6,7 @@ import Testing
 @Suite
 struct ThemeVisualHierarchyTests {
     private let homeActionFillPercent = 82
-    private let selectedNavigationFillPercent = 64
+    private let selectedNavigationFillPercent = 88
     private let sidebarHoverFillPercent = 54
 
     @Test
@@ -115,7 +115,7 @@ struct ThemeVisualHierarchyTests {
                 selected.contains(
                     "var(--habitat-panel-alt) \(selectedNavigationFillPercent)%, transparent"
                 ),
-                "\(definition.id) selected navigation is too opaque"
+                "\(definition.id) selected navigation material contract changed"
             )
             #expect(
                 hover.contains(
@@ -145,7 +145,7 @@ struct ThemeVisualHierarchyTests {
 
             #expect(
                 action.contains(
-                    "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent)"
+                    "border: 1px solid color-mix(in srgb, var(--habitat-accent) 24%, transparent)"
                 ),
                 "\(family.rawValue) does not use the shared quiet idle action boundary"
             )

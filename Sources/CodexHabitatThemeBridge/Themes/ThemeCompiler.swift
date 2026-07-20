@@ -495,7 +495,7 @@ struct ThemeCompiler {
         if let selectedNavigation = profile.selectors.selectedNavigation {
             rules.append("""
             \(root) \(selectedNavigation) {
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 64%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) 88%, transparent);
               box-shadow: inset 3px 0 0 var(--habitat-accent);
             }
             """)
@@ -817,55 +817,55 @@ struct ThemeCompiler {
         case .arcade:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 4px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 18%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 4px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 12%, transparent);",
                 "border-radius: 4px; border-width: 1px;"
             )
         case .retroMessenger:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 26%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);",
                 "border-radius: 6px; border-width: 1px;"
             )
         case .greenChat:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 5px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 18%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 5px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 12%, transparent);",
                 "border-radius: 5px; border-width: 1px;"
             )
         case .classicDesktop:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-panel-alt) 30%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-panel-alt) 16%, transparent);",
                 "border-radius: 0; border-width: 1px;"
             )
         case .gameCinematic:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 20%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 12%, transparent);",
                 "border-radius: 3px; border-width: 1px;"
             )
         case .cozyWorld:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 20%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);",
                 "border-radius: 8px; border-width: 1px;"
             )
         case .animeEnergy:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 2px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 24%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 2px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 14%, transparent);",
                 "border-radius: 2px; border-width: 1px;"
             )
         case .fantasyAdventure:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 18%, transparent);",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 12%, transparent);",
                 "border-radius: 7px; border-width: 1px;"
             )
         case .pixelWorld:
             (
                 "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-text) 22%, transparent); image-rendering: pixelated;",
+                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-text) 14%, transparent); image-rendering: pixelated;",
                 "border-radius: 0; border-width: 1px;"
             )
         }
@@ -931,9 +931,9 @@ struct ThemeCompiler {
         let homeActionTransitionRule = homeActionSelector.map { action in
             """
             \(root) \(action) {
-              transition-property: background-color, border-color, opacity;
-              transition-duration: 140ms, 140ms, 90ms;
-              transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1), linear;
+              transition-property: background-color, border-color, box-shadow;
+              transition-duration: 140ms, 140ms, 140ms;
+              transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1);
             }
             """
         } ?? ""
@@ -950,7 +950,7 @@ struct ThemeCompiler {
             \(root) \(action):active {
               background-color: color-mix(in srgb, var(--habitat-panel-alt) 94%, transparent);
               border-color: color-mix(in srgb, var(--habitat-accent) 68%, var(--habitat-highlight));
-              opacity: 0.86;
+              box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 54%, transparent);
             }
             """
         } ?? ""
@@ -1015,9 +1015,9 @@ struct ThemeCompiler {
 
         /* habitat-semantic-state: interactive */
         \(root) \(sidebarActionSelector) {
-          transition-property: background-color, opacity;
-          transition-duration: 140ms, 90ms;
-          transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), linear;
+          transition-property: background-color, box-shadow;
+          transition-duration: 140ms, 140ms;
+          transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         @media (hover: hover) and (pointer: fine) {
@@ -1030,12 +1030,12 @@ struct ThemeCompiler {
         \(homeActiveRule)
         \(root) \(sidebarActiveSelector) {
           background-color: color-mix(in srgb, var(--habitat-panel-alt) 68%, transparent);
-          opacity: 0.82;
+          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--habitat-accent) 72%, transparent);
         }
 
         \(scopedSelectors(composerFocusSurfaces, root: root)) {
-          border-color: color-mix(in srgb, var(--habitat-accent) 74%, var(--habitat-highlight));
-          box-shadow: 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 44%, transparent), 0 8px 20px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
+          border-color: color-mix(in srgb, var(--habitat-accent) 88%, var(--habitat-highlight));
+          box-shadow: 0 0 0 2px color-mix(in srgb, var(--habitat-accent) 58%, transparent), 0 8px 20px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
         }
 
         /* habitat-semantic-state: focus */
@@ -1043,6 +1043,10 @@ struct ThemeCompiler {
           outline-style: \(styleFocus(for: family));
           outline-width: 2px;
           outline-offset: 2px;
+          outline-color: color-mix(in srgb, var(--habitat-accent) 78%, var(--habitat-highlight));
+        }
+        \(root) \(profile.selectors.composer) :focus-visible {
+          outline: none;
         }
 
         /* habitat-semantic-state: selected */
@@ -1107,7 +1111,7 @@ struct ThemeCompiler {
         case .greenChat:
             "box-shadow: inset 4px 0 0 var(--habitat-secondary); border-radius: 4px;"
         case .classicDesktop:
-            "border: 2px inset var(--habitat-panel-alt); border-radius: 0; box-shadow: none;"
+            "border-radius: 0; box-shadow: inset 0 0 0 2px var(--habitat-panel-alt);"
         case .gameCinematic:
             "box-shadow: inset 3px 0 0 var(--habitat-attention), 0 6px 18px color-mix(in srgb, black 18%, transparent); border-radius: 3px;"
         case .cozyWorld:
@@ -1122,24 +1126,24 @@ struct ThemeCompiler {
     }
 
     private static func styleHomeAction(for family: HabitatThemeStyleFamily) -> String {
-        let shared = "border: 1px solid color-mix(in srgb, var(--habitat-accent) 34%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 16%, transparent);"
+        let shared = "border: 1px solid color-mix(in srgb, var(--habitat-accent) 24%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
         return switch family {
         case .arcade:
-            "\(shared) border-radius: 4px; border-color: color-mix(in srgb, var(--habitat-secondary) 34%, var(--habitat-accent));"
+            "\(shared) border-radius: 4px; border-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
         case .retroMessenger:
-            "\(shared) border-radius: 6px; border-top-color: color-mix(in srgb, white 36%, var(--habitat-accent));"
+            "\(shared) border-radius: 6px; border-top-color: color-mix(in srgb, white 24%, var(--habitat-accent));"
         case .greenChat:
-            "\(shared) border-radius: 5px; border-inline-color: color-mix(in srgb, var(--habitat-secondary) 34%, var(--habitat-accent));"
+            "\(shared) border-radius: 5px; border-inline-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
         case .classicDesktop:
             "\(shared) border-radius: 0; border-style: outset;"
         case .gameCinematic:
-            "\(shared) border-radius: 6px; border-color: color-mix(in srgb, var(--habitat-highlight) 42%, var(--habitat-accent));"
+            "\(shared) border-radius: 6px; border-color: color-mix(in srgb, var(--habitat-highlight) 28%, var(--habitat-accent));"
         case .cozyWorld:
-            "\(shared) border-radius: 8px; border-color: color-mix(in srgb, white 20%, var(--habitat-accent));"
+            "\(shared) border-radius: 8px; border-color: color-mix(in srgb, white 18%, var(--habitat-accent));"
         case .animeEnergy:
             "\(shared) border-radius: 2px; border-style: dashed;"
         case .fantasyAdventure:
-            "\(shared) border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 18%, transparent);"
+            "\(shared) border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
         case .pixelWorld:
             "\(shared) border-radius: 0; image-rendering: pixelated;"
         }

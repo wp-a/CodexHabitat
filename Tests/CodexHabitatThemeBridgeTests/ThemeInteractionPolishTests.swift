@@ -99,8 +99,11 @@ struct ThemeInteractionPolishTests {
             #expect(!reducedRules.isEmpty, "\(family.rawValue) has no reduced-motion rule")
 
             for rule in stateRules {
+                let declarationsAreAllowed = rule.selectors.contains { $0.contains(":focus-visible") }
+                    ? focusStateDeclarationsAreAllowed(rule.declarations)
+                    : interactionStateDeclarationsAreAllowed(rule.declarations)
                 #expect(
-                    interactionStateDeclarationsAreAllowed(rule.declarations),
+                    declarationsAreAllowed,
                     "\(family.rawValue) state rule overrides native properties: \(rule.declarations.keys.sorted())"
                 )
             }
@@ -153,6 +156,101 @@ struct ThemeInteractionPolishTests {
     func interactionStateAllowlistAcceptsSemanticVisualProperties(_ property: String) {
         #expect(interactionStateDeclarationsAreAllowed([property: "test-value"]))
     }
+
+    @Test
+    func interactionEmphasisUsesStrictlyStrongerNonLayoutBoundaries() throws {
+        let profile = try completeInteractionProfile()
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let suggestions = try #require(profile.selectors.homeSuggestions)
+        let selectedNavigation = try #require(profile.selectors.selectedNavigation)
+        let homeAction = "\(root) \(suggestions) :where(button, [role=\"button\"])"
+        let selected = "\(root) \(selectedNavigation)"
+        let keyboardFocus = "\(root) :focus-visible"
+        let composer = "\(root) \(profile.selectors.composer)"
+        let composerFocus = "\(composer):focus-within"
+        let composerDescendantFocus = "\(composer) :focus-visible"
+        let maximumIdleBoundaryPercent = 28.0
+        let expectedIdleMaterialPercent = 82.0
+        let expectedSelectedMaterialPercent = 88.0
+
+        #expect(expectedIdleMaterialPercent < expectedSelectedMaterialPercent)
+
+        for definition in BuiltInThemeCatalog.all {
+            let css = try compiledInteractionCSS(for: definition, profile: profile)
+            let rules = parseCSSRules(css)
+            let home = try #require(rule(for: homeAction, in: rules))
+            let selectedMaterialRule = try #require(rules.first { rule in
+                rule.selectors.contains(selected)
+                    && rule.mediaQueries.isEmpty
+                    && rule.declarations["background-color"] != nil
+            })
+            let selectedRule = try #require(lastRule(for: selected, in: rules))
+            let focusRule = try #require(lastRule(for: keyboardFocus, in: rules))
+            let composerFocusRule = try #require(rule(for: composerFocus, in: rules))
+            let innerFocusRule = try #require(rule(for: composerDescendantFocus, in: rules))
+
+            let idleBoundaryPercentages = try percentages(
+                in: [
+                    home.declarations["border"],
+                    home.declarations["border-color"],
+                    home.declarations["border-top-color"],
+                    home.declarations["border-right-color"],
+                    home.declarations["border-bottom-color"],
+                    home.declarations["border-left-color"],
+                    home.declarations["border-inline-color"],
+                ].compactMap { $0 }.joined(separator: " ")
+            )
+            let idleShadowPercentages = try percentages(
+                in: home.declarations["box-shadow"] ?? ""
+            )
+            let idleMaterialPercent = try #require(
+                percentages(in: home.declarations["background-color"] ?? "").first
+            )
+            let selectedMaterialPercent = try #require(
+                percentages(
+                    in: selectedMaterialRule.declarations["background-color"] ?? ""
+                ).first
+            )
+            #expect(idleMaterialPercent == expectedIdleMaterialPercent)
+            #expect(selectedMaterialPercent == expectedSelectedMaterialPercent)
+            #expect(
+                idleMaterialPercent < selectedMaterialPercent,
+                "\(definition.id) idle action material is stronger than selected navigation"
+            )
+            #expect(!idleBoundaryPercentages.isEmpty, "\(definition.id) has no idle boundary mix")
+            #expect(!idleShadowPercentages.isEmpty, "\(definition.id) has no idle inner highlight")
+            #expect(
+                idleBoundaryPercentages.allSatisfy { $0 <= maximumIdleBoundaryPercent },
+                "\(definition.id) idle boundary is too saturated: \(idleBoundaryPercentages)"
+            )
+            #expect(
+                idleShadowPercentages.allSatisfy { $0 <= 12 },
+                "\(definition.id) idle shadow is too strong: \(idleShadowPercentages)"
+            )
+
+            #expect(selectedRule.declarations["font-weight"] == "600")
+            #expect(
+                selectedRule.declarations["box-shadow"] != nil
+                    && selectedRule.declarations["box-shadow"] != "none"
+            )
+            #expect(selectedRule.declarations["border"] == nil, "\(definition.id) selected state changes border geometry")
+            #expect(selectedRule.declarations["border-width"] == nil)
+
+            #expect(
+                focusRule.declarations["outline-color"]?.contains("78%") == true,
+                "\(definition.id) keyboard focus is not in the ordered emphasis scale"
+            )
+            #expect(focusRule.declarations["outline-width"] == "2px")
+            #expect(focusRule.declarations["outline-offset"] == "2px")
+
+            #expect(
+                composerFocusRule.declarations["border-color"]?.contains("88%") == true,
+                "\(definition.id) composer focus is not the strongest boundary"
+            )
+            #expect(composerFocusRule.declarations["box-shadow"]?.contains("0 0 0 2px") == true)
+            #expect(innerFocusRule.declarations["outline"] == "none")
+        }
+    }
 }
 
 private let interactionStatePropertyAllowlist: Set<String> = [
@@ -167,9 +265,18 @@ private let reducedMotionDeclarationAllowlist: Set<String> = [
     "transition", "transition-property", "transition-duration", "transition-timing-function",
 ]
 
+private let focusStatePropertyAllowlist = interactionStatePropertyAllowlist.union([
+    "outline", "outline-color", "outline-offset", "outline-style", "outline-width",
+])
+
 private func interactionStateDeclarationsAreAllowed(_ declarations: [String: String]) -> Bool {
     !declarations.isEmpty
         && Set(declarations.keys).isSubset(of: interactionStatePropertyAllowlist)
+}
+
+private func focusStateDeclarationsAreAllowed(_ declarations: [String: String]) -> Bool {
+    !declarations.isEmpty
+        && Set(declarations.keys).isSubset(of: focusStatePropertyAllowlist)
 }
 
 private struct ParsedCSSRule {
@@ -181,6 +288,7 @@ private struct ParsedCSSRule {
         selectors.contains { selector in
             selector.contains(":hover")
                 || selector.contains(":active")
+                || selector.contains(":focus-visible")
                 || selector.contains(":focus-within")
         }
     }
@@ -276,6 +384,29 @@ private func composerFixtureProfile(_ fixture: NestedComposerFixture) throws -> 
     )
 }
 
+private func compiledInteractionCSS(
+    for definition: BuiltInThemeDefinition,
+    profile: CompatibilityProfile
+) throws -> String {
+    let theme = BridgeTheme(
+        tokens: BridgeThemeTokens(palette: definition.palette),
+        appearance: BridgeThemeAppearance(
+            definition.appearance(background: "background.jpg")
+        ),
+        artBlobURL: nil
+    )
+    return try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+}
+
+private func percentages(in value: String) throws -> [Double] {
+    let expression = try NSRegularExpression(pattern: #"([0-9]+(?:\.[0-9]+)?)%"#)
+    let range = NSRange(value.startIndex..<value.endIndex, in: value)
+    return expression.matches(in: value, range: range).compactMap { match in
+        guard let capture = Range(match.range(at: 1), in: value) else { return nil }
+        return Double(value[capture])
+    }
+}
+
 private func expectNativeInteractionContract(
     in css: String,
     profile: CompatibilityProfile,
@@ -294,8 +425,9 @@ private func expectNativeInteractionContract(
     })
     #expect(homeHover.declarations["background-color"] != nil, "\(context) lacks home hover fill")
     let homeActive = try #require(rule(for: "\(homeAction):active", in: rules))
-    #expect(homeActive.declarations["opacity"] != nil, "\(context) lacks home press feedback")
+    #expect(homeActive.declarations["opacity"] == nil, "\(context) dims home text while pressed")
     #expect(homeActive.declarations["background-color"] != nil, "\(context) lacks home press fill")
+    #expect(homeActive.declarations["box-shadow"] != nil, "\(context) lacks home press structure")
 
     let sidebarBase = try #require(rules.first { rule in
         rule.selectors.contains(sidebarAction)
@@ -320,8 +452,9 @@ private func expectNativeInteractionContract(
         "\(context) lets selected sidebar actions receive press feedback"
     )
     let sidebarActive = try #require(rule(for: sidebarActiveSelector, in: rules))
-    #expect(sidebarActive.declarations["opacity"] != nil, "\(context) lacks sidebar press feedback")
+    #expect(sidebarActive.declarations["opacity"] == nil, "\(context) dims sidebar text while pressed")
     #expect(sidebarActive.declarations["background-color"] != nil, "\(context) lacks sidebar press fill")
+    #expect(sidebarActive.declarations["box-shadow"] != nil, "\(context) lacks sidebar press structure")
 
     let composer = profile.selectors.composer
     let composerBase = "\(root) \(composer)"
@@ -377,6 +510,10 @@ private func expectNativeInteractionContract(
 
 private func rule(for selector: String, in rules: [ParsedCSSRule]) -> ParsedCSSRule? {
     rules.first { $0.selectors.contains(selector) && $0.mediaQueries.isEmpty }
+}
+
+private func lastRule(for selector: String, in rules: [ParsedCSSRule]) -> ParsedCSSRule? {
+    rules.last { $0.selectors.contains(selector) && $0.mediaQueries.isEmpty }
 }
 
 private func transitionRule(for selector: String, in rules: [ParsedCSSRule]) -> ParsedCSSRule? {
