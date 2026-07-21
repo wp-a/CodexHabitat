@@ -269,7 +269,10 @@ public struct PackageInstaller {
     }
 
     private func validateImage(at url: URL, relativePath: String) throws {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        guard signatureMatches(data, extensionName: url.pathExtension.lowercased()),
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceGetCount(source) == 1,
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
                 as? [CFString: Any],
               let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
@@ -286,6 +289,21 @@ public struct PackageInstaller {
               pixels.partialValue <= limits.maxImagePixels
         else {
             throw PackageInstallationError.imageDimensionsExceeded(relativePath)
+        }
+    }
+
+    private func signatureMatches(_ data: Data, extensionName: String) -> Bool {
+        switch extensionName {
+        case "png":
+            return data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+        case "jpg", "jpeg":
+            return data.count >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF
+        case "webp":
+            return data.count >= 12
+                && String(decoding: data[0..<4], as: UTF8.self) == "RIFF"
+                && String(decoding: data[8..<12], as: UTF8.self) == "WEBP"
+        default:
+            return false
         }
     }
 
@@ -308,7 +326,9 @@ public struct PackageInstaller {
     }
 
     private func isImage(_ path: String) -> Bool {
-        ["png", "jpg", "jpeg", "webp"].contains(URL(fileURLWithPath: path).pathExtension)
+        ["png", "jpg", "jpeg", "webp"].contains(
+            URL(fileURLWithPath: path).pathExtension.lowercased()
+        )
     }
 
     private func synchronizeTree(at root: URL) throws {

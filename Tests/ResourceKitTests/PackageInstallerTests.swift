@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import ImageIO
 import Testing
 @testable import ResourceKit
 
@@ -126,6 +127,52 @@ func excessiveImagePixelCountIsRejectedBeforePublication() throws {
 }
 
 @Test
+func mismatchedImageContainerIsRejectedBeforePublication() throws {
+    try withTemporaryLibrary { library in
+        let png = try testPNG()
+        let digest = SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined()
+        let assets: [[String: Any]] = [[
+            "type": "image",
+            "id": "art",
+            "path": "artwork/art.jpg",
+            "sha256": digest,
+            "rendering": "smooth",
+        ]]
+        let archiveURL = try makeTestArchive([
+            TestArchiveEntry(path: "habitat.json", data: try minimalManifestData(assets: assets)),
+            TestArchiveEntry(path: "preview.png", data: png),
+            TestArchiveEntry(path: "LICENSE", data: Data("MIT".utf8)),
+            TestArchiveEntry(path: "artwork/art.jpg", data: png),
+        ])
+        defer { try? FileManager.default.removeItem(at: archiveURL) }
+        let installer = PackageInstaller(libraryRoot: library, runtimeVersion: "1.0.0")
+
+        #expect(throws: PackageInstallationError.invalidImage("artwork/art.jpg")) {
+            try installer.install(archiveURL)
+        }
+        #expect(try publishedPackageDirectories(in: library).isEmpty)
+    }
+}
+
+@Test
+func multiframeImageIsRejectedBeforePublication() throws {
+    try withTemporaryLibrary { library in
+        let archiveURL = try makeTestArchive([
+            TestArchiveEntry(path: "habitat.json", data: try minimalManifestData()),
+            TestArchiveEntry(path: "preview.png", data: try testMultiframePNG()),
+            TestArchiveEntry(path: "LICENSE", data: Data("MIT".utf8)),
+        ])
+        defer { try? FileManager.default.removeItem(at: archiveURL) }
+        let installer = PackageInstaller(libraryRoot: library, runtimeVersion: "1.0.0")
+
+        #expect(throws: PackageInstallationError.invalidImage("preview.png")) {
+            try installer.install(archiveURL)
+        }
+        #expect(try publishedPackageDirectories(in: library).isEmpty)
+    }
+}
+
+@Test
 func malformedFontWithAValidHashIsRejectedBeforePublication() throws {
     try withTemporaryLibrary { library in
         let fontData = Data("not a font".utf8)
@@ -158,6 +205,20 @@ private func validPackArchive(licenseText: String) throws -> URL {
         TestArchiveEntry(path: "preview.png", data: try testPNG()),
         TestArchiveEntry(path: "LICENSE", data: Data(licenseText.utf8)),
     ])
+}
+
+private func testMultiframePNG() throws -> Data {
+    let sourceData = try testPNG(width: 8, height: 8)
+    let source = try #require(CGImageSourceCreateWithData(sourceData as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    let data = NSMutableData()
+    let destination = try #require(
+        CGImageDestinationCreateWithData(data, "public.png" as CFString, 2, nil)
+    )
+    CGImageDestinationAddImage(destination, image, nil)
+    CGImageDestinationAddImage(destination, image, nil)
+    #expect(CGImageDestinationFinalize(destination))
+    return data as Data
 }
 
 private func withTemporaryLibrary(_ operation: (URL) throws -> Void) throws {
