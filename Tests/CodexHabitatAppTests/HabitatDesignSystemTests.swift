@@ -61,6 +61,36 @@ struct HabitatDesignSystemTests {
     }
 
     @Test
+    func reducedTransparencyUsesAnExplicitOpaqueBackingForEverySurfaceRole() {
+        let plans = HabitatMaterialRole.allCases.map {
+            HabitatSurfacePlan.resolve(role: $0, reduceTransparency: true)
+        }
+
+        #expect(plans.allSatisfy { !$0.usesMaterial })
+        #expect(plans.allSatisfy { $0.usesExplicitOpaqueBacking })
+        #expect(plans.allSatisfy { $0.opaqueBackingAlpha == 1 })
+    }
+
+    @Test
+    func opaqueSurfacePlansRetainSemanticAndThemeColoring() {
+        let focused = HabitatSurfacePlan.resolve(
+            role: .focusedControl,
+            reduceTransparency: true
+        )
+        let content = HabitatSurfacePlan.resolve(
+            role: .content,
+            reduceTransparency: true
+        )
+
+        #expect(focused.semanticColor == .control)
+        #expect(focused.themeTint == .selection)
+        #expect(focused.themeTintOpacity == 0.14)
+        #expect(content.semanticColor == .window)
+        #expect(content.themeTint == .secondary)
+        #expect(content.themeTintOpacity == 0.025)
+    }
+
+    @Test
     func themeAccentResolutionIsBoundedAndContrastSafe() throws {
         let lightSurface = try #require(HabitatSRGBColor(hex: "#FFFFFF"))
         let first = HabitatThemeAccent.resolve(
@@ -93,6 +123,54 @@ struct HabitatDesignSystemTests {
 
         #expect(resolved.accent == HabitatSRGBColor(hex: "#0A84FF"))
         #expect(resolved.secondary == HabitatSRGBColor(hex: "#64D2FF"))
+    }
+
+    @Test
+    func eightDigitThemeColorsCompositeAgainstTheLightAppearance() throws {
+        let parsedAccent = try #require(HabitatSRGBColor(hex: "#FF000080"))
+        #expect(abs(parsedAccent.alpha - (128.0 / 255)) < 0.000_001)
+
+        let resolved = HabitatThemeAccent.resolve(
+            accentHex: "#FF000080",
+            secondaryHex: "#0000FF40",
+            appearance: .light,
+            increaseContrast: false
+        )
+        let lightSurface = try #require(HabitatSRGBColor(hex: "#FFFFFF"))
+
+        #expect(abs(resolved.accent.red - 1) < 0.000_001)
+        #expect(abs(resolved.accent.green - (127.0 / 255)) < 0.000_001)
+        #expect(abs(resolved.accent.blue - (127.0 / 255)) < 0.000_001)
+        #expect(abs(resolved.secondary.red - (191.0 / 255)) < 0.000_001)
+        #expect(abs(resolved.secondary.green - (191.0 / 255)) < 0.000_001)
+        #expect(abs(resolved.secondary.blue - 1) < 0.000_001)
+        #expect(resolved.accent.alpha == 1)
+        #expect(resolved.secondary.alpha == 1)
+        #expect(resolved.accent != HabitatSRGBColor(hex: "#0A84FF"))
+        #expect(resolved.selection.contrastRatio(against: lightSurface) >= 3)
+        #expect(resolved.focus.contrastRatio(against: lightSurface) >= 4.5)
+    }
+
+    @Test
+    func eightDigitThemeColorsHonorDarkIncreasedContrast() throws {
+        let resolved = HabitatThemeAccent.resolve(
+            accentHex: "#FF000080",
+            secondaryHex: "#00FF0080",
+            appearance: .dark,
+            increaseContrast: true
+        )
+        let darkSurface = try #require(HabitatSRGBColor(hex: "#1C1C1E"))
+        let alpha = 128.0 / 255
+
+        #expect(abs(resolved.accent.red - (alpha + darkSurface.red * (1 - alpha))) < 0.000_001)
+        #expect(abs(resolved.accent.green - (darkSurface.green * (1 - alpha))) < 0.000_001)
+        #expect(abs(resolved.accent.blue - (darkSurface.blue * (1 - alpha))) < 0.000_001)
+        #expect(abs(resolved.secondary.red - (darkSurface.red * (1 - alpha))) < 0.000_001)
+        #expect(abs(resolved.secondary.green - (alpha + darkSurface.green * (1 - alpha))) < 0.000_001)
+        #expect(abs(resolved.secondary.blue - (darkSurface.blue * (1 - alpha))) < 0.000_001)
+        #expect(resolved.selection.contrastRatio(against: darkSurface) >= 4.5)
+        #expect(resolved.focus.contrastRatio(against: darkSurface) >= 7)
+        #expect(resolved.allComponentsAreBounded)
     }
 
     @Test

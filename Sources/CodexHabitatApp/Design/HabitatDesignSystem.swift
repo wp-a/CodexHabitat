@@ -108,6 +108,71 @@ enum HabitatMaterialRole: CaseIterable, Equatable, Sendable {
     case focusedControl
 }
 
+enum HabitatSurfaceSemanticColor: Equatable, Sendable {
+    case window
+    case underPage
+    case control
+}
+
+enum HabitatSurfaceThemeTint: Equatable, Sendable {
+    case none
+    case selection
+    case secondary
+}
+
+struct HabitatSurfacePlan: Equatable, Sendable {
+    let role: HabitatMaterialRole
+    let usesMaterial: Bool
+    let opaqueBackingAlpha: Double
+    let semanticColor: HabitatSurfaceSemanticColor
+    let themeTint: HabitatSurfaceThemeTint
+    let themeTintOpacity: Double
+
+    static func resolve(
+        role: HabitatMaterialRole,
+        reduceTransparency: Bool
+    ) -> Self {
+        let usesMaterial = !reduceTransparency && role != .content
+        let semanticColor: HabitatSurfaceSemanticColor = switch role {
+        case .sidebar:
+            .underPage
+        case .toolbar, .content, .popover:
+            .window
+        case .inspector, .focusedControl:
+            .control
+        }
+        let themeTint: HabitatSurfaceThemeTint = switch role {
+        case .content:
+            .secondary
+        case .focusedControl:
+            .selection
+        default:
+            .none
+        }
+        let themeTintOpacity = switch themeTint {
+        case .none:
+            0.0
+        case .selection:
+            0.14
+        case .secondary:
+            0.025
+        }
+
+        return Self(
+            role: role,
+            usesMaterial: usesMaterial,
+            opaqueBackingAlpha: usesMaterial ? 0 : 1,
+            semanticColor: semanticColor,
+            themeTint: themeTint,
+            themeTintOpacity: themeTintOpacity
+        )
+    }
+
+    var usesExplicitOpaqueBacking: Bool {
+        opaqueBackingAlpha == 1
+    }
+}
+
 enum HabitatEmphasis: CaseIterable, Equatable, Sendable {
     case quiet
     case normal
@@ -127,38 +192,59 @@ struct HabitatSRGBColor: Equatable, Sendable {
     let red: Double
     let green: Double
     let blue: Double
+    let alpha: Double
 
-    init(red: Double, green: Double, blue: Double) {
+    init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
         self.red = Self.clamp(red)
         self.green = Self.clamp(green)
         self.blue = Self.clamp(blue)
+        self.alpha = Self.clamp(alpha)
     }
 
     init?(hex: String) {
         let value = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         let digits = value.hasPrefix("#") ? String(value.dropFirst()) : value
-        guard digits.count == 6, let packed = UInt64(digits, radix: 16) else {
+        guard [6, 8].contains(digits.count), let packed = UInt64(digits, radix: 16) else {
             return nil
         }
+        let rgb = digits.count == 8 ? packed >> 8 : packed
         self.init(
-            red: Double((packed >> 16) & 0xFF) / 255,
-            green: Double((packed >> 8) & 0xFF) / 255,
-            blue: Double(packed & 0xFF) / 255
+            red: Double((rgb >> 16) & 0xFF) / 255,
+            green: Double((rgb >> 8) & 0xFF) / 255,
+            blue: Double(rgb & 0xFF) / 255,
+            alpha: digits.count == 8 ? Double(packed & 0xFF) / 255 : 1
         )
     }
 
     var color: Color {
-        Color(.sRGB, red: red, green: green, blue: blue)
+        Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
     }
 
     var componentsAreBounded: Bool {
         (0...1).contains(red) && (0...1).contains(green) && (0...1).contains(blue)
+            && (0...1).contains(alpha)
     }
 
     func contrastRatio(against other: Self) -> Double {
         let lighter = max(relativeLuminance, other.relativeLuminance)
         let darker = min(relativeLuminance, other.relativeLuminance)
         return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    func composited(over background: Self) -> Self {
+        let outputAlpha = alpha + background.alpha * (1 - alpha)
+        guard outputAlpha > 0 else {
+            return Self(red: 0, green: 0, blue: 0, alpha: 0)
+        }
+        return Self(
+            red: (red * alpha + background.red * background.alpha * (1 - alpha))
+                / outputAlpha,
+            green: (green * alpha + background.green * background.alpha * (1 - alpha))
+                / outputAlpha,
+            blue: (blue * alpha + background.blue * background.alpha * (1 - alpha))
+                / outputAlpha,
+            alpha: outputAlpha
+        )
     }
 
     fileprivate func ensuringContrast(
@@ -202,7 +288,8 @@ struct HabitatSRGBColor: Equatable, Sendable {
         return Self(
             red: red + ((other.red - red) * boundedAmount),
             green: green + ((other.green - green) * boundedAmount),
-            blue: blue + ((other.blue - blue) * boundedAmount)
+            blue: blue + ((other.blue - blue) * boundedAmount),
+            alpha: alpha + ((other.alpha - alpha) * boundedAmount)
         )
     }
 
@@ -236,13 +323,15 @@ struct HabitatThemeAccent: Equatable, Sendable {
         appearance: HabitatColorAppearance,
         increaseContrast: Bool
     ) -> Self {
-        let accent = HabitatSRGBColor(hex: accentHex)
-            ?? HabitatSRGBColor(red: 10 / 255, green: 132 / 255, blue: 1)
-        let secondary = HabitatSRGBColor(hex: secondaryHex)
-            ?? HabitatSRGBColor(red: 100 / 255, green: 210 / 255, blue: 1)
         let background = appearance == .light
             ? HabitatSRGBColor(red: 1, green: 1, blue: 1)
             : HabitatSRGBColor(red: 28 / 255, green: 28 / 255, blue: 30 / 255)
+        let accent = (HabitatSRGBColor(hex: accentHex)
+            ?? HabitatSRGBColor(red: 10 / 255, green: 132 / 255, blue: 1))
+            .composited(over: background)
+        let secondary = (HabitatSRGBColor(hex: secondaryHex)
+            ?? HabitatSRGBColor(red: 100 / 255, green: 210 / 255, blue: 1))
+            .composited(over: background)
         let selectionContrast = increaseContrast ? 4.5 : 3.0
         let focusContrast = increaseContrast ? 7.0 : 4.5
 
@@ -284,12 +373,18 @@ struct HabitatSurface: View {
 
     @Environment(\.habitatAccessibility) private var accessibility
     @Environment(\.habitatThemeAccent) private var themeAccent
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let plan = HabitatSurfacePlan.resolve(
+            role: role,
+            reduceTransparency: accessibility.usesOpaqueSurfaces
+        )
+
         ZStack {
-            surface
-            if role == .content {
-                themeAccent.secondary.color.opacity(0.025)
+            surface(plan: plan)
+            if plan.themeTint != .none {
+                themeTint(plan.themeTint).opacity(plan.themeTintOpacity)
             }
         }
         .allowsHitTesting(false)
@@ -297,24 +392,42 @@ struct HabitatSurface: View {
     }
 
     @ViewBuilder
-    private var surface: some View {
-        if role == .content || accessibility.usesOpaqueSurfaces {
-            opaqueColor
-        } else {
+    private func surface(plan: HabitatSurfacePlan) -> some View {
+        if plan.usesMaterial {
             Rectangle().fill(material)
+        } else {
+            ZStack {
+                explicitOpaqueBacking
+                semanticColor(plan.semanticColor)
+            }
         }
     }
 
-    private var opaqueColor: Color {
-        switch role {
-        case .sidebar:
-            Color(nsColor: .underPageBackgroundColor)
-        case .toolbar, .content, .popover:
+    private var explicitOpaqueBacking: Color {
+        colorScheme == .dark
+            ? HabitatSRGBColor(red: 28 / 255, green: 28 / 255, blue: 30 / 255).color
+            : HabitatSRGBColor(red: 1, green: 1, blue: 1).color
+    }
+
+    private func semanticColor(_ semanticColor: HabitatSurfaceSemanticColor) -> Color {
+        switch semanticColor {
+        case .window:
             Color(nsColor: .windowBackgroundColor)
-        case .inspector:
+        case .underPage:
+            Color(nsColor: .underPageBackgroundColor)
+        case .control:
             Color(nsColor: .controlBackgroundColor)
-        case .focusedControl:
-            themeAccent.selection.color.opacity(0.14)
+        }
+    }
+
+    private func themeTint(_ themeTint: HabitatSurfaceThemeTint) -> Color {
+        switch themeTint {
+        case .none:
+            .clear
+        case .selection:
+            themeAccent.selection.color
+        case .secondary:
+            themeAccent.secondary.color
         }
     }
 
