@@ -38,7 +38,7 @@ explicit user action.
 - [x] Overlay does not activate the app and can be made click-through.
 - [x] Menu-bar connection state and Pomodoro/countdown controls render without clipping and share live timer state with the overlay.
 - [x] Simplified Chinese settings and the default status/latest-request Token/context/recent-60-second-output/quota overlay pass native screenshot review without overlap.
-- [x] At 100% scale the physical overlay is 136 x 144 collapsed and 324 x 144 expanded; 75% and 150% expanded bounds are 243 x 108 and 486 x 216. Every observed window ended at screen x=1512, and the collapsed window has no transparent mouse-blocking rail.
+- [x] At 100% scale the physical overlay is 136 x 144 collapsed and 324 x 144 expanded; 75% and 150% expanded bounds are 243 x 108 and 486 x 216. The Build 8 batch ended at its screen edge x=1512, while the Build 14 batch ended at its screen edge x=1488. Collapsed and expanded windows shared the right edge in both batches, and the collapsed window has no transparent mouse-blocking rail.
 - [x] Resource packs support validated import, explicit replacement, export, and uninstall from native settings.
 - [x] Whole-pet live dragging moved the packaged overlay from `+1138,+481` to `+948,+319`; position lock, per-display relative placement, and theme-pet pairings persist through settings schema v5.
 - [x] Launch-at-login uses `SMAppService.mainApp`; registration, rollback, and stored-state reconciliation are covered by tests.
