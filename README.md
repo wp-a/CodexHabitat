@@ -135,10 +135,12 @@ After a successful apply, the helper watches for new verified `app://` page
 targets while Habitat is running. Quitting Habitat restores the official
 appearance and closes the recorded debugging session.
 
-The current compatibility profiles support `26.707.0` to `<26.708.0` and
-`26.715.0` to `<26.716.0`. Unknown and intervening versions fail closed. See the
-[`CDP compatibility matrix`](docs/qa/cdp-compatibility-matrix.md) and use
-**Settings > Privacy > Restore Official Appearance** for recovery.
+The current compatibility profiles support `26.707.0` to `<26.708.0`. Within
+the `26.715` line they support `26.715.0` to `<26.715.31925`, the exact
+`26.715.31925` build, and the exact `26.715.52143` build. Unknown gaps and later
+versions fail closed. See the [`CDP compatibility
+matrix`](docs/qa/cdp-compatibility-matrix.md) and use **Settings > Privacy >
+Restore Official Appearance** for recovery.
 
 ## Resource packs
 

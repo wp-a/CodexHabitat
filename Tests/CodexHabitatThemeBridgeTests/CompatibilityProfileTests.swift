@@ -52,6 +52,29 @@ func updatedBuildProfileReusesOnlyTheStaticallyAuditedExactSurfaceMap() throws {
     #expect(store.profile(forVersion: "26.715.52144") == nil)
 }
 
+@Test
+func compatibilityDocumentationKeepsTheUpdatedProfileNarrow() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let matrix = try String(
+        contentsOf: repositoryRoot.appending(path: "docs/qa/cdp-compatibility-matrix.md"),
+        encoding: .utf8
+    )
+    let readme = try String(
+        contentsOf: repositoryRoot.appending(path: "README.md"),
+        encoding: .utf8
+    )
+
+    #expect(matrix.contains(
+        "| `26.715.52143` to `<26.715.52144` | `codex-26.715.52143` |"
+    ))
+    #expect(matrix.contains("`26.715.31926` to `<26.715.52143`"))
+    #expect(readme.contains("exact `26.715.52143` build"))
+    #expect(!readme.contains("`26.715.0` to `<26.716.0`"))
+}
+
 @Test(arguments: [
     "body *",
     "script",

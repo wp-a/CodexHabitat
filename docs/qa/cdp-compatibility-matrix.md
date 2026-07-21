@@ -1,6 +1,6 @@
 # CDP Compatibility Matrix
 
-Last updated: 2026-07-18
+Last updated: 2026-07-21
 
 The appearance bridge is optional, disabled by default, and never modifies the
 Codex bundle. Compatibility is keyed to the verified official bundle version;
@@ -11,7 +11,8 @@ it is not inferred from DOM similarity.
 | `26.707.0` to `<26.708.0` | `codex-26.707` | Passed on `26.707.91948` arm64 | Passed, including reload bootstrap and watcher idempotence | Requires packaged-Habitat confirmation | Supported with live gate |
 | `26.715.0` to `<26.715.31925` | `codex-26.715` | Passed on `26.715.31251` arm64 | Passed for the seven baseline surfaces | Requires packaged-Habitat confirmation | Baseline profile; live gate pending |
 | `26.715.31925` to `<26.715.31926` | `codex-26.715.31925` | Passed on `26.715.31925` arm64 | Passed, including complete surface-profile decoding and safety validation | Requires packaged-Habitat confirmation | Exact-build static profile; live gate pending |
-| `26.708.0` to `<26.715.0`, and `26.715.31926` or newer | None | Version may verify | Rejected before restarting or injecting | Not applicable | Unsupported, fail closed |
+| `26.715.52143` to `<26.715.52144` | `codex-26.715.52143` | Passed read-only on `26.715.52143` arm64 | Static profile, compiler, coordinator, and health tests passed; live injection was not run | Requires packaged-Habitat confirmation | Exact-build static profile; live gate pending |
+| `26.708.0` to `<26.715.0`, `26.715.31926` to `<26.715.52143`, and `26.715.52144` or newer | None | Version may verify | Rejected before restarting or injecting | Not applicable | Unsupported, fail closed |
 | Older versions | None | Not evaluated | Rejected before injection | Not applicable | Unsupported, fail closed |
 
 ## Baseline profile-owned selectors
@@ -26,8 +27,8 @@ main.main-surface > header.app-header-tint
 [data-testid="home-icon"]
 ```
 
-The exact `26.715.31925` profile additionally owns these independently validated
-selectors:
+The exact `26.715.31925` and `26.715.52143` profiles additionally own these
+independently validated selectors:
 
 ```text
 #root
@@ -54,11 +55,15 @@ The `26.715` profiles were derived from read-only extractions of the verified
 official `26.715.31251` and `26.715.31925` bundles. Their `app.asar` SHA-256
 values are `8142e0848fe49097c129a1093f80061c13de04c2893525ee7c751d26b5a7bd4f`
 and `0c9dd677134340cb944e7642b8bc2504c7b73c7dc334d9d756547858171eea41`.
-The current bundle was reconfirmed read-only while the official Codex process
+The `26.715.31925` bundle was reconfirmed read-only while the official Codex process
 remained PID `23647`, started `Sat Jul 18 14:48:19 2026`; no apply, restart, or
 quit action was performed. The extracted local-conversation bundle exposes the
 narrow `data-user-message-bubble` host marker, so request-card treatment is
 owned by that exact selector instead of a generic `article` rule.
+The exact `26.715.52143` entry reuses that complete statically audited surface
+map only for its single verified build. Read-only identity and version checks
+plus profile, compiler, coordinator, and health tests passed; no live apply,
+restart, restore, or screenshot claim was made.
 The extracted React bundles still mount the sidebar class on an `aside`, the
 main-surface class on a `main`, the composer and thread-scroll classes on their
 respective live containers, and the Radix popper wrapper attribute. The current
@@ -115,10 +120,10 @@ Habitat parent disappears. The UI leaves the active state if the watcher exits.
 6. Record the exact tested version and architecture here.
 
 The current development run completed compiler, resolver, coordinator, health,
-and release-package tests for both versioned profiles without launching the
-bridge. Live CDP apply on `26.715.31925`, screenshot inspection inside Codex,
-restore, and listener-closure confirmation remain manual user-approved
-acceptance steps and are not claimed as passed.
+and release-package tests for every shipped profile without launching the
+bridge. Live CDP apply on `26.715.31925` and `26.715.52143`, screenshot
+inspection inside Codex, restore, and listener-closure confirmation remain
+manual user-approved acceptance steps and are not claimed as passed.
 
 The current selector direction was cross-checked against the MIT-licensed
 [Codex Dream Skin](https://github.com/Fei-Away/Codex-Dream-Skin) project. The
