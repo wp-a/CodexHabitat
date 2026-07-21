@@ -88,12 +88,20 @@ func releaseVerificationPinsTheExpectedMonotonicBuildNumber() throws {
         contentsOf: repositoryRoot.appending(path: "scripts/build-app.sh"),
         encoding: .utf8
     )
+    let releaseWorkflow = try String(
+        contentsOf: repositoryRoot.appending(path: ".github/workflows/release.yml"),
+        encoding: .utf8
+    )
 
     #expect(verifier.contains("HABITAT_EXPECTED_BUILD_NUMBER"))
+    #expect(verifier.contains("HABITAT_EXPECTED_BUILD_NUMBER:-${BUILD_NUMBER:-"))
     #expect(verifier.contains("bundle build does not match expected build"))
     #expect(builder.contains("Print :CFBundleVersion"))
     #expect(!builder.contains("BUILD_NUMBER=\"${BUILD_NUMBER:-11}\""))
     #expect(builder.contains("HABITAT_EXPECTED_BUILD_NUMBER=\"$BUILD_NUMBER\""))
+    #expect(releaseWorkflow.contains(
+        "HABITAT_EXPECTED_BUILD_NUMBER: ${{ github.run_number }}"
+    ))
 }
 
 @Test @MainActor

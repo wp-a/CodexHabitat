@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${1:-$ROOT/dist/Codex Habitat.app}"
 EXPECTED_APP_ID="com.codexhabitat.app"
 EXPECTED_HELPER_ID="com.codexhabitat.app.theme-bridge"
-EXPECTED_BUILD_NUMBER="${HABITAT_EXPECTED_BUILD_NUMBER:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT/Config/Info.plist")}"
+EXPECTED_BUILD_NUMBER="${HABITAT_EXPECTED_BUILD_NUMBER:-${BUILD_NUMBER:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT/Config/Info.plist")}}"
 
 fail() {
     echo "verify-release: FAIL: $*" >&2
