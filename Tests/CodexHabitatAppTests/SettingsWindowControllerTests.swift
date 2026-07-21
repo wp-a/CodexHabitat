@@ -18,6 +18,25 @@ func settingsWindowPromotesAccessoryToRegular() {
 }
 
 @Test
+func settingsWindowTargetsAComfortableSizeWithinTheDisplay() {
+    #expect(
+        HabitatSettingsWindowController.initialContentSize(
+            availableSize: CGSize(width: 1_440, height: 900)
+        ) == CGSize(width: 1_040, height: 680)
+    )
+    #expect(
+        HabitatSettingsWindowController.initialContentSize(
+            availableSize: CGSize(width: 900, height: 600)
+        ) == CGSize(width: 900, height: 600)
+    )
+    #expect(
+        HabitatSettingsWindowController.initialContentSize(
+            availableSize: CGSize(width: 600, height: 400)
+        ) == CGSize(width: 760, height: 520)
+    )
+}
+
+@Test
 func loginItemAppleEventIsDetected() throws {
     let event = try #require(NSAppleEventDescriptor(
         eventClass: AEEventClass(kCoreEventClass),

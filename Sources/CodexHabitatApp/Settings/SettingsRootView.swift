@@ -2,14 +2,19 @@ import SwiftUI
 
 struct SettingsRootView: View {
     @ObservedObject var model: HabitatAppModel
+    @ObservedObject private var desktopController: HabitatDesktopController
     @State private var navigation: SettingsNavigationState
     let visualQAOptions: HabitatVisualQALaunchOptions
 
     init(
         model: HabitatAppModel,
+        desktopController: HabitatDesktopController? = nil,
         visualQAOptions: HabitatVisualQALaunchOptions = .current
     ) {
         self.model = model
+        _desktopController = ObservedObject(
+            wrappedValue: desktopController ?? HabitatDesktopController()
+        )
         _navigation = State(initialValue: SettingsNavigationState(model: model))
         self.visualQAOptions = visualQAOptions
     }
@@ -44,11 +49,13 @@ struct SettingsRootView: View {
         NavigationSplitView {
             List(SettingsSection.allCases, selection: $navigation.selectedSection) { section in
                 Label(L10n.text(section.title), systemImage: section.systemImage)
+                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
                     .tag(section)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 10))
                     .accessibilityIdentifier("settings.sidebar.\(section.rawValue)")
             }
-            .navigationTitle("Codex Habitat")
-            .navigationSplitViewColumnWidth(min: 152, ideal: 168, max: 190)
+            .navigationTitle(L10n.text("Codex Habitat"))
+            .navigationSplitViewColumnWidth(min: 184, ideal: 196, max: 208)
         } detail: {
             detailView
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -60,7 +67,11 @@ struct SettingsRootView: View {
     private var detailView: some View {
         switch navigation.selectedSection {
         case .habitat:
-            HabitatSettingsView(model: model)
+            HabitatSettingsView(
+                model: model,
+                selectedSection: $navigation.selectedSection,
+                desktopController: desktopController
+            )
         case .pets:
             PetsSettingsView(model: model)
         case .widgets:
@@ -84,39 +95,62 @@ struct SettingsNavigationState: Equatable {
     }
 }
 
+enum SettingsPageScrollBehavior {
+    case automatic
+    case pageOwned
+}
+
 struct SettingsPage<Content: View>: View {
     let title: String
     let subtitle: String
+    let scrollBehavior: SettingsPageScrollBehavior
     @ViewBuilder let content: Content
 
     init(
         _ title: String,
         subtitle: String,
+        scrollBehavior: SettingsPageScrollBehavior = .automatic,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.subtitle = subtitle
+        self.scrollBehavior = scrollBehavior
         self.content = content()
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.text(title))
-                        .font(.system(size: 24, weight: .semibold))
-                    Text(L10n.text(subtitle))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                content
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L10n.text(title))
+                    .font(.system(size: 21, weight: .semibold))
+                Text(L10n.text(subtitle))
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
-            .padding(28)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 28)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+
+            Divider()
+
+            workArea
         }
         .background(Color.clear)
-        .navigationTitle(L10n.text(title))
+    }
+
+    @ViewBuilder
+    private var workArea: some View {
+        switch scrollBehavior {
+        case .automatic:
+            ScrollView {
+                content
+                    .padding(28)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        case .pageOwned:
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
     }
 }
 
@@ -131,8 +165,8 @@ struct SettingsGroup<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text(title).uppercased())
-                .font(.system(size: 10, weight: .bold))
+            Text(L10n.text(title))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
             content
         }

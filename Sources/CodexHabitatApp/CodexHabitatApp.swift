@@ -44,7 +44,8 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
     override init() {
         reopenAction = {
             HabitatAppEnvironment.settingsWindowController.show(
-                model: HabitatAppEnvironment.model
+                model: HabitatAppEnvironment.model,
+                desktopController: HabitatAppEnvironment.desktopController
             )
         }
         super.init()
@@ -69,7 +70,10 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
             let model = HabitatAppEnvironment.model
             await model.load()
             HabitatAppEnvironment.desktopController.onOpenSettings = {
-                HabitatAppEnvironment.settingsWindowController.show(model: model)
+                HabitatAppEnvironment.settingsWindowController.show(
+                    model: model,
+                    desktopController: HabitatAppEnvironment.desktopController
+                )
             }
             HabitatAppEnvironment.desktopController.bind(to: model)
             HabitatAppEnvironment.runtimeController.start(
@@ -99,7 +103,10 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
                 model.selectedSettingsSection = section
             }
             try? await Task.sleep(for: .milliseconds(180))
-            HabitatAppEnvironment.settingsWindowController.show(model: model)
+            HabitatAppEnvironment.settingsWindowController.show(
+                model: model,
+                desktopController: HabitatAppEnvironment.desktopController
+            )
         }
     }
 
@@ -227,7 +234,10 @@ private struct HabitatMenuBarView: View {
     }
 
     private func openSettings() {
-        HabitatAppEnvironment.settingsWindowController.show(model: model)
+        HabitatAppEnvironment.settingsWindowController.show(
+            model: model,
+            desktopController: desktopController
+        )
     }
 
     private func toggleMoveMode() {

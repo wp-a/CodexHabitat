@@ -9,6 +9,7 @@ final class HabitatSettingsWindowController: NSWindowController {
 
     func show(
         model: HabitatAppModel,
+        desktopController: HabitatDesktopController? = nil,
         activate: Bool = true,
         visualQAOptions: HabitatVisualQALaunchOptions = .current
     ) {
@@ -18,18 +19,32 @@ final class HabitatSettingsWindowController: NSWindowController {
             application.setActivationPolicy(desiredPolicy)
         }
         if window == nil {
+            let styleMask: NSWindow.StyleMask = [
+                .titled, .closable, .miniaturizable, .resizable,
+            ]
+            let availableContentSize = NSScreen.main.map {
+                NSWindow.contentRect(forFrameRect: $0.visibleFrame, styleMask: styleMask).size
+            } ?? CGSize(width: 1_040, height: 680)
+            let requestedWidth: CGFloat? = visualQAOptions == .disabled
+                ? nil
+                : CGFloat(visualQAOptions.settingsWidth)
+            let initialContentSize = Self.initialContentSize(
+                availableSize: availableContentSize,
+                requestedWidth: requestedWidth
+            )
             let contentView = SettingsRootView(
                 model: model,
+                desktopController: desktopController,
                 visualQAOptions: visualQAOptions
             )
             let window = NSWindow(
                 contentRect: NSRect(
                     x: 0,
                     y: 0,
-                    width: visualQAOptions.settingsWidth,
-                    height: 520
+                    width: initialContentSize.width,
+                    height: initialContentSize.height
                 ),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                styleMask: styleMask,
                 backing: .buffered,
                 defer: false
             )
@@ -37,7 +52,7 @@ final class HabitatSettingsWindowController: NSWindowController {
             window.minSize = CGSize(width: 760, height: 520)
             window.isReleasedWhenClosed = false
             window.contentViewController = NSHostingController(rootView: contentView)
-            window.setContentSize(CGSize(width: visualQAOptions.settingsWidth, height: 520))
+            window.setContentSize(initialContentSize)
             window.center()
             self.window = window
         }
@@ -53,5 +68,17 @@ final class HabitatSettingsWindowController: NSWindowController {
         for current: NSApplication.ActivationPolicy
     ) -> NSApplication.ActivationPolicy {
         .regular
+    }
+
+    nonisolated static func initialContentSize(
+        availableSize: CGSize,
+        requestedWidth: CGFloat? = nil
+    ) -> CGSize {
+        let minimum = CGSize(width: 760, height: 520)
+        let target = CGSize(width: requestedWidth ?? 1_040, height: 680)
+        return CGSize(
+            width: min(target.width, max(availableSize.width, minimum.width)),
+            height: min(target.height, max(availableSize.height, minimum.height))
+        )
     }
 }
