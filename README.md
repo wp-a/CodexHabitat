@@ -63,7 +63,7 @@ and sports directions. Every theme has original local bitmap art and one of
 nine compiler-owned style families; families change geometry, borders,
 material, density, and scrims rather than only swapping colors.
 
-![Build 8 native theme gallery](docs/qa/screenshots/2026-07-18/gallery-all-build8.png)
+![Build 14 native theme gallery](docs/qa/screenshots/2026-07-21/gallery-all-build14.png)
 
 Theme Studio accepts local, single-frame images only. Input is signature
 checked, dimension and pixel bounded, oriented, downsampled, and re-encoded.
@@ -153,6 +153,7 @@ hash mismatches are rejected before atomic installation.
 ## Verification evidence
 
 - [`macOS v1 QA checklist`](docs/qa/macos-v1-checklist.md)
+- [`Phase 3 readiness`](docs/qa/phase3-readiness.md)
 - [`Codex runtime compatibility`](docs/qa/codex-runtime-compatibility.md)
 - [`native theme and overlay screenshots`](docs/qa/screenshots/2026-07-17/README.md)
 - [`polished theme prototype screenshots`](docs/qa/screenshots/2026-07-18/README.md)
