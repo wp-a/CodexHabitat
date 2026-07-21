@@ -33,7 +33,7 @@ struct HabitatOverviewState: Equatable {
         let systemImage: String
         let primaryContent: Content
         let factContents: [Content]
-        let action: Action
+        let actions: [Action]
 
         var id: Kind { kind }
         var title: String { kind.title }
@@ -43,12 +43,15 @@ struct HabitatOverviewState: Equatable {
 
     enum Action: Equatable {
         case setHabitatVisibility(Bool)
+        case setPositionLocked(Bool)
         case navigate(SettingsSection)
 
         var content: Content {
             switch self {
             case let .setHabitatVisibility(isVisible):
                 Content(isVisible ? "Show Habitat" : "Hide Habitat")
+            case let .setPositionLocked(isLocked):
+                Content(isLocked ? "Lock Position" : "Unlock Position")
             case .navigate(.integrations):
                 Content("Open Integrations")
             case .navigate(.themes):
@@ -111,7 +114,10 @@ struct HabitatOverviewState: Equatable {
                     Content(positionLocked ? "Position locked" : "Position unlocked"),
                     widgetFact,
                 ],
-                action: .setHabitatVisibility(!isHabitatVisible)
+                actions: [
+                    .setHabitatVisibility(!isHabitatVisible),
+                    .setPositionLocked(!positionLocked),
+                ]
             ),
             Section(
                 kind: .codex,
@@ -123,7 +129,7 @@ struct HabitatOverviewState: Equatable {
                         : "Sanitized metrics unavailable"),
                     Content("Local read only"),
                 ],
-                action: .navigate(.integrations)
+                actions: [.navigate(.integrations)]
             ),
             Section(
                 kind: .appearance,
@@ -136,7 +142,7 @@ struct HabitatOverviewState: Equatable {
                         ? "Restore available"
                         : "Official appearance"),
                 ],
-                action: .navigate(.themes)
+                actions: [.navigate(.themes)]
             ),
         ]
     }

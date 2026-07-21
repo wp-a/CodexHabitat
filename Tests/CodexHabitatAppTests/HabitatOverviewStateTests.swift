@@ -25,13 +25,16 @@ func habitatOverviewBuildsThreeDeterministicSections() throws {
     #expect(habitat.title == "Habitat")
     #expect(habitat.primary == "Visible")
     #expect(habitat.facts == ["Mochi", "Position locked", "4 widgets enabled"])
-    #expect(habitat.action == .setHabitatVisibility(false))
+    #expect(habitat.actions == [
+        .setHabitatVisibility(false),
+        .setPositionLocked(false),
+    ])
 
     let codex = state.sections[1]
     #expect(codex.title == "Codex")
     #expect(codex.primary == "Connected")
     #expect(codex.facts == ["Sanitized metrics available", "Local read only"])
-    #expect(codex.action == .navigate(.integrations))
+    #expect(codex.actions == [.navigate(.integrations)])
 
     let appearance = state.sections[2]
     #expect(appearance.title == "Appearance")
@@ -41,7 +44,7 @@ func habitatOverviewBuildsThreeDeterministicSections() throws {
         "Bridge active",
         "Restore available",
     ])
-    #expect(appearance.action == .navigate(.themes))
+    #expect(appearance.actions == [.navigate(.themes)])
 }
 
 @Test
@@ -65,7 +68,10 @@ func habitatOverviewUsesUsefulFallbacksWithoutInventingState() {
         "Position unlocked",
         "Widget rail off",
     ])
-    #expect(state.sections[0].action == .setHabitatVisibility(true))
+    #expect(state.sections[0].actions == [
+        .setHabitatVisibility(true),
+        .setPositionLocked(true),
+    ])
     #expect(state.sections[1].primary == "Connection unavailable")
     #expect(state.sections[1].facts == ["Sanitized metrics unavailable", "Local read only"])
     #expect(state.sections[2].primary == "Default appearance")
@@ -74,6 +80,30 @@ func habitatOverviewUsesUsefulFallbacksWithoutInventingState() {
         "Bridge unavailable",
         "Official appearance",
     ])
+}
+
+@Test(arguments: [
+    (false, true),
+    (true, false),
+])
+func habitatOverviewOffersTheInversePositionLockAction(
+    positionLocked: Bool,
+    requestedLockState: Bool
+) {
+    let state = HabitatOverviewState(
+        isHabitatVisible: true,
+        selectedPetName: "Pet",
+        positionLocked: positionLocked,
+        enabledWidgetCount: 1,
+        connectionHealth: .online,
+        hasSanitizedMetrics: true,
+        selectedThemeName: "Theme",
+        themeSupportsCodexBridge: true,
+        themeBridgeState: .ready,
+        canRestoreOfficialAppearance: false
+    )
+
+    #expect(state.sections[0].actions.contains(.setPositionLocked(requestedLockState)))
 }
 
 @Test

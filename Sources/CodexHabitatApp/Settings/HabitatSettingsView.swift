@@ -105,7 +105,11 @@ struct HabitatSettingsView: View {
             }
 
             Spacer(minLength: 12)
-            overviewAction(section.action)
+            HStack(spacing: 6) {
+                ForEach(Array(section.actions.enumerated()), id: \.offset) { _, action in
+                    overviewAction(action)
+                }
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
         .contentShape(Rectangle())
@@ -125,7 +129,20 @@ struct HabitatSettingsView: View {
                 )
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.small)
             .accessibilityIdentifier("habitat.overview.visibility")
+        case let .setPositionLocked(isLocked):
+            Button {
+                perform(action)
+            } label: {
+                Label(
+                    action.content.localized,
+                    systemImage: isLocked ? "lock" : "lock.open"
+                )
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityIdentifier("habitat.overview.position-lock")
         case .navigate:
             Button {
                 perform(action)
@@ -144,6 +161,8 @@ struct HabitatSettingsView: View {
         switch action {
         case let .setHabitatVisibility(isVisible):
             model.isHabitatVisible = isVisible
+        case let .setPositionLocked(isLocked):
+            model.setPositionLocked(isLocked)
         case let .navigate(section):
             selectedSection = section
         }
