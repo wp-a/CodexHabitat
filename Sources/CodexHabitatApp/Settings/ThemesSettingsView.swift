@@ -1,4 +1,5 @@
 import ImageIO
+import HabitatCore
 import ResourceKit
 import SwiftUI
 
@@ -66,6 +67,13 @@ actor ThemePreviewStore {
         cache[key] = .image(image)
         return image
     }
+
+    func invalidate(url: URL) {
+        let matchingKeys = cache.keys.filter { $0.url == url }
+        for key in matchingKeys {
+            cache.removeValue(forKey: key)
+        }
+    }
 }
 
 struct ThemesSettingsView: View {
@@ -73,125 +81,62 @@ struct ThemesSettingsView: View {
     @ObservedObject private var bridge = ThemeBridgeIntegrationModel.shared
     @State private var packageIDToRemove: String?
     @State private var themeStudioModel: ThemeStudioModel?
-    @State private var selectedFilter: ThemeGalleryFilter
-    @State private var searchText = ""
+    @State private var libraryState: ThemeLibraryState
     @State private var confirmsCodexApply = false
+    @State private var showsCompactInspector = false
     private let opensThemeStudioForVisualQA: Bool
-    private let columns = [GridItem(.adaptive(minimum: 190, maximum: 240), spacing: 12)]
+    private let columns = [
+        GridItem(.flexible(minimum: 150, maximum: 224), spacing: 12),
+        GridItem(.flexible(minimum: 150, maximum: 224), spacing: 12),
+    ]
 
     init(
         model: HabitatAppModel,
         visualQAOptions: HabitatVisualQALaunchOptions = .disabled
     ) {
         self.model = model
-        _selectedFilter = State(initialValue: visualQAOptions.themeFilter)
+        var initialState = ThemeLibraryState(previewedThemeID: model.settings.selectedThemeID)
+        initialState.category = visualQAOptions.themeFilter
+        _libraryState = State(initialValue: initialState)
         opensThemeStudioForVisualQA = visualQAOptions.opensThemeStudio
     }
 
     var body: some View {
         SettingsPage(
             "Themes",
-            subtitle: "Preview Habitat palettes and apply supported themes to Codex"
+            subtitle: "Browse local themes and explicitly apply a compatible choice",
+            scrollBehavior: .pageOwned
         ) {
-            HStack(spacing: 10) {
-                Text(L10n.format("%d available", model.availableThemes.count))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    confirmsCodexApply = true
-                } label: {
-                    Label("Apply Selected Theme to Codex", systemImage: "paintbrush")
-                }
-                .disabled(!bridge.canApply || !model.selectedThemeSupportsCodexBridge)
-                .accessibilityIdentifier("themes.apply-to-codex")
-                Button(action: openThemeStudio) {
-                    Label("Create Theme", systemImage: "plus")
-                }
-                .accessibilityIdentifier("themes.create")
-                Button(action: importPack) {
-                    Label("Import Pack", systemImage: "square.and.arrow.down")
-                }
-                .accessibilityIdentifier("themes.import-pack")
-                Button(action: model.refreshResources) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("Refresh resource library")
-                .accessibilityLabel("Refresh resource library")
-            }
-
-            ResourceOperationStatusView(state: model.resourceOperationState)
-
-            if bridge.state == .failed {
-                Label(L10n.text(bridge.statusText), systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("themes.bridge.failure")
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                ScrollView(.horizontal) {
-                    Picker("Theme category", selection: $selectedFilter) {
-                        ForEach(ThemeGalleryFilter.allCases) { filter in
-                            Text(L10n.text(filter.title)).tag(filter)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .labelsHidden()
-                }
-                .scrollIndicators(.hidden)
-
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField(L10n.text("Search themes"), text: $searchText)
-                        .textFieldStyle(.plain)
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                        }
-                        .buttonStyle(.borderless)
-                        .help(L10n.text("Clear search"))
-                        .accessibilityLabel(L10n.text("Clear search"))
-                    }
-                }
-                .padding(.horizontal, 10)
-                .frame(height: 30)
-                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 6))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
-                }
-            }
-
-            if filteredThemes.isEmpty {
-                emptyGallery
-            } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                    ForEach(filteredThemes) { theme in
-                        ThemeChoiceCard(
-                            theme: theme,
-                            isSelected: model.settings.selectedThemeID == theme.id,
-                            action: { selectTheme(theme.id) },
-                            editAction: model.isThemeStudioEditableTheme(theme.id)
-                                ? { openThemeStudio(editingThemeID: theme.id) }
-                                : nil
-                        )
-                    }
-                }
-            }
-
-            if !model.installedPackages.isEmpty {
+            VStack(spacing: 0) {
+                toolbar
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background { HabitatSurface(role: .toolbar) }
                 Divider()
-                SettingsGroup("Installed Packs") {
-                    VStack(spacing: 0) {
-                        ForEach(Array(model.installedPackages.enumerated()), id: \.element.id) { index, package in
-                            installedPackageRow(package)
-                            if index < model.installedPackages.count - 1 {
-                                Divider()
-                            }
+
+                ResourceOperationStatusView(state: model.resourceOperationState)
+                    .padding(.horizontal, 16)
+
+                if bridge.state == .failed {
+                    Label(L10n.text(bridge.statusText), systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                        .accessibilityIdentifier("themes.bridge.failure")
+                }
+
+                GeometryReader { proxy in
+                    if proxy.size.width >= 720 {
+                        HStack(spacing: 0) {
+                            gallery
+                            Divider()
+                            themeInspector
+                                .frame(width: 316)
+                                .background { HabitatSurface(role: .inspector) }
                         }
+                    } else {
+                        gallery
                     }
                 }
             }
@@ -205,9 +150,19 @@ struct ThemesSettingsView: View {
             await Task.yield()
             openThemeStudio()
         }
+        .onChange(of: model.availableThemes.map(\.id)) { _, identifiers in
+            if libraryState.previewedThemeID.map(Set(identifiers).contains) != true {
+                libraryState.select(model.settings.selectedThemeID)
+            }
+        }
         .resourceReplacementConfirmation(model: model)
         .sheet(item: $themeStudioModel) { studio in
             ThemeStudioView(model: studio, onSaved: themeSaved)
+        }
+        .sheet(isPresented: $showsCompactInspector) {
+            themeInspector
+                .frame(minWidth: 340, idealWidth: 380, minHeight: 500)
+                .background { HabitatSurface(role: .inspector) }
         }
         .alert(
             bridge.state == .active
@@ -215,15 +170,11 @@ struct ThemesSettingsView: View {
                 : "Restart Codex with the selected theme?",
             isPresented: $confirmsCodexApply
         ) {
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                libraryState.clearPendingApply()
+            }
             Button(bridge.state == .active ? "Switch Theme" : "Restart and Apply") {
-                Task {
-                    await bridge.enable(
-                        themeID: model.settings.selectedThemeID,
-                        approvedThemeIDs: model.codexBridgeThemeIDs
-                    )
-                    model.setThemeBridgeEnabled(bridge.state == .active)
-                }
+                applyPendingTheme()
             }
             .disabled(!bridge.canApply)
         } message: {
@@ -250,37 +201,344 @@ struct ThemesSettingsView: View {
         }
     }
 
+    private var toolbar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                searchField.frame(minWidth: 170, idealWidth: 220, maxWidth: 280)
+                scopePicker
+                categoryMenu
+                Spacer(minLength: 0)
+                toolbarActions
+            }
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    searchField
+                    categoryMenu
+                    toolbarActions
+                }
+                HStack(spacing: 8) {
+                    scopePicker
+                    Spacer(minLength: 0)
+                    Button(action: { showsCompactInspector = true }) {
+                        Label(L10n.text("Theme details"), systemImage: "sidebar.right")
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("themes.compact-inspector")
+                }
+            }
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(L10n.text("Search themes"), text: $libraryState.searchText)
+                .textFieldStyle(.plain)
+            if !libraryState.searchText.isEmpty {
+                Button(action: { libraryState.searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .help(L10n.text("Clear search"))
+                .accessibilityLabel(L10n.text("Clear search"))
+            }
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 28)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 5))
+        .overlay {
+            RoundedRectangle(cornerRadius: 5)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+        }
+    }
+
+    private var scopePicker: some View {
+        Picker("Theme collection", selection: $libraryState.scope) {
+            ForEach(ThemeLibraryScope.allCases) { scope in
+                Text(L10n.text(scope.title)).tag(scope)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityIdentifier("themes.scope")
+    }
+
+    private var categoryMenu: some View {
+        Menu {
+            ForEach(ThemeGalleryFilter.allCases) { category in
+                Button {
+                    libraryState.category = category
+                } label: {
+                    if libraryState.category == category {
+                        Label(L10n.text(category.title), systemImage: "checkmark")
+                    } else {
+                        Text(L10n.text(category.title))
+                    }
+                }
+            }
+        } label: {
+            Label(L10n.text(libraryState.category.title), systemImage: "line.3.horizontal.decrease.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help(L10n.text("Theme category"))
+        .accessibilityIdentifier("themes.category")
+    }
+
+    private var toolbarActions: some View {
+        HStack(spacing: 4) {
+            toolbarButton("square.and.arrow.down", help: "Import Pack", action: importPack)
+                .accessibilityIdentifier("themes.import-pack")
+            toolbarButton("plus", help: "Create Theme", action: openThemeStudio)
+                .accessibilityIdentifier("themes.create")
+            toolbarButton("arrow.clockwise", help: "Refresh resource library", action: model.refreshResources)
+                .accessibilityIdentifier("themes.refresh")
+        }
+    }
+
+    private func toolbarButton(
+        _ symbol: String,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.borderless)
+        .help(L10n.text(help))
+        .accessibilityLabel(L10n.text(help))
+    }
+
+    private var gallery: some View {
+        ScrollView {
+            if filteredThemes.isEmpty {
+                emptyGallery
+                    .padding(16)
+            } else {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                    ForEach(filteredThemes) { theme in
+                        ThemeChoiceCard(
+                            theme: theme,
+                            isSelected: libraryState.previewedThemeID == theme.id,
+                            isActive: bridge.state == .active && bridge.activeThemeID == theme.id,
+                            isFavorite: model.settings.favoriteThemeIDs.contains(theme.id),
+                            action: { selectTheme(theme.id) },
+                            favoriteAction: { model.toggleThemeFavorite(theme.id) }
+                        )
+                    }
+                }
+                .padding(16)
+            }
+
+            if !model.installedPackages.isEmpty {
+                DisclosureGroup(L10n.text("Installed Packs")) {
+                    VStack(spacing: 0) {
+                        ForEach(Array(model.installedPackages.enumerated()), id: \.element.id) { index, package in
+                            installedPackageRow(package)
+                            if index < model.installedPackages.count - 1 {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+        }
+        .scrollIndicators(.automatic)
+        .accessibilityIdentifier("themes.gallery")
+    }
+
+    private var themeInspector: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.text(selectedTheme.name))
+                        .font(.system(size: 17, weight: .semibold))
+                        .lineLimit(1)
+                    Text(L10n.text(selectedTheme.styleFamily.libraryTitle))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(action: { model.toggleThemeFavorite(selectedTheme.id) }) {
+                    Image(systemName: isSelectedThemeFavorite ? "star.fill" : "star")
+                }
+                .buttonStyle(.borderless)
+                .help(L10n.text(isSelectedThemeFavorite ? "Remove from Favorites" : "Add to Favorites"))
+                .accessibilityLabel(L10n.text(isSelectedThemeFavorite ? "Remove from Favorites" : "Add to Favorites"))
+                if model.isThemeStudioEditableTheme(selectedTheme.id) {
+                    Button(action: { openThemeStudio(editingThemeID: selectedTheme.id) }) {
+                        Image(systemName: "pencil")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L10n.text("Edit theme"))
+                    .accessibilityLabel(L10n.text("Edit theme"))
+                }
+            }
+
+            Picker("Preview route", selection: $libraryState.previewRoute) {
+                Text(L10n.text("Home")).tag(ThemeTreatmentPreviewRoute.home)
+                Text(L10n.text("Task")).tag(ThemeTreatmentPreviewRoute.task)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            ThemeTreatmentPreview(
+                model: ThemeTreatmentPreviewModel(theme: selectedTheme),
+                imageURL: selectedTheme.previewURL,
+                symbol: selectedTheme.symbol,
+                route: libraryState.previewRoute,
+                height: 180,
+                showsRetryControl: true
+            )
+
+            HStack(spacing: 7) {
+                ForEach(Array(selectedTheme.palette.enumerated()), id: \.offset) { _, color in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(color)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 18)
+                }
+            }
+            .accessibilityHidden(true)
+
+            Divider()
+            inspectorStatusRow(
+                "Theme family",
+                value: selectedTheme.styleFamily.libraryTitle,
+                symbol: "square.3.layers.3d"
+            )
+            inspectorStatusRow(
+                "Codex compatibility",
+                value: selectedThemeSupportsBridge ? "Supported" : "Habitat only",
+                symbol: selectedThemeSupportsBridge ? "checkmark.shield" : "macwindow"
+            )
+            inspectorStatusRow(
+                "Bridge status",
+                value: bridge.statusText,
+                symbol: bridge.state == .failed ? "exclamationmark.triangle" : "point.3.connected.trianglepath.dotted"
+            )
+            if bridge.canRestore {
+                inspectorStatusRow(
+                    "Restore",
+                    value: "Restore available",
+                    symbol: "arrow.uturn.backward"
+                )
+            }
+            if isSelectedThemeActive {
+                Label(L10n.text("Active in Codex"), systemImage: "checkmark.seal.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.green)
+                    .accessibilityIdentifier("themes.inspector.active")
+            }
+
+            Spacer(minLength: 0)
+            Button(action: requestInspectorApply) {
+                Label(L10n.text(isSelectedThemeActive ? "Active in Codex" : "Apply to Codex"), systemImage: "paintbrush")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!canApplySelectedTheme)
+            .accessibilityIdentifier("themes.apply-to-codex")
+        }
+        .padding(16)
+        .accessibilityIdentifier("themes.inspector")
+    }
+
+    private func inspectorStatusRow(_ title: String, value: String, symbol: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(L10n.text(title))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(L10n.text(value))
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var selectedTheme: HabitatThemeDescriptor {
+        model.availableThemes.first { $0.id == libraryState.previewedThemeID }
+            ?? model.selectedTheme
+    }
+
+    private var selectedThemeSupportsBridge: Bool {
+        model.codexBridgeThemeIDs.contains(selectedTheme.id)
+    }
+
+    private var isSelectedThemeActive: Bool {
+        bridge.state == .active && bridge.activeThemeID == selectedTheme.id
+    }
+
+    private var isSelectedThemeFavorite: Bool {
+        model.settings.favoriteThemeIDs.contains(selectedTheme.id)
+    }
+
+    private var canApplySelectedTheme: Bool {
+        bridge.canApply && selectedThemeSupportsBridge && !isSelectedThemeActive
+    }
+
     private var filteredThemes: [HabitatThemeDescriptor] {
         ThemeGalleryQuery.filter(
             model.availableThemes,
-            by: selectedFilter,
-            search: searchText
+            scope: libraryState.scope,
+            category: libraryState.category,
+            search: libraryState.searchText,
+            favoriteThemeIDs: model.settings.favoriteThemeIDs,
+            recentThemeIDs: model.settings.recentThemeIDs
         )
     }
 
     private func selectTheme(_ themeID: String) {
-        model.selectTheme(themeID)
-        guard model.codexBridgeThemeIDs.contains(themeID) else {
-            return
+        guard model.availableThemes.contains(where: { $0.id == themeID }) else { return }
+        libraryState.select(themeID)
+        model.recordRecentlyPreviewedTheme(themeID)
+    }
+
+    private func requestInspectorApply() {
+        guard canApplySelectedTheme else { return }
+        libraryState.requestApply()
+        confirmsCodexApply = libraryState.pendingApplyThemeID != nil
+    }
+
+    private func applyPendingTheme() {
+        guard let themeID = libraryState.pendingApplyThemeID else { return }
+        Task {
+            await bridge.enable(
+                themeID: themeID,
+                approvedThemeIDs: model.codexBridgeThemeIDs
+            )
+            if bridge.activeThemeID == themeID {
+                model.selectTheme(themeID)
+            }
+            model.setThemeBridgeEnabled(bridge.state == .active)
+            libraryState.clearPendingApply()
         }
-        confirmsCodexApply = true
     }
 
     private var emptyGallery: some View {
         VStack(spacing: 10) {
-            Image(systemName: selectedFilter == .custom ? "paintpalette" : "magnifyingglass")
-                .font(.system(size: 24, weight: .medium))
+            Image(systemName: libraryState.category == .custom ? "paintpalette" : "magnifyingglass")
+                .font(.system(size: 22, weight: .medium))
                 .foregroundStyle(.secondary)
-            Text(L10n.text(selectedFilter == .custom && searchText.isEmpty
+            Text(L10n.text(libraryState.category == .custom && libraryState.searchText.isEmpty
                 ? "No custom themes"
                 : "No matching themes"))
                 .font(.headline)
-            if selectedFilter == .custom && searchText.isEmpty {
+            if libraryState.category == .custom && libraryState.searchText.isEmpty {
                 Button(action: openThemeStudio) {
                     Label(L10n.text("Create Theme"), systemImage: "plus")
                 }
             } else {
-                Button(action: { searchText = "" }) {
+                Button(action: { libraryState.searchText = "" }) {
                     Label(L10n.text("Clear search"), systemImage: "xmark.circle")
                 }
             }
@@ -290,10 +548,10 @@ struct ThemesSettingsView: View {
     }
 
     private func installedPackageRow(_ package: InstalledPackage) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "shippingbox.fill")
+        HStack(spacing: 10) {
+            Image(systemName: "shippingbox")
                 .foregroundStyle(Color(habitatHex: package.manifest.colors.accent))
-                .frame(width: 24)
+                .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(package.manifest.name)
                     .font(.body.weight(.medium))
@@ -303,20 +561,10 @@ struct ThemesSettingsView: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button(action: { export(package) }) {
-                Image(systemName: "square.and.arrow.up")
-            }
-            .buttonStyle(.borderless)
-            .help("Export pack")
-            .accessibilityLabel(L10n.format("Export %@", package.manifest.name))
-            Button(role: .destructive, action: { packageIDToRemove = package.id }) {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
-            .help("Remove pack")
-            .accessibilityLabel(L10n.format("Remove %@", package.manifest.name))
+            toolbarButton("square.and.arrow.up", help: "Export pack") { export(package) }
+            toolbarButton("trash", help: "Remove pack") { packageIDToRemove = package.id }
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
     }
 
     private func importPack() {
@@ -338,6 +586,7 @@ struct ThemesSettingsView: View {
         model.refreshResources()
         model.setThemePetPairing(themeID: id, petID: pairedPetID)
         model.selectTheme(id)
+        libraryState.select(id)
         themeStudioModel = nil
     }
 
@@ -380,20 +629,16 @@ struct StaticThemeThumbnail: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 100)
+        .aspectRatio(16 / 9, contentMode: .fit)
         .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay {
-            RoundedRectangle(cornerRadius: 5)
-                .stroke(Color(habitatHex: accentHex).opacity(0.32), lineWidth: 1)
-        }
         .accessibilityHidden(true)
         .allowsHitTesting(false)
         .task(id: previewRequestKey) {
-            image = nil
             let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
             guard !Task.isCancelled else { return }
-            image = loadedImage
+            if let loadedImage {
+                image = loadedImage
+            }
         }
     }
 
@@ -405,78 +650,131 @@ struct StaticThemeThumbnail: View {
 struct ThemeChoiceCard: View {
     let theme: HabitatThemeDescriptor
     let isSelected: Bool
+    let isActive: Bool
+    let isFavorite: Bool
     let action: () -> Void
-    var editAction: (() -> Void)? = nil
+    let favoriteAction: (() -> Void)?
+
+    init(
+        theme: HabitatThemeDescriptor,
+        isSelected: Bool,
+        isActive: Bool = false,
+        isFavorite: Bool = false,
+        action: @escaping () -> Void,
+        favoriteAction: (() -> Void)? = nil
+    ) {
+        self.theme = theme
+        self.isSelected = isSelected
+        self.isActive = isActive
+        self.isFavorite = isFavorite
+        self.action = action
+        self.favoriteAction = favoriteAction
+    }
 
     var body: some View {
         let previewPlan = ThemeGalleryPreviewPlan(theme: theme)
         ZStack(alignment: .topTrailing) {
             Button(action: action) {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 0) {
                     StaticThemeThumbnail(
                         imageURL: previewPlan.imageURL,
                         symbol: theme.symbol,
                         surfaceHex: theme.surfaceHex,
                         accentHex: theme.accentHex
                     )
-                    HStack {
-                        HStack(spacing: 5) {
-                            ForEach(Array(palette.enumerated()), id: \.offset) { _, color in
-                                Circle()
-                                    .fill(color)
-                                    .frame(width: 12, height: 12)
-                            }
+                    HStack(spacing: 6) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(L10n.text(theme.name))
+                                .font(.system(size: 13, weight: .semibold))
+                                .lineLimit(2)
+                                .frame(height: 28, alignment: .topLeading)
+                            Text(L10n.text(theme.styleFamily.libraryTitle))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                         Spacer()
-                        Text(L10n.text(theme.category.localizationKey))
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.tint)
+                                .accessibilityHidden(true)
+                        }
                     }
-                    Text(L10n.text(theme.name))
-                        .font(.body.weight(.semibold))
-                    Text(L10n.text(theme.detail))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 10)
+                    .frame(height: 46)
                 }
-                .padding(12)
-                .frame(maxWidth: .infinity, minHeight: 224, alignment: .topLeading)
-                .background(
-                    isSelected ? palette[0].opacity(0.09) : Color.primary.opacity(0.03),
-                    in: RoundedRectangle(cornerRadius: 8)
-                )
+                .frame(maxWidth: 224, alignment: .topLeading)
+                .background(Color.primary.opacity(isSelected ? 0.07 : 0.035))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(isSelected ? palette[0] : Color.primary.opacity(0.09), lineWidth: 1.5)
+                        .stroke(
+                            isSelected
+                                ? Color(habitatHex: theme.accentHex)
+                                : Color.primary.opacity(0.10),
+                            lineWidth: isSelected ? 2 : 1
+                        )
                 }
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.text(theme.name))
-            .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
+            .accessibilityValue(accessibilityValue)
             .accessibilityIdentifier("themes.choice.\(theme.id)")
 
-            if let editAction {
-                Button(action: editAction) {
-                    Image(systemName: "pencil")
+            if let favoriteAction {
+                Button(action: favoriteAction) {
+                    Image(systemName: isFavorite ? "star.fill" : "star")
+                        .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("Edit theme")
-                .accessibilityLabel(L10n.format("Edit %@", L10n.text(theme.name)))
-                .padding(8)
+                .help(L10n.text(isFavorite ? "Remove from Favorites" : "Add to Favorites"))
+                .accessibilityLabel(L10n.text(isFavorite ? "Remove from Favorites" : "Add to Favorites"))
+                .padding(7)
+            }
+
+            if isActive {
+                Label(L10n.text("Active"), systemImage: "checkmark.seal.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                    .padding(.horizontal, 7)
+                    .frame(height: 24)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(7)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .allowsHitTesting(false)
             }
         }
+        .frame(maxWidth: 224, minHeight: 150, maxHeight: 172, alignment: .top)
     }
 
-    private var palette: [Color] {
+    private var accessibilityValue: String {
         [
-            Color(habitatHex: theme.accentHex),
-            Color(habitatHex: theme.secondaryHex),
-            Color(habitatHex: theme.highlightHex),
-            Color(habitatHex: theme.attentionHex),
-            Color(habitatHex: theme.errorHex),
-        ]
+            L10n.text(isSelected ? "Selected" : "Not selected"),
+            L10n.text(isActive ? "Active" : "Inactive"),
+            L10n.text(isFavorite ? "Favorite" : "Not favorite"),
+        ].joined(separator: ", ")
+    }
+}
+
+private extension HabitatThemeDescriptor {
+    var palette: [Color] {
+        [accentHex, secondaryHex, highlightHex, attentionHex, errorHex]
+            .map(Color.init(habitatHex:))
+    }
+}
+
+extension HabitatThemeStyleFamily {
+    var libraryTitle: String {
+        switch self {
+        case .arcade: "Arcade"
+        case .retroMessenger: "Retro Messenger"
+        case .greenChat: "Green Chat"
+        case .classicDesktop: "Classic Desktop"
+        case .gameCinematic: "Game Cinematic"
+        case .cozyWorld: "Cozy World"
+        case .animeEnergy: "Anime Energy"
+        case .fantasyAdventure: "Fantasy Adventure"
+        case .pixelWorld: "Pixel World"
+        }
     }
 }

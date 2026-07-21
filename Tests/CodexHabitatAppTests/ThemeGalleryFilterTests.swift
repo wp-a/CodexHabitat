@@ -65,3 +65,28 @@ func gallerySearchMatchesLocalizedThemeNameAndCategory() {
         localize: localized
     ).map(\.id) == ["retro-messenger", "cyber-cafe"])
 }
+
+@Test
+func galleryComposesScopeCategoryAndSearchWithMetadataOrdering() {
+    let themes = HabitatThemeDescriptor.builtIn
+
+    let favorites = ThemeGalleryQuery.filter(
+        themes,
+        scope: .favorites,
+        category: .all,
+        search: "",
+        favoriteThemeIDs: ["quiet-garden", "night-shift"],
+        recentThemeIDs: []
+    )
+    #expect(favorites.map(\.id) == ["quiet-garden", "night-shift"])
+
+    let recentGames = ThemeGalleryQuery.filter(
+        themes,
+        scope: .recent,
+        category: .games,
+        search: "",
+        favoriteThemeIDs: [],
+        recentThemeIDs: ["quiet-garden", "turbo-striker", "arcade-signal"]
+    )
+    #expect(recentGames.map(\.id) == ["turbo-striker", "arcade-signal"])
+}

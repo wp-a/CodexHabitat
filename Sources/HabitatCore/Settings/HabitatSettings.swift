@@ -32,7 +32,7 @@ public enum HabitatSettingsError: Error, Equatable, Sendable {
 }
 
 public struct HabitatSettings: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 5
+    public static let currentSchemaVersion = 6
     private static let themeBridgeSchemaVersion = 1
     private static let usefulMetricsSchemaVersion = 4
     private static let legacyDefaultWidgetOrder: [WidgetIdentifier] = [
@@ -52,6 +52,8 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
     public var reduceMotion: ReduceMotionPreference
     public var themeBridgeEnabled: Bool
     public var onboardingCompleted: Bool
+    public var favoriteThemeIDs: [String]
+    public var recentThemeIDs: [String]
 
     public static let `default` = HabitatSettings(
         schemaVersion: currentSchemaVersion,
@@ -66,7 +68,9 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         launchAtLogin: false,
         reduceMotion: .system,
         themeBridgeEnabled: false,
-        onboardingCompleted: false
+        onboardingCompleted: false,
+        favoriteThemeIDs: [],
+        recentThemeIDs: []
     )
 
     public init(
@@ -82,7 +86,9 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         launchAtLogin: Bool,
         reduceMotion: ReduceMotionPreference,
         themeBridgeEnabled: Bool,
-        onboardingCompleted: Bool = false
+        onboardingCompleted: Bool = false,
+        favoriteThemeIDs: [String] = [],
+        recentThemeIDs: [String] = []
     ) {
         self.schemaVersion = schemaVersion
         self.selectedPetID = selectedPetID
@@ -97,6 +103,8 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         self.reduceMotion = reduceMotion
         self.themeBridgeEnabled = themeBridgeEnabled
         self.onboardingCompleted = onboardingCompleted
+        self.favoriteThemeIDs = favoriteThemeIDs
+        self.recentThemeIDs = recentThemeIDs
     }
 
     public init(from decoder: any Decoder) throws {
@@ -147,5 +155,13 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
             Bool.self,
             forKey: .onboardingCompleted
         ) ?? false
+        favoriteThemeIDs = try container.decodeIfPresent(
+            [String].self,
+            forKey: .favoriteThemeIDs
+        ) ?? []
+        recentThemeIDs = try container.decodeIfPresent(
+            [String].self,
+            forKey: .recentThemeIDs
+        ) ?? []
     }
 }

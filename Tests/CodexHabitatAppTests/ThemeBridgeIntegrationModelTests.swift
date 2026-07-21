@@ -27,6 +27,7 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(active.state == .active)
         #expect(active.canApply)
         #expect(active.canRestore)
+        #expect(active.activeThemeID == nil)
     }
 
     @Test
@@ -41,6 +42,7 @@ struct ThemeBridgeIntegrationModelTests {
         await model.enable(themeID: "night-shift")
 
         #expect(model.state == .active)
+        #expect(model.activeThemeID == "night-shift")
         #expect(model.canApply)
         #expect(runner.invocations == [
             ["apply", "--authorized", "--theme", "workbench"],
@@ -104,6 +106,7 @@ struct ThemeBridgeIntegrationModelTests {
 
         await model.restore()
         #expect(model.state == .ready)
+        #expect(model.activeThemeID == nil)
         await model.enable(themeID: "workbench")
         #expect(model.state == .failed)
         #expect(model.canApply)
@@ -111,6 +114,38 @@ struct ThemeBridgeIntegrationModelTests {
         #expect(model.statusText == "Theme bridge action failed")
         #expect(model.failure == .unknown)
         #expect(!model.statusText.contains("sensitive"))
+    }
+
+    @Test
+    func resumedWatcherRecordsThePersistedThemeAsActive() async {
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(exitCode: 0, output: "verified"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "active: pid=42 port=55000"),
+        ])
+        let model = ThemeBridgeIntegrationModel(runner: runner)
+
+        await model.refresh()
+        await model.resumeWatching(themeID: "workbench")
+
+        #expect(model.state == .active)
+        #expect(model.activeThemeID == "workbench")
+        #expect(runner.watchedThemes == ["workbench"])
+    }
+
+    @Test
+    func activeStatusRefreshRetainsAWatcherConfirmedThemeID() async {
+        let runner = StubThemeBridgeRunner(results: [
+            ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "verified"),
+            ThemeBridgeCommandResult(exitCode: 0, output: "active: pid=42 port=55000"),
+        ])
+        let model = ThemeBridgeIntegrationModel(runner: runner)
+
+        await model.enable(themeID: "workbench")
+        await model.refresh()
+
+        #expect(model.state == .active)
+        #expect(model.activeThemeID == "workbench")
     }
 
     @Test

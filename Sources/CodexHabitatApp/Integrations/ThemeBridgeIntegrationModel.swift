@@ -79,6 +79,7 @@ enum ThemeBridgeFailure: Equatable {
 final class ThemeBridgeIntegrationModel: ObservableObject {
     @Published private(set) var state = ThemeBridgeIntegrationState.checking
     @Published private(set) var failure: ThemeBridgeFailure?
+    @Published private(set) var activeThemeID: String?
 
     static let shared = ThemeBridgeIntegrationModel.live()
 
@@ -156,24 +157,35 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
     func refresh() async {
         guard let runner else {
             state = .unavailable
+            activeThemeID = nil
             return
         }
+        let confirmedActiveThemeID = activeThemeID
         state = .checking
         failure = nil
         do {
             let verification = try await runner.run(arguments: ["verify"])
             guard verification.exitCode == 0 else {
                 state = .unavailable
+                activeThemeID = nil
                 return
             }
             let status = try await runner.run(arguments: ["status"])
             guard status.exitCode == 0 else {
                 state = .failed
+                activeThemeID = nil
                 return
             }
-            state = status.output.hasPrefix("active:") ? .active : .ready
+            if status.output.hasPrefix("active:") {
+                state = .active
+                activeThemeID = confirmedActiveThemeID
+            } else {
+                state = .ready
+                activeThemeID = nil
+            }
         } catch {
             state = .unavailable
+            activeThemeID = nil
         }
     }
 
@@ -203,6 +215,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
                     return
                 }
                 state = .active
+                activeThemeID = themeID
                 await record(.themeApplied)
                 startWatchHealthMonitor()
             } catch {
@@ -217,10 +230,12 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
     func restore() async {
         guard let runner else {
             state = .unavailable
+            activeThemeID = nil
             return
         }
         stopWatching()
         state = .restoring
+        activeThemeID = nil
         do {
             let result = try await runner.run(arguments: ["restore"])
             if result.exitCode == 0 {
@@ -259,6 +274,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
                 await fail(.watcherUnavailable)
                 return
             }
+            activeThemeID = themeID
             startWatchHealthMonitor()
         } catch {
             await fail(.watcherUnavailable)
@@ -285,6 +301,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
         guard state == .active, let runner, !runner.isWatching() else { return }
         stopWatching()
         state = .failed
+        activeThemeID = nil
     }
 
     private func stopWatching() {
@@ -296,6 +313,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
     private func fail(_ failure: ThemeBridgeFailure) async {
         self.failure = failure
         state = .failed
+        activeThemeID = nil
         await record(failure.diagnosticCode)
     }
 

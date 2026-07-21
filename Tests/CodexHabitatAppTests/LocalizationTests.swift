@@ -18,6 +18,10 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
     #expect(localization.text("Pets") == "宠物")
     #expect(localization.text("Widgets") == "组件")
     #expect(localization.text("Apply Selected Theme to Codex") == "将所选主题应用到 Codex")
+    #expect(
+        localization.text("Browse local themes and explicitly apply a compatible choice")
+            == "浏览本地主题，并明确应用兼容的选择"
+    )
     #expect(localization.text("Latest request") == "最近请求")
     #expect(localization.text("Status") == "状态")
     #expect(localization.text("Context") == "上下文")
@@ -46,6 +50,13 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Task sidebar opacity", "Task header opacity", "Home content opacity",
         "Task content opacity", "Home content width", "Vignette strength",
         "Edit theme", "Replace existing theme?", "Replace Theme",
+        "Favorites", "Recent", "Theme collection", "Theme details",
+        "Add to Favorites", "Remove from Favorites", "Favorite", "Active",
+        "Not selected", "Inactive", "Not favorite",
+        "Theme family", "Codex compatibility", "Supported", "Bridge status",
+        "Active in Codex", "Apply to Codex", "Preview route", "Retry preview",
+        "Retro Messenger", "Green Chat", "Classic Desktop", "Game Cinematic",
+        "Cozy World", "Anime Energy", "Fantasy Adventure", "Pixel World",
         "Replacement confirmation required",
         "A local theme with this name already exists. Replace it with this draft?",
         "Settings were created by a newer Habitat version and are read-only.",

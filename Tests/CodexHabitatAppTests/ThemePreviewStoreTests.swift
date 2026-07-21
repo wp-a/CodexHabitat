@@ -36,6 +36,22 @@ func missingThemePreviewResultsAreCached() async {
 }
 
 @Test
+func failedThemePreviewCanBeExplicitlyInvalidatedAndRetried() async throws {
+    let image = try themePreviewTestImage()
+    let counter = ThemePreviewLoadCounter()
+    let store = ThemePreviewStore { _ in
+        counter.increment()
+        return counter.value == 1 ? nil : image
+    }
+    let previewURL = URL(fileURLWithPath: "/tmp/test-retry-theme-preview.png")
+
+    #expect(await store.image(at: previewURL) == nil)
+    await store.invalidate(url: previewURL)
+    #expect(await store.image(at: previewURL) === image)
+    #expect(counter.value == 2)
+}
+
+@Test
 func replacingAThemePreviewInvalidatesItsCachedImage() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatThemePreviewTests-\(UUID().uuidString)")
@@ -95,10 +111,38 @@ func galleryPlansUseOnlyStaticPackagedPreviewsWithoutBackdropMaterial() throws {
         encoding: .utf8
     )
     let cardStart = try #require(source.range(of: "struct ThemeChoiceCard"))
+    let thumbnailStart = try #require(source.range(of: "struct StaticThemeThumbnail"))
+    let thumbnailSource = source[thumbnailStart.lowerBound..<cardStart.lowerBound]
     let cardSource = source[cardStart.lowerBound...]
     #expect(cardSource.contains("StaticThemeThumbnail"))
     #expect(!cardSource.contains("ThemeTreatmentPreview("))
     #expect(!cardSource.contains("ultraThinMaterial"))
+    #expect(!thumbnailSource.contains(".stroke("))
+    #expect(cardSource.contains(".lineLimit(2)"))
+    #expect(cardSource.contains(".frame(height: 46)"))
+    #expect(cardSource.contains("isSelected ? \"Selected\" : \"Not selected\""))
+    #expect(cardSource.contains("isActive ? \"Active\" : \"Inactive\""))
+    #expect(cardSource.contains("isFavorite ? \"Favorite\" : \"Not favorite\""))
+}
+
+@Test
+func treatmentPreviewClearsOldFailureBeforeStartingAReplacementLoad() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeTreatmentPreview.swift"
+        ),
+        encoding: .utf8
+    )
+    let taskStart = try #require(source.range(of: ".task(id: previewLoadIdentity)"))
+    let taskSource = source[taskStart.lowerBound...]
+    let reset = try #require(taskSource.range(of: "previewLoadFailed = false"))
+    let load = try #require(taskSource.range(of: "ThemePreviewStore.shared.image"))
+
+    #expect(reset.lowerBound < load.lowerBound)
 }
 
 private final class ThemePreviewLoadCounter: @unchecked Sendable {

@@ -221,7 +221,10 @@ struct ThemeTreatmentPreview: View {
     let symbol: String
     var route = ThemeTreatmentPreviewRoute.home
     var height = 100.0
+    var showsRetryControl = false
     @State private var image: CGImage?
+    @State private var previewLoadFailed = false
+    @State private var reloadGeneration = 0
 
     var body: some View {
         GeometryReader { geometry in
@@ -240,18 +243,45 @@ struct ThemeTreatmentPreview: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .accessibilityHidden(true)
-        .allowsHitTesting(false)
-        .task(id: previewRequestKey) {
-            image = nil
+        .overlay {
+            if showsRetryControl, previewLoadFailed, imageURL != nil {
+                Button(action: retryPreview) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help(L10n.text("Retry preview"))
+                .accessibilityLabel(L10n.text("Retry preview"))
+            }
+        }
+        .task(id: previewLoadIdentity) {
+            previewLoadFailed = false
             let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
             guard !Task.isCancelled else { return }
-            image = loadedImage
+            if let loadedImage {
+                image = loadedImage
+                previewLoadFailed = false
+            } else {
+                previewLoadFailed = true
+            }
         }
     }
 
     private var previewRequestKey: ThemePreviewRequestKey? {
         imageURL.map(ThemePreviewRequestKey.init(url:))
+    }
+
+    private var previewLoadIdentity: String {
+        let request = previewRequestKey
+        return "\(request?.url.path ?? "missing")|\(request?.fileSize ?? -1)|\(request?.modificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(reloadGeneration)"
+    }
+
+    private func retryPreview() {
+        guard let imageURL else { return }
+        Task {
+            await ThemePreviewStore.shared.invalidate(url: imageURL)
+            reloadGeneration += 1
+        }
     }
 
     @ViewBuilder

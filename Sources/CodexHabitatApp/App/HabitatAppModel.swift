@@ -492,6 +492,34 @@ final class HabitatAppModel: ObservableObject {
         }
     }
 
+    func toggleThemeFavorite(_ id: String) {
+        let availableThemeIDs = Set(availableThemes.map(\.id))
+        guard availableThemeIDs.contains(id) else { return }
+        updateSettings { settings in
+            if let index = settings.favoriteThemeIDs.firstIndex(of: id) {
+                settings.favoriteThemeIDs.remove(at: index)
+            } else {
+                settings.favoriteThemeIDs.append(id)
+            }
+            settings.favoriteThemeIDs = ThemeLibraryState.validFavorites(
+                settings.favoriteThemeIDs,
+                availableThemeIDs: availableThemeIDs
+            )
+        }
+    }
+
+    func recordRecentlyPreviewedTheme(_ id: String) {
+        let availableThemeIDs = Set(availableThemes.map(\.id))
+        guard availableThemeIDs.contains(id) else { return }
+        updateSettings { settings in
+            settings.recentThemeIDs = ThemeLibraryState.recordRecent(
+                id,
+                in: settings.recentThemeIDs,
+                availableThemeIDs: availableThemeIDs
+            )
+        }
+    }
+
     func setThemePetPairing(themeID: String, petID: String?) {
         guard availableThemes.contains(where: { $0.id == themeID }) else { return }
         let validPetIDs = Set(validPets.compactMap(\.manifest?.id))
@@ -690,6 +718,15 @@ final class HabitatAppModel: ObservableObject {
         }
         result.scale = min(max(result.scale, 0.75), 1.5)
         result.themePetPairings = validatedThemePetPairings(result.themePetPairings)
+        let availableThemeIDs = Set(availableThemes.map(\.id))
+        result.favoriteThemeIDs = ThemeLibraryState.validFavorites(
+            result.favoriteThemeIDs,
+            availableThemeIDs: availableThemeIDs
+        )
+        result.recentThemeIDs = Array(ThemeLibraryState.validFavorites(
+            result.recentThemeIDs,
+            availableThemeIDs: availableThemeIDs
+        ).prefix(ThemeLibraryState.recentLimit))
         return result
     }
 
@@ -771,6 +808,14 @@ final class HabitatAppModel: ObservableObject {
         repaired.themePetPairings = repaired.themePetPairings.filter { themeID, petID in
             validThemeIDs.contains(themeID) && validPetIDs.contains(petID)
         }
+        repaired.favoriteThemeIDs = ThemeLibraryState.validFavorites(
+            repaired.favoriteThemeIDs,
+            availableThemeIDs: validThemeIDs
+        )
+        repaired.recentThemeIDs = Array(ThemeLibraryState.validFavorites(
+            repaired.recentThemeIDs,
+            availableThemeIDs: validThemeIDs
+        ).prefix(ThemeLibraryState.recentLimit))
         guard repaired != settings else { return }
         updateSettings { settings in
             settings = repaired

@@ -4,6 +4,27 @@ import Testing
 @testable import CodexHabitatApp
 
 @Test @MainActor
+func themeLibraryMetadataMethodsValidateAndBoundIdentifiers() {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "ThemeLibraryModelTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: root),
+        petRoot: root.appending(path: "Pets")
+    )
+
+    model.toggleThemeFavorite("quiet-garden")
+    model.toggleThemeFavorite("missing")
+    model.recordRecentlyPreviewedTheme("night-shift")
+    model.recordRecentlyPreviewedTheme("missing")
+    model.recordRecentlyPreviewedTheme("quiet-garden")
+    model.recordRecentlyPreviewedTheme("night-shift")
+
+    #expect(model.settings.favoriteThemeIDs == ["quiet-garden"])
+    #expect(model.settings.recentThemeIDs == ["night-shift", "quiet-garden"])
+}
+
+@Test @MainActor
 func settingsChangesUseKnownThemesWidgetsAndSafeScaleBounds() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatSettingsTests-\(UUID().uuidString)", directoryHint: .isDirectory)
