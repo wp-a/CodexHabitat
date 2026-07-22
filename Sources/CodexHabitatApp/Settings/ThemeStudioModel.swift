@@ -29,42 +29,117 @@ struct ThemeStudioPetOption: Identifiable, Equatable, Sendable {
     let name: String
 }
 
+struct ThemeStudioDraft: Equatable, Sendable {
+    var name = ""
+    var author = ""
+    var sourceImageURL: URL?
+    var palette: HabitatThemePalette?
+    var category = HabitatThemeCategory.custom
+    var styleFamily = HabitatThemeStyleFamily.gameCinematic
+    var artFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+    var safeSide = HabitatThemeSafeSide.leading
+    var backgroundStrength = 0.42
+    var panelOpacity = 0.88
+    var blurRadius = 10.0
+    var density = HabitatThemeDensity.comfortable
+    var homeMode = HabitatThemeHomeMode.quiet
+    var taskMode = HabitatThemeTaskMode.ambient
+    var chromeMaterial = HabitatThemeChromeMaterial.tinted
+    var homeStrength = 0.42
+    var taskStrength = 0.19
+    var sidebarOpacity = 0.88
+    var headerOpacity = 0.88
+    var composerOpacity = 0.88
+    var homeArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+    var taskArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
+    var homeArtScale = 1.0
+    var taskArtScale = 1.0
+    var taskSidebarOpacity = 0.88
+    var taskHeaderOpacity = 0.88
+    var homeContentOpacity = 0.66
+    var taskContentOpacity = 0.84
+    var homeContentWidth = 0.56
+    var vignetteStrength = 0.34
+    var pairedPetID: String?
+}
+
+struct ThemeStudioOperations: Sendable {
+    let suggestPalette: @Sendable (URL, URL) async throws -> HabitatThemePalette
+    let install: @Sendable (ThemePackageRequest, URL, URL, Bool) async throws -> String
+    let export: @Sendable (ThemePackageRequest, URL, URL) async throws -> Void
+
+    static let live = ThemeStudioOperations(
+        suggestPalette: { sourceURL, workingRoot in
+            try await Task.detached(priority: .userInitiated) {
+                try ThemePackageBuilder(workingRoot: workingRoot).suggestPalette(from: sourceURL)
+            }.value
+        },
+        install: { request, libraryRoot, workingRoot, replacing in
+            try await Task.detached(priority: .userInitiated) {
+                try ThemePackageBuilder(workingRoot: workingRoot).buildAndInstall(
+                    request,
+                    libraryRoot: libraryRoot,
+                    replacing: replacing
+                ).id
+            }.value
+        },
+        export: { request, destination, workingRoot in
+            try await Task.detached(priority: .userInitiated) {
+                _ = try ThemePackageBuilder(workingRoot: workingRoot).build(
+                    request,
+                    to: destination
+                )
+            }.value
+        }
+    )
+}
+
+enum ThemeFocalPointMapper {
+    static func artworkRect(
+        in canvasRect: CGRect,
+        route: ThemeTreatmentPreviewRoute,
+        taskMode: HabitatThemeTaskMode
+    ) -> CGRect {
+        guard route == .task, taskMode == .banner else { return canvasRect }
+        return CGRect(
+            x: canvasRect.minX,
+            y: canvasRect.minY,
+            width: canvasRect.width,
+            height: canvasRect.height * ThemeTreatmentPreviewSceneMetrics.bannerArtworkFraction
+        )
+    }
+
+    static func unitPoint(at point: CGPoint, in rect: CGRect) -> HabitatThemeFocalPoint {
+        let rect = rect.standardized
+        guard point.x.isFinite,
+              point.y.isFinite,
+              rect.origin.x.isFinite,
+              rect.origin.y.isFinite,
+              rect.width.isFinite,
+              rect.height.isFinite,
+              rect.width > 0,
+              rect.height > 0
+        else {
+            return HabitatThemeFocalPoint(x: 0.5, y: 0.5)
+        }
+        return HabitatThemeFocalPoint(
+            x: clamp((point.x - rect.minX) / rect.width),
+            y: clamp((point.y - rect.minY) / rect.height)
+        )
+    }
+
+    private static func clamp(_ value: Double) -> Double {
+        min(max(value, 0), 1)
+    }
+}
+
 @MainActor
 final class ThemeStudioModel: ObservableObject, Identifiable {
     let id = UUID()
-    @Published var name = "" { didSet { markDirty() } }
-    @Published var author = "" { didSet { markDirty() } }
-    @Published private(set) var sourceImageURL: URL?
-    @Published private(set) var palette: HabitatThemePalette?
-    @Published private(set) var category = HabitatThemeCategory.custom
-    @Published private(set) var styleFamily = HabitatThemeStyleFamily.gameCinematic
-    @Published private(set) var artFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
-    @Published private(set) var safeSide = HabitatThemeSafeSide.leading
-    @Published private(set) var backgroundStrength = 0.42
-    @Published private(set) var panelOpacity = 0.88
-    @Published private(set) var blurRadius = 10.0
-    @Published private(set) var density = HabitatThemeDensity.comfortable
-    @Published private(set) var homeMode = HabitatThemeHomeMode.quiet
-    @Published private(set) var taskMode = HabitatThemeTaskMode.ambient
-    @Published private(set) var chromeMaterial = HabitatThemeChromeMaterial.tinted
-    @Published private(set) var homeStrength = 0.42
-    @Published private(set) var taskStrength = 0.19
-    @Published private(set) var sidebarOpacity = 0.88
-    @Published private(set) var headerOpacity = 0.88
-    @Published private(set) var composerOpacity = 0.88
-    @Published private(set) var homeArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
-    @Published private(set) var taskArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
-    @Published private(set) var homeArtScale = 1.0
-    @Published private(set) var taskArtScale = 1.0
-    @Published private(set) var taskSidebarOpacity = 0.88
-    @Published private(set) var taskHeaderOpacity = 0.88
-    @Published private(set) var homeContentOpacity = 0.66
-    @Published private(set) var taskContentOpacity = 0.84
-    @Published private(set) var homeContentWidth = 0.56
-    @Published private(set) var vignetteStrength = 0.34
-    @Published private(set) var pairedPetID: String?
+    @Published private(set) var draft: ThemeStudioDraft
     @Published private(set) var state = ThemeStudioState.editing
-    @Published private(set) var isDirty = false
+    @Published private(set) var canUndo = false
+    @Published private(set) var canRedo = false
     @Published var showsDiscardConfirmation = false
     @Published private(set) var nameValidationMessage: String?
     @Published private(set) var authorValidationMessage: String?
@@ -74,7 +149,56 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     let workingRoot: URL
     let availablePets: [ThemeStudioPetOption]
 
-    private var suppressDirtyTracking = false
+    private var baselineDraft: ThemeStudioDraft
+    private var undoStack: [ThemeStudioDraft] = []
+    private var redoStack: [ThemeStudioDraft] = []
+    private var continuousEditStart: ThemeStudioDraft?
+    private var imageSelectionGeneration = 0
+    private var persistenceGeneration = 0
+    private var activePersistenceGeneration: Int?
+    private let operations: ThemeStudioOperations
+    private static let maximumHistoryCount = 50
+
+    var name: String {
+        get { draft.name }
+        set { performEdit { $0.name = newValue } }
+    }
+
+    var author: String {
+        get { draft.author }
+        set { performEdit { $0.author = newValue } }
+    }
+
+    var sourceImageURL: URL? { draft.sourceImageURL }
+    var palette: HabitatThemePalette? { draft.palette }
+    var category: HabitatThemeCategory { draft.category }
+    var styleFamily: HabitatThemeStyleFamily { draft.styleFamily }
+    var artFocus: HabitatThemeFocalPoint { draft.artFocus }
+    var safeSide: HabitatThemeSafeSide { draft.safeSide }
+    var backgroundStrength: Double { draft.backgroundStrength }
+    var panelOpacity: Double { draft.panelOpacity }
+    var blurRadius: Double { draft.blurRadius }
+    var density: HabitatThemeDensity { draft.density }
+    var homeMode: HabitatThemeHomeMode { draft.homeMode }
+    var taskMode: HabitatThemeTaskMode { draft.taskMode }
+    var chromeMaterial: HabitatThemeChromeMaterial { draft.chromeMaterial }
+    var homeStrength: Double { draft.homeStrength }
+    var taskStrength: Double { draft.taskStrength }
+    var sidebarOpacity: Double { draft.sidebarOpacity }
+    var headerOpacity: Double { draft.headerOpacity }
+    var composerOpacity: Double { draft.composerOpacity }
+    var homeArtFocus: HabitatThemeFocalPoint { draft.homeArtFocus }
+    var taskArtFocus: HabitatThemeFocalPoint { draft.taskArtFocus }
+    var homeArtScale: Double { draft.homeArtScale }
+    var taskArtScale: Double { draft.taskArtScale }
+    var taskSidebarOpacity: Double { draft.taskSidebarOpacity }
+    var taskHeaderOpacity: Double { draft.taskHeaderOpacity }
+    var homeContentOpacity: Double { draft.homeContentOpacity }
+    var taskContentOpacity: Double { draft.taskContentOpacity }
+    var homeContentWidth: Double { draft.homeContentWidth }
+    var vignetteStrength: Double { draft.vignetteStrength }
+    var pairedPetID: String? { draft.pairedPetID }
+    var isDirty: Bool { draft != baselineDraft }
 
     var previewAppearance: HabitatThemeAppearance {
         HabitatThemeAppearance(
@@ -113,77 +237,81 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         workingRoot: URL,
         availablePets: [ThemeStudioPetOption] = [],
         editing installedPackage: InstalledPackage? = nil,
-        pairedPetID: String? = nil
+        pairedPetID: String? = nil,
+        operations: ThemeStudioOperations = .live
     ) {
         self.libraryRoot = libraryRoot
         self.workingRoot = workingRoot
         self.availablePets = availablePets
+        self.operations = operations
+        var initial = ThemeStudioDraft()
         if let pairedPetID, availablePets.contains(where: { $0.id == pairedPetID }) {
-            self.pairedPetID = pairedPetID
+            initial.pairedPetID = pairedPetID
         }
-        guard let installedPackage,
-              let appearance = installedPackage.manifest.theme
-        else {
-            return
+        if let installedPackage,
+           let appearance = installedPackage.manifest.theme {
+            let colors = installedPackage.manifest.colors
+            initial.name = installedPackage.manifest.name
+            initial.author = installedPackage.manifest.author
+            initial.sourceImageURL = installedPackage.url.appending(path: appearance.background)
+            initial.palette = HabitatThemePalette(
+                surface: colors.surface,
+                panel: colors.panel ?? colors.surface,
+                panelAlt: colors.panelAlt ?? colors.accent,
+                text: colors.text,
+                mutedText: colors.mutedText ?? colors.text,
+                accent: colors.accent,
+                secondary: colors.secondary ?? colors.attention,
+                highlight: colors.highlight ?? colors.accent,
+                attention: colors.attention,
+                error: colors.error
+            )
+            initial.category = appearance.category
+            initial.styleFamily = appearance.styleFamily
+            initial.artFocus = appearance.artFocus
+            initial.safeSide = appearance.safeSide
+            initial.backgroundStrength = appearance.backgroundStrength
+            initial.panelOpacity = appearance.panelOpacity
+            initial.blurRadius = appearance.blurRadius
+            initial.density = appearance.density
+            initial.homeMode = appearance.resolvedHomeMode
+            initial.taskMode = appearance.resolvedTaskMode
+            initial.chromeMaterial = appearance.resolvedChromeMaterial
+            initial.homeStrength = appearance.resolvedHomeStrength
+            initial.taskStrength = appearance.resolvedTaskStrength
+            initial.sidebarOpacity = appearance.resolvedSidebarOpacity
+            initial.headerOpacity = appearance.resolvedHeaderOpacity
+            initial.composerOpacity = appearance.resolvedComposerOpacity
+            initial.homeArtFocus = appearance.resolvedHomeArtFocus
+            initial.taskArtFocus = appearance.resolvedTaskArtFocus
+            initial.homeArtScale = appearance.resolvedHomeArtScale
+            initial.taskArtScale = appearance.resolvedTaskArtScale
+            initial.taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
+            initial.taskHeaderOpacity = appearance.resolvedTaskHeaderOpacity
+            initial.homeContentOpacity = appearance.resolvedHomeContentOpacity
+            initial.taskContentOpacity = appearance.resolvedTaskContentOpacity
+            initial.homeContentWidth = appearance.resolvedHomeContentWidth
+            initial.vignetteStrength = appearance.resolvedVignetteStrength
         }
-
-        suppressDirtyTracking = true
-        let colors = installedPackage.manifest.colors
-        name = installedPackage.manifest.name
-        author = installedPackage.manifest.author
-        sourceImageURL = installedPackage.url.appending(path: appearance.background)
-        palette = HabitatThemePalette(
-            surface: colors.surface,
-            panel: colors.panel ?? colors.surface,
-            panelAlt: colors.panelAlt ?? colors.accent,
-            text: colors.text,
-            mutedText: colors.mutedText ?? colors.text,
-            accent: colors.accent,
-            secondary: colors.secondary ?? colors.attention,
-            highlight: colors.highlight ?? colors.accent,
-            attention: colors.attention,
-            error: colors.error
-        )
-        category = appearance.category
-        styleFamily = appearance.styleFamily
-        artFocus = appearance.artFocus
-        safeSide = appearance.safeSide
-        backgroundStrength = appearance.backgroundStrength
-        panelOpacity = appearance.panelOpacity
-        blurRadius = appearance.blurRadius
-        density = appearance.density
-        homeMode = appearance.resolvedHomeMode
-        taskMode = appearance.resolvedTaskMode
-        chromeMaterial = appearance.resolvedChromeMaterial
-        homeStrength = appearance.resolvedHomeStrength
-        taskStrength = appearance.resolvedTaskStrength
-        sidebarOpacity = appearance.resolvedSidebarOpacity
-        headerOpacity = appearance.resolvedHeaderOpacity
-        composerOpacity = appearance.resolvedComposerOpacity
-        homeArtFocus = appearance.resolvedHomeArtFocus
-        taskArtFocus = appearance.resolvedTaskArtFocus
-        homeArtScale = appearance.resolvedHomeArtScale
-        taskArtScale = appearance.resolvedTaskArtScale
-        taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
-        taskHeaderOpacity = appearance.resolvedTaskHeaderOpacity
-        homeContentOpacity = appearance.resolvedHomeContentOpacity
-        taskContentOpacity = appearance.resolvedTaskContentOpacity
-        homeContentWidth = appearance.resolvedHomeContentWidth
-        vignetteStrength = appearance.resolvedVignetteStrength
-        isDirty = false
-        state = .editing
-        suppressDirtyTracking = false
+        draft = initial
+        baselineDraft = initial
     }
 
-    func selectImage(_ url: URL) throws {
+    func selectImage(_ url: URL) async throws {
+        guard activePersistenceGeneration == nil else { return }
+        imageSelectionGeneration &+= 1
+        let generation = imageSelectionGeneration
+        let workingRoot = self.workingRoot
         do {
-            let suggested = try ThemePackageBuilder(workingRoot: workingRoot)
-                .suggestPalette(from: url)
-            sourceImageURL = url
-            palette = suggested
+            let suggested = try await operations.suggestPalette(url, workingRoot)
+            guard generation == imageSelectionGeneration else { return }
+            performEdit {
+                $0.sourceImageURL = url
+                $0.palette = suggested
+            }
             imageValidationMessage = nil
-            markDirty()
         } catch {
+            guard generation == imageSelectionGeneration else { return }
             imageValidationMessage = L10n.text("Choose a valid local PNG, JPEG, or WebP image.")
             state = .validationFailure(imageValidationMessage ?? "")
             throw error
@@ -191,8 +319,7 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     }
 
     func setPalette(_ value: HabitatThemePalette) {
-        palette = value
-        markDirty()
+        performEdit { $0.palette = value }
     }
 
     func setColor(_ role: ThemePaletteRole, hex: String) {
@@ -229,186 +356,178 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         }
     }
 
+    func setCategory(_ value: HabitatThemeCategory) {
+        performEdit { $0.category = value }
+    }
+
     func setStyleFamily(_ value: HabitatThemeStyleFamily) {
-        guard styleFamily != value else { return }
-        styleFamily = value
-        markDirty()
+        performEdit { $0.styleFamily = value }
     }
 
     func setSafeSide(_ value: HabitatThemeSafeSide) {
-        guard safeSide != value else { return }
-        safeSide = value
-        markDirty()
+        performEdit { $0.safeSide = value }
     }
 
     func setDensity(_ value: HabitatThemeDensity) {
-        guard density != value else { return }
-        density = value
-        markDirty()
+        performEdit { $0.density = value }
     }
 
     func setHomeMode(_ value: HabitatThemeHomeMode) {
-        guard homeMode != value else { return }
-        homeMode = value
-        markDirty()
+        performEdit { $0.homeMode = value }
     }
 
     func setTaskMode(_ value: HabitatThemeTaskMode) {
-        guard taskMode != value else { return }
-        taskMode = value
-        markDirty()
+        performEdit { $0.taskMode = value }
     }
 
     func setChromeMaterial(_ value: HabitatThemeChromeMaterial) {
-        guard chromeMaterial != value else { return }
-        chromeMaterial = value
-        markDirty()
+        performEdit { $0.chromeMaterial = value }
     }
 
     func setPairedPetID(_ value: String?) {
         guard value == nil || availablePets.contains(where: { $0.id == value }) else { return }
-        guard pairedPetID != value else { return }
-        pairedPetID = value
-        markDirty()
+        performEdit { $0.pairedPetID = value }
     }
 
     func setBackgroundStrength(_ value: Double) {
-        let value = min(max(value, 0.10), 0.70)
-        guard backgroundStrength != value else { return }
-        backgroundStrength = value
-        markDirty()
+        setBounded(value, range: 0.10...0.70, keyPath: \ThemeStudioDraft.backgroundStrength)
     }
 
     func setPanelOpacity(_ value: Double) {
-        let value = min(max(value, 0.65), 1.0)
-        guard panelOpacity != value else { return }
-        panelOpacity = value
-        markDirty()
+        setBounded(value, range: 0.65...1.0, keyPath: \ThemeStudioDraft.panelOpacity)
     }
 
     func setBlurRadius(_ value: Double) {
-        let value = min(max(value, 0), 24)
-        guard blurRadius != value else { return }
-        blurRadius = value
-        markDirty()
+        setBounded(value, range: 0...24, keyPath: \ThemeStudioDraft.blurRadius)
     }
 
     func setHomeStrength(_ value: Double) {
-        setBounded(value, range: 0.10...0.85, keyPath: \ThemeStudioModel.homeStrength)
+        setBounded(value, range: 0.10...0.85, keyPath: \ThemeStudioDraft.homeStrength)
     }
 
     func setTaskStrength(_ value: Double) {
-        setBounded(value, range: 0.10...0.85, keyPath: \ThemeStudioModel.taskStrength)
+        setBounded(value, range: 0.10...0.85, keyPath: \ThemeStudioDraft.taskStrength)
     }
 
     func setSidebarOpacity(_ value: Double) {
-        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.sidebarOpacity)
+        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioDraft.sidebarOpacity)
     }
 
     func setHeaderOpacity(_ value: Double) {
-        setBounded(value, range: 0.0...1.0, keyPath: \ThemeStudioModel.headerOpacity)
+        setBounded(value, range: 0.0...1.0, keyPath: \ThemeStudioDraft.headerOpacity)
     }
 
     func setComposerOpacity(_ value: Double) {
-        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioModel.composerOpacity)
+        setBounded(value, range: 0.40...1.0, keyPath: \ThemeStudioDraft.composerOpacity)
     }
 
     func setHomeArtFocus(x: Double, y: Double) {
-        setFocus(x: x, y: y, keyPath: \ThemeStudioModel.homeArtFocus)
+        setFocus(x: x, y: y, keyPath: \ThemeStudioDraft.homeArtFocus)
     }
 
     func setTaskArtFocus(x: Double, y: Double) {
-        setFocus(x: x, y: y, keyPath: \ThemeStudioModel.taskArtFocus)
+        setFocus(x: x, y: y, keyPath: \ThemeStudioDraft.taskArtFocus)
     }
 
     func setHomeArtScale(_ value: Double) {
-        setBounded(value, range: 1.00...1.35, keyPath: \ThemeStudioModel.homeArtScale)
+        setBounded(value, range: 1.00...1.35, keyPath: \ThemeStudioDraft.homeArtScale)
     }
 
     func setTaskArtScale(_ value: Double) {
-        setBounded(value, range: 1.00...1.35, keyPath: \ThemeStudioModel.taskArtScale)
+        setBounded(value, range: 1.00...1.35, keyPath: \ThemeStudioDraft.taskArtScale)
     }
 
     func setTaskSidebarOpacity(_ value: Double) {
-        setBounded(value, range: 0.54...0.90, keyPath: \ThemeStudioModel.taskSidebarOpacity)
+        setBounded(value, range: 0.54...0.90, keyPath: \ThemeStudioDraft.taskSidebarOpacity)
     }
 
     func setTaskHeaderOpacity(_ value: Double) {
-        setBounded(value, range: 0.54...0.90, keyPath: \ThemeStudioModel.taskHeaderOpacity)
+        setBounded(value, range: 0.54...0.90, keyPath: \ThemeStudioDraft.taskHeaderOpacity)
     }
 
     func setHomeContentOpacity(_ value: Double) {
-        setBounded(value, range: 0.40...0.78, keyPath: \ThemeStudioModel.homeContentOpacity)
+        setBounded(value, range: 0.40...0.78, keyPath: \ThemeStudioDraft.homeContentOpacity)
     }
 
     func setTaskContentOpacity(_ value: Double) {
-        setBounded(value, range: 0.60...0.84, keyPath: \ThemeStudioModel.taskContentOpacity)
+        setBounded(value, range: 0.60...0.84, keyPath: \ThemeStudioDraft.taskContentOpacity)
     }
 
     func setHomeContentWidth(_ value: Double) {
-        setBounded(value, range: 0.46...0.68, keyPath: \ThemeStudioModel.homeContentWidth)
+        setBounded(value, range: 0.46...0.68, keyPath: \ThemeStudioDraft.homeContentWidth)
     }
 
     func setVignetteStrength(_ value: Double) {
-        setBounded(value, range: 0.00...0.70, keyPath: \ThemeStudioModel.vignetteStrength)
+        setBounded(value, range: 0.00...0.70, keyPath: \ThemeStudioDraft.vignetteStrength)
     }
 
     func setArtFocus(x: Double, y: Double) {
-        let value = HabitatThemeFocalPoint(
-            x: min(max(x, 0), 1),
-            y: min(max(y, 0), 1)
-        )
-        guard artFocus != value else { return }
-        artFocus = value
-        markDirty()
+        setFocus(x: x, y: y, keyPath: \ThemeStudioDraft.artFocus)
+    }
+
+    func beginContinuousEdit() {
+        if continuousEditStart != nil {
+            endContinuousEdit()
+        }
+        continuousEditStart = draft
+    }
+
+    func endContinuousEdit() {
+        guard let start = continuousEditStart else { return }
+        continuousEditStart = nil
+        guard start != draft else {
+            updateHistoryAvailability()
+            return
+        }
+        appendUndo(start)
+        updateHistoryAvailability()
+    }
+
+    func undo() {
+        endContinuousEdit()
+        guard let previous = undoStack.popLast() else { return }
+        redoStack.append(draft)
+        draft = previous
+        if activePersistenceGeneration == nil {
+            state = .editing
+        }
+        updateHistoryAvailability()
+    }
+
+    func redo() {
+        endContinuousEdit()
+        guard let next = redoStack.popLast() else { return }
+        appendUndo(draft)
+        draft = next
+        if activePersistenceGeneration == nil {
+            state = .editing
+        }
+        updateHistoryAvailability()
     }
 
     func requestClose() -> Bool {
-        guard isDirty else { return true }
+        guard activePersistenceGeneration == nil else { return false }
+        guard isDirty else {
+            invalidateImageSelection()
+            return true
+        }
         showsDiscardConfirmation = true
         return false
     }
 
     func discardDraft() {
-        suppressDirtyTracking = true
-        name = ""
-        author = ""
-        sourceImageURL = nil
-        palette = nil
-        category = .custom
-        styleFamily = .gameCinematic
-        artFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
-        safeSide = .leading
-        backgroundStrength = 0.42
-        panelOpacity = 0.88
-        blurRadius = 10
-        density = .comfortable
-        homeMode = .quiet
-        taskMode = .ambient
-        chromeMaterial = .tinted
-        homeStrength = 0.42
-        taskStrength = 0.19
-        sidebarOpacity = 0.88
-        headerOpacity = 0.88
-        composerOpacity = 0.88
-        homeArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
-        taskArtFocus = HabitatThemeFocalPoint(x: 0.75, y: 0.5)
-        homeArtScale = 1.0
-        taskArtScale = 1.0
-        taskSidebarOpacity = 0.88
-        taskHeaderOpacity = 0.88
-        homeContentOpacity = 0.66
-        taskContentOpacity = 0.84
-        homeContentWidth = 0.56
-        vignetteStrength = 0.34
-        pairedPetID = nil
+        guard activePersistenceGeneration == nil else { return }
+        invalidateImageSelection()
+        draft = baselineDraft
+        continuousEditStart = nil
+        undoStack.removeAll()
+        redoStack.removeAll()
         state = .editing
         nameValidationMessage = nil
         authorValidationMessage = nil
         imageValidationMessage = nil
-        isDirty = false
         showsDiscardConfirmation = false
-        suppressDirtyTracking = false
+        updateHistoryAvailability()
     }
 
     func saveLocally() async {
@@ -426,45 +545,55 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     }
 
     private func saveLocally(replacing: Bool) async {
-        guard let request = validatedRequest() else { return }
-        state = .saving
+        guard activePersistenceGeneration == nil else { return }
+        invalidateImageSelection()
+        endContinuousEdit()
+        let savedDraft = draft
+        guard let request = validatedRequest(from: savedDraft) else { return }
+        let generation = beginPersistence()
         do {
-            let libraryRoot = self.libraryRoot
-            let workingRoot = self.workingRoot
-            let installed = try await Task.detached {
-                try ThemePackageBuilder(workingRoot: workingRoot).buildAndInstall(
-                    request,
-                    libraryRoot: libraryRoot,
-                    replacing: replacing
-                )
-            }.value
-            state = .saved(installed.id)
-            isDirty = false
+            let installedID = try await operations.install(
+                request,
+                libraryRoot,
+                workingRoot,
+                replacing
+            )
+            guard finishPersistence(generation) else { return }
+            completeSuccessfulOperation(savedDraft, id: installedID)
         } catch PackageInstallationError.alreadyInstalled {
-            state = .replacementRequired(ThemePackageBuilder.safeID(for: request.name))
+            guard finishPersistence(generation) else { return }
+            state = draft == savedDraft
+                ? .replacementRequired(ThemePackageBuilder.safeID(for: request.name))
+                : .editing
         } catch {
+            guard finishPersistence(generation) else { return }
             state = .validationFailure(L10n.text("The theme could not be saved."))
         }
     }
 
     func export(to destination: URL) async {
-        guard let request = validatedRequest() else { return }
-        state = .saving
+        guard activePersistenceGeneration == nil else { return }
+        invalidateImageSelection()
+        endContinuousEdit()
+        let exportedDraft = draft
+        guard let request = validatedRequest(from: exportedDraft) else { return }
+        let generation = beginPersistence()
         do {
-            let workingRoot = self.workingRoot
-            _ = try await Task.detached {
-                try ThemePackageBuilder(workingRoot: workingRoot).build(request, to: destination)
-            }.value
-            state = .saved(ThemePackageBuilder.safeID(for: request.name))
-            isDirty = false
+            try await operations.export(request, destination, workingRoot)
+            guard finishPersistence(generation) else { return }
+            completeSuccessfulOperation(
+                exportedDraft,
+                id: ThemePackageBuilder.safeID(for: request.name)
+            )
         } catch {
+            guard finishPersistence(generation) else { return }
             state = .validationFailure(L10n.text("The theme could not be exported."))
         }
     }
 
-    private func validatedRequest() -> ThemePackageRequest? {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedAuthor = author.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func validatedRequest(from draft: ThemeStudioDraft) -> ThemePackageRequest? {
+        let trimmedName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAuthor = draft.author.trimmingCharacters(in: .whitespacesAndNewlines)
         let nameIsValid = !trimmedName.isEmpty
             && trimmedName.count <= 100
             && !Self.containsControlCharacters(trimmedName)
@@ -484,13 +613,13 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             : L10n.text(
                 "Authors must be 100 characters or fewer and contain no control characters."
             )
-        imageValidationMessage = sourceImageURL == nil
+        imageValidationMessage = draft.sourceImageURL == nil
             ? L10n.text("Choose a local background image.")
             : nil
         guard nameIsValid,
               authorIsValid,
-              let sourceImageURL,
-              let palette
+              let sourceImageURL = draft.sourceImageURL,
+              let palette = draft.palette
         else {
             state = .validationFailure(L10n.text("Fix the highlighted fields before saving."))
             return nil
@@ -500,32 +629,32 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             author: trimmedAuthor,
             sourceImageURL: sourceImageURL,
             palette: palette,
-            category: category,
-            styleFamily: styleFamily,
-            artFocus: artFocus,
-            safeSide: safeSide,
-            backgroundStrength: backgroundStrength,
-            panelOpacity: panelOpacity,
-            blurRadius: blurRadius,
-            density: density,
-            homeMode: homeMode,
-            taskMode: taskMode,
-            chromeMaterial: chromeMaterial,
-            homeStrength: homeStrength,
-            taskStrength: taskStrength,
-            sidebarOpacity: sidebarOpacity,
-            headerOpacity: headerOpacity,
-            composerOpacity: composerOpacity,
-            homeArtFocus: homeArtFocus,
-            taskArtFocus: taskArtFocus,
-            homeArtScale: homeArtScale,
-            taskArtScale: taskArtScale,
-            taskSidebarOpacity: taskSidebarOpacity,
-            taskHeaderOpacity: taskHeaderOpacity,
-            homeContentOpacity: homeContentOpacity,
-            taskContentOpacity: taskContentOpacity,
-            homeContentWidth: homeContentWidth,
-            vignetteStrength: vignetteStrength
+            category: draft.category,
+            styleFamily: draft.styleFamily,
+            artFocus: draft.artFocus,
+            safeSide: draft.safeSide,
+            backgroundStrength: draft.backgroundStrength,
+            panelOpacity: draft.panelOpacity,
+            blurRadius: draft.blurRadius,
+            density: draft.density,
+            homeMode: draft.homeMode,
+            taskMode: draft.taskMode,
+            chromeMaterial: draft.chromeMaterial,
+            homeStrength: draft.homeStrength,
+            taskStrength: draft.taskStrength,
+            sidebarOpacity: draft.sidebarOpacity,
+            headerOpacity: draft.headerOpacity,
+            composerOpacity: draft.composerOpacity,
+            homeArtFocus: draft.homeArtFocus,
+            taskArtFocus: draft.taskArtFocus,
+            homeArtScale: draft.homeArtScale,
+            taskArtScale: draft.taskArtScale,
+            taskSidebarOpacity: draft.taskSidebarOpacity,
+            taskHeaderOpacity: draft.taskHeaderOpacity,
+            homeContentOpacity: draft.homeContentOpacity,
+            taskContentOpacity: draft.taskContentOpacity,
+            homeContentWidth: draft.homeContentWidth,
+            vignetteStrength: draft.vignetteStrength
         )
     }
 
@@ -533,35 +662,86 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         value.rangeOfCharacter(from: .controlCharacters) != nil
     }
 
-    private func markDirty() {
-        guard !suppressDirtyTracking else { return }
-        isDirty = true
-        if case .saving = state { return }
-        state = .editing
-    }
-
     private func setBounded(
         _ value: Double,
         range: ClosedRange<Double>,
-        keyPath: ReferenceWritableKeyPath<ThemeStudioModel, Double>
+        keyPath: WritableKeyPath<ThemeStudioDraft, Double>
     ) {
         let value = min(max(value, range.lowerBound), range.upperBound)
-        guard self[keyPath: keyPath] != value else { return }
-        self[keyPath: keyPath] = value
-        markDirty()
+        performEdit { $0[keyPath: keyPath] = value }
     }
 
     private func setFocus(
         x: Double,
         y: Double,
-        keyPath: ReferenceWritableKeyPath<ThemeStudioModel, HabitatThemeFocalPoint>
+        keyPath: WritableKeyPath<ThemeStudioDraft, HabitatThemeFocalPoint>
     ) {
         let value = HabitatThemeFocalPoint(
             x: min(max(x, 0), 1),
             y: min(max(y, 0), 1)
         )
-        guard self[keyPath: keyPath] != value else { return }
-        self[keyPath: keyPath] = value
-        markDirty()
+        performEdit { $0[keyPath: keyPath] = value }
+    }
+
+    private func performEdit(_ edit: (inout ThemeStudioDraft) -> Void) {
+        if continuousEditStart == nil {
+            var updated = draft
+            edit(&updated)
+            guard updated != draft else { return }
+            appendUndo(draft)
+            redoStack.removeAll()
+            draft = updated
+        } else {
+            var updated = draft
+            edit(&updated)
+            guard updated != draft else { return }
+            redoStack.removeAll()
+            draft = updated
+        }
+        if activePersistenceGeneration == nil {
+            state = .editing
+        }
+        updateHistoryAvailability()
+    }
+
+    private func appendUndo(_ value: ThemeStudioDraft) {
+        undoStack.append(value)
+        if undoStack.count > Self.maximumHistoryCount {
+            undoStack.removeFirst(undoStack.count - Self.maximumHistoryCount)
+        }
+    }
+
+    private func updateHistoryAvailability() {
+        canUndo = !undoStack.isEmpty
+        canRedo = !redoStack.isEmpty
+    }
+
+    private func invalidateImageSelection() {
+        imageSelectionGeneration &+= 1
+    }
+
+    private func beginPersistence() -> Int {
+        persistenceGeneration &+= 1
+        activePersistenceGeneration = persistenceGeneration
+        state = .saving
+        return persistenceGeneration
+    }
+
+    private func finishPersistence(_ generation: Int) -> Bool {
+        guard activePersistenceGeneration == generation else { return false }
+        activePersistenceGeneration = nil
+        return true
+    }
+
+    private func completeSuccessfulOperation(_ savedDraft: ThemeStudioDraft, id: String) {
+        baselineDraft = savedDraft
+        continuousEditStart = nil
+        redoStack.removeAll()
+        undoStack.removeAll()
+        if draft != savedDraft {
+            appendUndo(savedDraft)
+        }
+        state = draft == savedDraft ? .saved(id) : .editing
+        updateHistoryAvailability()
     }
 }

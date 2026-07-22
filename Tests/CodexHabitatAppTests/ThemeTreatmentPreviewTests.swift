@@ -4,6 +4,23 @@ import Testing
 @testable import CodexHabitatApp
 
 @Test
+func themeTreatmentPreviewUsesOpaqueGlassWhenTransparencyIsReduced() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeTreatmentPreview.swift"
+        ),
+        encoding: .utf8
+    )
+
+    #expect(source.contains("@Environment(\\.accessibilityReduceTransparency)"))
+    #expect(source.contains("if reduceTransparency"))
+}
+
+@Test
 func fourPrototypeThemesResolveDistinctCompletePreviewTreatments() throws {
     let ids = ["workbench", "retro-messenger", "arcade-signal", "quiet-garden"]
     let themes = try ids.map { id in
@@ -224,6 +241,8 @@ func previewRouteMasksAndSelectedRecipeMetricMatchTheCompilerContract() throws {
     )
     #expect(source.contains("recipe.selectedEdgeWidth"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.bannerArtworkFraction"))
+    #expect(source.contains("artworkLayers(in: size)"))
+    #expect(!source.contains("artworkLayers(in: artworkSize)"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.frameMatteThickness"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.homeContentFraction"))
     #expect(source.contains("artworkCrop.drawRect"))

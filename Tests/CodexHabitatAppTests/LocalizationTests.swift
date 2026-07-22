@@ -64,6 +64,9 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Export does not grant image rights. You confirm you may use and share this image.",
         "Theme names must be 100 characters or fewer and contain no control characters.",
         "Authors must be 100 characters or fewer and contain no control characters.",
+        "Undo", "Redo", "Safe regions", "Metadata", "Artwork", "Scene", "Material",
+        "Pet Pairing", "Package", "Category", "Artwork focal point", "Format",
+        "Habitat Pack", "Theme ID", "Local image", "Unsaved changes", "Saving",
     ] {
         #expect(localization.text(key) != key)
     }

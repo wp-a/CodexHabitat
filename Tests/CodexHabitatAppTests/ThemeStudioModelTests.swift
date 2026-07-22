@@ -121,7 +121,7 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     model.setVignetteStrength(0.43)
     model.setDensity(.compact)
 
-    try model.selectImage(imageURL)
+    try await model.selectImage(imageURL)
     #expect(model.sourceImageURL == imageURL)
     #expect(model.palette != nil)
     await model.saveLocally()
@@ -157,6 +157,8 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     #expect(appearance.vignetteStrength == 0.43)
     #expect(appearance.density == .compact)
     #expect(!model.isDirty)
+    #expect(!model.canUndo)
+    #expect(!model.canRedo)
 
     let appModel = HabitatAppModel(
         settingsStore: SettingsStore(root: root.appending(path: "Settings")),
@@ -167,6 +169,136 @@ func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async
     appModel.selectTheme(id)
     #expect(appModel.selectedThemeSupportsCodexBridge)
     #expect(appModel.codexBridgeThemeIDs.contains(id))
+}
+
+@Test @MainActor
+func discardedDraftIgnoresAStaleImageSelectionSuccess() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioStaleImageSuccess-\(UUID().uuidString)")
+    let paletteGate = ThemeStudioOperationGate<HabitatThemePalette>()
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations(paletteGate: paletteGate)
+    )
+    model.name = "Temporary name"
+    let selectedURL = root.appending(path: "pending.jpg")
+
+    let selection = Task { try await model.selectImage(selectedURL) }
+    await paletteGate.waitUntilStarted()
+    model.discardDraft()
+    paletteGate.succeed(testThemePalette)
+    try await selection.value
+
+    #expect(model.draft == ThemeStudioDraft())
+    #expect(!model.isDirty)
+    #expect(!model.canUndo)
+    #expect(model.state == .editing)
+}
+
+@Test @MainActor
+func discardedDraftIgnoresAStaleImageSelectionFailure() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioStaleImageFailure-\(UUID().uuidString)")
+    let paletteGate = ThemeStudioOperationGate<HabitatThemePalette>()
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations(paletteGate: paletteGate)
+    )
+    let selectedURL = root.appending(path: "pending.jpg")
+
+    let selection = Task { try await model.selectImage(selectedURL) }
+    await paletteGate.waitUntilStarted()
+    model.discardDraft()
+    paletteGate.fail(TestThemeStudioOperationError.expectedFailure)
+    try await selection.value
+
+    #expect(model.imageValidationMessage == nil)
+    #expect(model.state == .editing)
+}
+
+@Test @MainActor
+func saveIsSingleFlightAndNewerEditsRemainUnsaved() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioSingleSave-\(UUID().uuidString)")
+    let installGate = ThemeStudioOperationGate<String>()
+    let exportGate = ThemeStudioOperationGate<Void>()
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations(
+            installGate: installGate,
+            exportGate: exportGate
+        )
+    )
+    try await prepareValidControlledDraft(model, imageURL: root.appending(path: "source.jpg"))
+
+    let save = Task { await model.saveLocally() }
+    await installGate.waitUntilStarted()
+    let savedName = model.name
+    model.name = "Edited while saving"
+    #expect(model.state == .saving)
+    model.undo()
+    #expect(model.state == .saving)
+    model.redo()
+    #expect(model.state == .saving)
+
+    #expect(!model.requestClose())
+    #expect(!model.showsDiscardConfirmation)
+    let draftBeforeBlockedDiscard = model.draft
+    model.discardDraft()
+    #expect(model.draft == draftBeforeBlockedDiscard)
+
+    await model.saveLocally()
+    await model.export(to: root.appending(path: "ignored.habitat-pack"))
+    #expect(installGate.invocationCount == 1)
+    #expect(exportGate.invocationCount == 0)
+
+    installGate.succeed("local.theme.concurrent-save")
+    await save.value
+
+    #expect(model.state == .editing)
+    #expect(model.isDirty)
+    #expect(model.canUndo)
+    model.undo()
+    #expect(model.name == savedName)
+    #expect(!model.isDirty)
+}
+
+@Test @MainActor
+func exportIsSingleFlightAndReleasesTheModelAfterCompletion() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioSingleExport-\(UUID().uuidString)")
+    let installGate = ThemeStudioOperationGate<String>()
+    let exportGate = ThemeStudioOperationGate<Void>()
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations(
+            installGate: installGate,
+            exportGate: exportGate
+        )
+    )
+    try await prepareValidControlledDraft(model, imageURL: root.appending(path: "source.jpg"))
+
+    let export = Task { await model.export(to: root.appending(path: "theme.habitat-pack")) }
+    await exportGate.waitUntilStarted()
+    model.author = "Edited while exporting"
+    await model.saveLocally()
+    #expect(exportGate.invocationCount == 1)
+    #expect(installGate.invocationCount == 0)
+
+    exportGate.succeed(())
+    await export.value
+    #expect(model.state == .editing)
+    #expect(model.isDirty)
+
+    let save = Task { await model.saveLocally() }
+    await installGate.waitUntilStarted()
+    installGate.succeed("local.theme.after-export")
+    await save.value
+    #expect(model.state == .saved("local.theme.after-export"))
 }
 
 @Test @MainActor
@@ -229,7 +361,7 @@ func installedCustomThemeReopensAsCleanStronglyTypedStudioDraft() async throws {
     creator.setTaskContentOpacity(0.73)
     creator.setHomeContentWidth(0.58)
     creator.setVignetteStrength(0.42)
-    try creator.selectImage(sourceImageURL)
+    try await creator.selectImage(sourceImageURL)
     let expectedPalette = try #require(creator.palette)
     await creator.saveLocally()
     let themeID = try #require(creator.state.savedID)
@@ -334,7 +466,7 @@ func themeStudioRequiresExplicitConfirmationBeforeReplacingSlugCollision() async
     )
     original.name = "Slug Collision"
     original.author = "Original Author"
-    try original.selectImage(imageURL)
+    try await original.selectImage(imageURL)
     await original.saveLocally()
     let themeID = try #require(original.state.savedID)
 
@@ -344,7 +476,7 @@ func themeStudioRequiresExplicitConfirmationBeforeReplacingSlugCollision() async
     )
     replacement.name = "Slug Collision"
     replacement.author = "Replacement Author"
-    try replacement.selectImage(imageURL)
+    try await replacement.selectImage(imageURL)
 
     await replacement.saveLocally()
 
@@ -372,6 +504,109 @@ private func installThemeStudioPetFixture(at petRoot: URL) throws {
         at: fixture,
         to: petRoot.appending(path: "test-pet", directoryHint: .isDirectory)
     )
+}
+
+private enum TestThemeStudioOperationError: Error {
+    case expectedFailure
+    case unexpectedOperation
+}
+
+private let testThemePalette = HabitatThemePalette(
+    surface: "#101820",
+    panel: "#182633",
+    panelAlt: "#24384A",
+    text: "#F4FAFF",
+    mutedText: "#AAB8C4",
+    accent: "#16C6D9",
+    secondary: "#41D17D",
+    highlight: "#85F4FF",
+    attention: "#FFB547",
+    error: "#FF5C70"
+)
+
+private func controlledThemeStudioOperations(
+    paletteGate: ThemeStudioOperationGate<HabitatThemePalette>? = nil,
+    installGate: ThemeStudioOperationGate<String>? = nil,
+    exportGate: ThemeStudioOperationGate<Void>? = nil
+) -> ThemeStudioOperations {
+    ThemeStudioOperations(
+        suggestPalette: { _, _ in
+            if let paletteGate {
+                return try await paletteGate.run()
+            }
+            return testThemePalette
+        },
+        install: { _, _, _, _ in
+            guard let installGate else { throw TestThemeStudioOperationError.unexpectedOperation }
+            return try await installGate.run()
+        },
+        export: { _, _, _ in
+            guard let exportGate else { throw TestThemeStudioOperationError.unexpectedOperation }
+            return try await exportGate.run()
+        }
+    )
+}
+
+@MainActor
+private func prepareValidControlledDraft(
+    _ model: ThemeStudioModel,
+    imageURL: URL
+) async throws {
+    model.name = "Controlled Theme"
+    model.author = "Local Artist"
+    try await model.selectImage(imageURL)
+}
+
+private final class ThemeStudioOperationGate<Output: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var pending: [CheckedContinuation<Output, any Error>] = []
+    private var startedWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
+    private var startedCount = 0
+
+    var invocationCount: Int {
+        lock.withLock { startedCount }
+    }
+
+    func run() async throws -> Output {
+        try await withCheckedThrowingContinuation { continuation in
+            let waiters = lock.withLock {
+                pending.append(continuation)
+                startedCount += 1
+                let ready = startedWaiters.filter { $0.count <= startedCount }
+                startedWaiters.removeAll { $0.count <= startedCount }
+                return ready.map(\.continuation)
+            }
+            waiters.forEach { $0.resume() }
+        }
+    }
+
+    func waitUntilStarted(_ count: Int = 1) async {
+        await withCheckedContinuation { continuation in
+            let alreadyStarted = lock.withLock {
+                if startedCount >= count {
+                    return true
+                }
+                startedWaiters.append((count, continuation))
+                return false
+            }
+            if alreadyStarted {
+                continuation.resume()
+            }
+        }
+    }
+
+    func succeed(_ output: Output) {
+        finish(with: .success(output))
+    }
+
+    func fail(_ error: any Error) {
+        finish(with: .failure(error))
+    }
+
+    private func finish(with result: Result<Output, any Error>) {
+        let continuation = lock.withLock { pending.isEmpty ? nil : pending.removeFirst() }
+        continuation?.resume(with: result)
+    }
 }
 
 private extension ThemeStudioState {

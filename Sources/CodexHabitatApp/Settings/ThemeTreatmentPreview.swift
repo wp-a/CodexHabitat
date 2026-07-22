@@ -222,6 +222,7 @@ struct ThemeTreatmentPreview: View {
     var route = ThemeTreatmentPreviewRoute.home
     var height = 100.0
     var showsRetryControl = false
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var image: CGImage?
     @State private var presentationState = ThemePreviewPresentationState()
     @State private var reloadGeneration = 0
@@ -547,12 +548,19 @@ struct ThemeTreatmentPreview: View {
                 Color.white.opacity(model.chromeSoftness * 0.05)
             }
         case .glass:
-            ZStack {
-                Rectangle().fill(.ultraThinMaterial)
-                Color(habitatHex: model.panelHex)
-                    .opacity(opacity * (0.82 - model.chromeSoftness * 0.18))
-                Rectangle()
-                    .stroke(Color.white.opacity(0.08 + model.chromeSoftness * 0.12), lineWidth: 1)
+            if reduceTransparency {
+                Color(habitatHex: model.panelHex).opacity(max(opacity, 0.94))
+            } else {
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    Color(habitatHex: model.panelHex)
+                        .opacity(opacity * (0.82 - model.chromeSoftness * 0.18))
+                    Rectangle()
+                        .stroke(
+                            Color.white.opacity(0.08 + model.chromeSoftness * 0.12),
+                            lineWidth: 1
+                        )
+                }
             }
         }
     }

@@ -1,39 +1,40 @@
 import AppKit
 import HabitatCore
+import ResourceKit
 import SwiftUI
 
 struct ThemeStudioView: View {
     @ObservedObject var model: ThemeStudioModel
     let onSaved: (String, String?) -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: FocusField?
+    @State private var expandedSections: Set<InspectorSection> = [.metadata, .artwork, .scene]
     @State private var pendingExportURL: URL?
     @State private var showsRightsConfirmation = false
     @State private var rightsAccepted = false
     @State private var previewRoute = ThemeTreatmentPreviewRoute.home
+    @State private var showsSafeArea = false
+    @State private var isDraggingFocus = false
     @State private var pendingReplacementThemeID: String?
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            toolbar
             Divider()
-            ScrollView {
-                Form {
-                    identitySection
-                    backgroundSection
-                    paletteSection
-                    appearanceSection
-                    pairingSection
-                }
-                .formStyle(.grouped)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
+            HSplitView {
+                canvasPane
+                    .frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
+                inspector
+                    .frame(minWidth: 320, idealWidth: 330, maxWidth: 340, maxHeight: .infinity)
             }
             Divider()
             footer
         }
-        .frame(minWidth: 640, idealWidth: 760, minHeight: 620, idealHeight: 760)
-        .interactiveDismissDisabled(model.isDirty)
+        .frame(minWidth: 900, idealWidth: 1_000, minHeight: 620, idealHeight: 700)
+        .background(HabitatSurface(role: .content))
+        .interactiveDismissDisabled(model.isDirty || model.state == .saving)
         .confirmationDialog(
             "Discard this theme draft?",
             isPresented: $model.showsDiscardConfirmation,
@@ -43,6 +44,7 @@ struct ThemeStudioView: View {
                 model.discardDraft()
                 dismiss()
             }
+            .disabled(model.state == .saving)
             Button("Keep Editing", role: .cancel) {}
         } message: {
             Text("Unsaved theme changes will be lost.")
@@ -80,113 +82,399 @@ struct ThemeStudioView: View {
             guard case let .replacementRequired(id) = state else { return }
             pendingReplacementThemeID = id
         }
+        .onDisappear {
+            model.endContinuousEdit()
+        }
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
+    private var toolbar: some View {
+        HStack(spacing: HabitatDesignMetrics.spaceM) {
             Image(systemName: "paintbrush.pointed.fill")
-                .foregroundStyle(Color(habitatHex: model.color(for: .accent) ?? "#1687E8"))
-            VStack(alignment: .leading, spacing: 2) {
+                .foregroundStyle(accentColor)
+            VStack(alignment: .leading, spacing: 1) {
                 Text("Theme Studio")
                     .font(.headline)
                 Text("Local Habitat theme")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            Spacer()
+
+            Spacer(minLength: HabitatDesignMetrics.spaceM)
+
+            Button(action: model.undo) {
+                Image(systemName: "arrow.uturn.backward")
+            }
+            .disabled(!model.canUndo || model.state == .saving)
+            .help("Undo")
+            .accessibilityLabel("Undo")
+
+            Button(action: model.redo) {
+                Image(systemName: "arrow.uturn.forward")
+            }
+            .disabled(!model.canRedo || model.state == .saving)
+            .help("Redo")
+            .accessibilityLabel("Redo")
+
             Button(action: close) {
                 Image(systemName: "xmark")
             }
-            .buttonStyle(.borderless)
+            .disabled(model.state == .saving)
             .help("Close")
             .accessibilityLabel("Close Theme Studio")
         }
-        .padding(.horizontal, 18)
-        .frame(height: 54)
+        .buttonStyle(.borderless)
+        .padding(.horizontal, HabitatDesignMetrics.spaceL)
+        .frame(minHeight: 52, idealHeight: 54, maxHeight: 56)
+        .background(HabitatSurface(role: .toolbar))
     }
 
-    private var identitySection: some View {
-        Section("Identity") {
-            TextField("Theme name", text: $model.name)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("theme-studio.name")
+    private var canvasPane: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: HabitatDesignMetrics.spaceM) {
+                Picker("Preview route", selection: $previewRoute) {
+                    Text("Home").tag(ThemeTreatmentPreviewRoute.home)
+                    Text("Task").tag(ThemeTreatmentPreviewRoute.task)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 176)
+
+                Spacer()
+
+                Toggle(isOn: $showsSafeArea) {
+                    Label("Safe regions", systemImage: "viewfinder")
+                }
+                .toggleStyle(.button)
+                .help("Safe regions")
+            }
+            .padding(.horizontal, HabitatDesignMetrics.spaceL)
+            .frame(height: 44)
+
+            Divider()
+
+            previewCanvas
+                .padding(HabitatDesignMetrics.spaceXL)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(HabitatSurface(role: .content))
+    }
+
+    private var previewCanvas: some View {
+        GeometryReader { geometry in
+            let canvasSize = aspectFit16By10(in: geometry.size)
+            ZStack {
+                if model.sourceImageURL != nil, model.palette != nil {
+                    artworkEditor(size: canvasSize)
+                } else {
+                    emptyArtwork
+                        .frame(width: canvasSize.width, height: canvasSize.height)
+                }
+            }
+            .frame(width: canvasSize.width, height: canvasSize.height)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        }
+        .aspectRatio(16.0 / 10.0, contentMode: .fit)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("theme-studio.canvas")
+    }
+
+    private func artworkEditor(size: CGSize) -> some View {
+        let canvasRect = CGRect(origin: .zero, size: size)
+        let artworkRect = ThemeFocalPointMapper.artworkRect(
+            in: canvasRect,
+            route: previewRoute,
+            taskMode: model.taskMode
+        )
+        let focus = currentFocus
+        let markerPoint = CGPoint(
+            x: canvasRect.minX + focus.x * canvasRect.width,
+            y: canvasRect.minY + focus.y * canvasRect.height
+        )
+
+        return ZStack(alignment: .topLeading) {
+            ThemeTreatmentPreview(
+                model: previewModel,
+                imageURL: model.sourceImageURL,
+                symbol: "paintpalette.fill",
+                route: previewRoute,
+                height: size.height
+            )
+            .frame(width: size.width, height: size.height)
+
+            if showsSafeArea {
+                safeAreaOverlay(in: canvasRect)
+            }
+
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(width: artworkRect.width, height: artworkRect.height)
+                .offset(x: artworkRect.minX, y: artworkRect.minY)
+                .gesture(focalDragGesture(in: canvasRect), including: canEditArtwork ? .all : .none)
+                .accessibilityHidden(true)
+
+            if canEditArtwork, markerPoint.y <= artworkRect.maxY {
+                focalMarker(in: canvasRect)
+                    .position(
+                        x: canvasRect.minX + focus.x * canvasRect.width,
+                        y: canvasRect.minY + focus.y * canvasRect.height
+                    )
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .coordinateSpace(name: "theme-studio.artwork")
+        .clipShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius)
+                .stroke(.primary.opacity(0.14), lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func focalMarker(in artworkRect: CGRect) -> some View {
+        Button(action: {}) {
+            ZStack {
+                Circle()
+                    .fill(.black.opacity(0.5))
+                    .frame(width: 24, height: 24)
+                Circle()
+                    .stroke(.white, lineWidth: 2)
+                    .frame(width: 20, height: 20)
+                Circle()
+                    .fill(accentColor)
+                    .frame(width: 6, height: 6)
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(focalDragGesture(in: artworkRect))
+        .focusable()
+        .onMoveCommand(perform: moveFocalPoint)
+        .accessibilityLabel("Artwork focal point")
+        .accessibilityValue(focalPointAccessibilityValue)
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                adjustFocalPoint(dx: 0.01, dy: 0)
+            case .decrement:
+                adjustFocalPoint(dx: -0.01, dy: 0)
+            @unknown default:
+                break
+            }
+        }
+        .help("Artwork focal point")
+    }
+
+    private func safeAreaOverlay(in rect: CGRect) -> some View {
+        let safeWidth = rect.width * 0.36
+        let x: Double = switch model.safeSide {
+        case .leading: rect.minX
+        case .trailing: rect.maxX - safeWidth
+        case .center: rect.midX - safeWidth / 2
+        case .none: rect.midX - safeWidth / 2
+        }
+        return ZStack {
+            Rectangle()
+                .fill(accentColor.opacity(model.safeSide == .none ? 0.04 : 0.10))
+            Rectangle()
+                .stroke(accentColor.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+        }
+        .frame(width: safeWidth, height: rect.height)
+        .offset(x: x, y: rect.minY)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var inspector: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ThemeStudioInspectorSection(
+                        title: "Metadata",
+                        isExpanded: sectionBinding(.metadata)
+                    ) {
+                        metadataControls
+                    }
+                    .id(InspectorSection.metadata)
+                    ThemeStudioInspectorSection(
+                        title: "Artwork",
+                        isExpanded: sectionBinding(.artwork)
+                    ) {
+                        artworkControls
+                    }
+                    .id(InspectorSection.artwork)
+                    ThemeStudioInspectorSection(
+                        title: "Palette",
+                        isExpanded: sectionBinding(.palette)
+                    ) {
+                        paletteControls
+                    }
+                    .id(InspectorSection.palette)
+                    ThemeStudioInspectorSection(
+                        title: "Scene",
+                        isExpanded: sectionBinding(.scene)
+                    ) {
+                        sceneControls
+                    }
+                    .id(InspectorSection.scene)
+                    ThemeStudioInspectorSection(
+                        title: "Material",
+                        isExpanded: sectionBinding(.material)
+                    ) {
+                        materialControls
+                    }
+                    .id(InspectorSection.material)
+                    ThemeStudioInspectorSection(
+                        title: "Pet Pairing",
+                        isExpanded: sectionBinding(.petPairing)
+                    ) {
+                        pairingControls
+                    }
+                    .id(InspectorSection.petPairing)
+                    ThemeStudioInspectorSection(
+                        title: "Package",
+                        isExpanded: sectionBinding(.package)
+                    ) {
+                        packageControls
+                    }
+                    .id(InspectorSection.package)
+                }
+                .padding(.horizontal, HabitatDesignMetrics.spaceM)
+                .padding(.vertical, HabitatDesignMetrics.spaceS)
+                .disabled(model.state == .saving)
+            }
+            .onChange(of: model.state) { _, state in
+                guard case .validationFailure = state else { return }
+                focusFirstValidationError(using: proxy)
+            }
+        }
+        .background(HabitatSurface(role: .inspector))
+    }
+
+    private var metadataControls: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
+            TextField("Theme name", text: Binding(
+                get: { model.name },
+                set: { model.name = $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .focused($focusedField, equals: .name)
+            .accessibilityIdentifier("theme-studio.name")
             if let message = model.nameValidationMessage {
                 validation(message)
             }
-            TextField("Author (optional)", text: $model.author)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("theme-studio.author")
+
+            TextField("Author (optional)", text: Binding(
+                get: { model.author },
+                set: { model.author = $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .focused($focusedField, equals: .author)
+            .accessibilityIdentifier("theme-studio.author")
             if let message = model.authorValidationMessage {
                 validation(message)
             }
-        }
-    }
 
-    private var backgroundSection: some View {
-        Section("Background") {
-            HStack(alignment: .top, spacing: 14) {
-                preview
-                VStack(alignment: .leading, spacing: 8) {
-                    Button(action: chooseImage) {
-                        Label("Choose Image", systemImage: "photo")
-                    }
-                    .accessibilityIdentifier("theme-studio.choose-image")
-                    if let sourceImageURL = model.sourceImageURL {
-                        Text(sourceImageURL.lastPathComponent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    if let message = model.imageValidationMessage {
-                        validation(message)
-                    }
+            Picker("Category", selection: Binding(
+                get: { model.category },
+                set: { model.setCategory($0) }
+            )) {
+                ForEach(HabitatThemeCategory.allCases, id: \.self) { category in
+                    Text(L10n.text(category.localizationKey)).tag(category)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .pickerStyle(.menu)
         }
     }
 
-    private var paletteSection: some View {
-        Section("Palette") {
-            if model.palette == nil {
-                Text("Choose an image to generate a starting palette.")
+    private var artworkControls: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
+            Button(action: chooseImage) {
+                Label("Choose Image", systemImage: "photo")
+            }
+            .focused($focusedField, equals: .image)
+            .accessibilityIdentifier("theme-studio.choose-image")
+
+            if let sourceImageURL = model.sourceImageURL {
+                Text(sourceImageURL.lastPathComponent)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-            } else {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 138), spacing: 12)],
-                    alignment: .leading,
-                    spacing: 10
-                ) {
-                    ForEach(ThemePaletteRole.allCases, id: \.self) { role in
-                        ColorPicker(role.title, selection: colorBinding(role), supportsOpacity: false)
-                    }
-                }
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(sourceImageURL.lastPathComponent)
             }
+            if let message = model.imageValidationMessage {
+                validation(message)
+            }
+
+            valueSlider(
+                "Focal point X",
+                value: currentFocus.x,
+                range: 0...1,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { setCurrentFocus(x: $0, y: currentFocus.y) },
+                displayScale: 100
+            )
+            valueSlider(
+                "Focal point Y",
+                value: currentFocus.y,
+                range: 0...1,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { setCurrentFocus(x: currentFocus.x, y: $0) },
+                displayScale: 100
+            )
+            valueSlider(
+                previewRoute == .home ? "Home artwork scale" : "Task artwork scale",
+                value: previewRoute == .home ? model.homeArtScale : model.taskArtScale,
+                range: 1...1.35,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { value in
+                    if previewRoute == .home {
+                        model.setHomeArtScale(value)
+                    } else {
+                        model.setTaskArtScale(value)
+                    }
+                },
+                displayScale: 100
+            )
         }
     }
 
     @ViewBuilder
-    private var appearanceSection: some View {
-        Section("Appearance") {
+    private var paletteControls: some View {
+        if model.palette == nil {
+            Text("Choose an image to generate a starting palette.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 128), spacing: HabitatDesignMetrics.spaceS)],
+                alignment: .leading,
+                spacing: HabitatDesignMetrics.spaceS
+            ) {
+                ForEach(ThemePaletteRole.allCases, id: \.self) { role in
+                    ColorPicker(role.title, selection: colorBinding(role), supportsOpacity: false)
+                }
+            }
+        }
+    }
+
+    private var sceneControls: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
             Picker("Style", selection: Binding(
                 get: { model.styleFamily },
                 set: { model.setStyleFamily($0) }
             )) {
                 ForEach(HabitatThemeStyleFamily.allCases, id: \.self) { family in
-                    Text(family.shortTitle).tag(family)
+                    Text(family.studioTitle).tag(family)
                 }
             }
-            .pickerStyle(.segmented)
-            .controlSize(.small)
-
-            Picker("Density", selection: Binding(
-                get: { model.density },
-                set: { model.setDensity($0) }
-            )) {
-                Text("Compact").tag(HabitatThemeDensity.compact)
-                Text("Comfortable").tag(HabitatThemeDensity.comfortable)
-            }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
 
             Picker("Safe side", selection: Binding(
                 get: { model.safeSide },
@@ -196,6 +484,77 @@ struct ThemeStudioView: View {
                 Text("Trailing").tag(HabitatThemeSafeSide.trailing)
                 Text("Center").tag(HabitatThemeSafeSide.center)
                 Text("None").tag(HabitatThemeSafeSide.none)
+            }
+            .pickerStyle(.menu)
+
+            if previewRoute == .home {
+                Picker("Home treatment", selection: Binding(
+                    get: { model.homeMode },
+                    set: { model.setHomeMode($0) }
+                )) {
+                    Text("Immersive").tag(HabitatThemeHomeMode.immersive)
+                    Text("Framed").tag(HabitatThemeHomeMode.framed)
+                    Text("Quiet").tag(HabitatThemeHomeMode.quiet)
+                }
+                .pickerStyle(.segmented)
+                valueSlider(
+                    "Home strength",
+                    value: model.homeStrength,
+                    range: 0.10...0.85,
+                    step: 0.01,
+                    format: "%.0f%%",
+                    setter: { model.setHomeStrength($0) },
+                    displayScale: 100
+                )
+                valueSlider(
+                    "Home content opacity",
+                    value: model.homeContentOpacity,
+                    range: 0.40...0.78,
+                    step: 0.01,
+                    format: "%.0f%%",
+                    setter: { model.setHomeContentOpacity($0) },
+                    displayScale: 100
+                )
+            } else {
+                Picker("Task treatment", selection: Binding(
+                    get: { model.taskMode },
+                    set: { model.setTaskMode($0) }
+                )) {
+                    Text("Ambient").tag(HabitatThemeTaskMode.ambient)
+                    Text("Banner").tag(HabitatThemeTaskMode.banner)
+                    Text("Off").tag(HabitatThemeTaskMode.off)
+                }
+                .pickerStyle(.segmented)
+                valueSlider(
+                    "Task strength",
+                    value: model.taskStrength,
+                    range: 0.10...0.85,
+                    step: 0.01,
+                    format: "%.0f%%",
+                    setter: { model.setTaskStrength($0) },
+                    displayScale: 100
+                )
+                valueSlider(
+                    "Task content opacity",
+                    value: model.taskContentOpacity,
+                    range: 0.60...0.84,
+                    step: 0.01,
+                    format: "%.0f%%",
+                    setter: { model.setTaskContentOpacity($0) },
+                    displayScale: 100
+                )
+            }
+        }
+    }
+
+    private var materialControls: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
+            Picker("Density", selection: Binding(
+                get: { model.density },
+                set: { model.setDensity($0) }
+            )) {
+                Text("Compact").tag(HabitatThemeDensity.compact)
+                Text("Comfortable").tag(HabitatThemeDensity.comfortable)
             }
             .pickerStyle(.segmented)
 
@@ -215,281 +574,235 @@ struct ThemeStudioView: View {
                 range: 0...24,
                 step: 1,
                 format: "%.0f pt",
-                setter: model.setBlurRadius
+                setter: { model.setBlurRadius($0) }
             )
-        }
-
-        Section("Home composition") {
-            Picker("Home treatment", selection: Binding(
-                get: { model.homeMode },
-                set: { model.setHomeMode($0) }
-            )) {
-                Text("Immersive").tag(HabitatThemeHomeMode.immersive)
-                Text("Framed").tag(HabitatThemeHomeMode.framed)
-                Text("Quiet").tag(HabitatThemeHomeMode.quiet)
+            valueSlider(
+                previewRoute == .home ? "Sidebar opacity" : "Task sidebar opacity",
+                value: previewRoute == .home ? model.sidebarOpacity : model.taskSidebarOpacity,
+                range: sidebarOpacityRange,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { value in
+                    if previewRoute == .home {
+                        model.setSidebarOpacity(value)
+                    } else {
+                        model.setTaskSidebarOpacity(value)
+                    }
+                },
+                displayScale: 100
+            )
+            valueSlider(
+                previewRoute == .home ? "Header opacity" : "Task header opacity",
+                value: previewRoute == .home ? model.headerOpacity : model.taskHeaderOpacity,
+                range: headerOpacityRange,
+                step: 0.01,
+                format: "%.0f%%",
+                setter: { value in
+                    if previewRoute == .home {
+                        model.setHeaderOpacity(value)
+                    } else {
+                        model.setTaskHeaderOpacity(value)
+                    }
+                },
+                displayScale: 100
+            )
+            if previewRoute == .task {
+                valueSlider(
+                    "Composer opacity",
+                    value: model.composerOpacity,
+                    range: 0.40...1,
+                    step: 0.01,
+                    format: "%.0f%%",
+                    setter: { model.setComposerOpacity($0) },
+                    displayScale: 100
+                )
             }
-            .pickerStyle(.segmented)
-
-            valueSlider(
-                "Home strength",
-                value: model.homeStrength,
-                range: 0.10...0.85,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setHomeStrength,
-                displayScale: 100
-            )
-            valueSlider(
-                "Home crop X",
-                value: model.homeArtFocus.x,
-                range: 0...1,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: { model.setHomeArtFocus(x: $0, y: model.homeArtFocus.y) },
-                displayScale: 100
-            )
-            valueSlider(
-                "Home crop Y",
-                value: model.homeArtFocus.y,
-                range: 0...1,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: { model.setHomeArtFocus(x: model.homeArtFocus.x, y: $0) },
-                displayScale: 100
-            )
-            valueSlider(
-                "Home artwork scale",
-                value: model.homeArtScale,
-                range: 1.00...1.35,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setHomeArtScale,
-                displayScale: 100
-            )
-            valueSlider(
-                "Sidebar opacity",
-                value: model.sidebarOpacity,
-                range: 0.40...1.0,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setSidebarOpacity,
-                displayScale: 100
-            )
-            valueSlider(
-                "Header opacity",
-                value: model.headerOpacity,
-                range: 0...1.0,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setHeaderOpacity,
-                displayScale: 100
-            )
-            valueSlider(
-                "Home content opacity",
-                value: model.homeContentOpacity,
-                range: 0.40...0.78,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setHomeContentOpacity,
-                displayScale: 100
-            )
             valueSlider(
                 "Vignette strength",
                 value: model.vignetteStrength,
                 range: 0...0.70,
                 step: 0.01,
                 format: "%.0f%%",
-                setter: model.setVignetteStrength,
-                displayScale: 100
-            )
-        }
-
-        Section("Task composition") {
-            Picker("Task treatment", selection: Binding(
-                get: { model.taskMode },
-                set: { model.setTaskMode($0) }
-            )) {
-                Text("Ambient").tag(HabitatThemeTaskMode.ambient)
-                Text("Banner").tag(HabitatThemeTaskMode.banner)
-                Text("Off").tag(HabitatThemeTaskMode.off)
-            }
-            .pickerStyle(.segmented)
-
-            valueSlider(
-                "Task strength",
-                value: model.taskStrength,
-                range: 0.10...0.85,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setTaskStrength,
-                displayScale: 100
-            )
-            valueSlider(
-                "Task crop X",
-                value: model.taskArtFocus.x,
-                range: 0...1,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: { model.setTaskArtFocus(x: $0, y: model.taskArtFocus.y) },
-                displayScale: 100
-            )
-            valueSlider(
-                "Task crop Y",
-                value: model.taskArtFocus.y,
-                range: 0...1,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: { model.setTaskArtFocus(x: model.taskArtFocus.x, y: $0) },
-                displayScale: 100
-            )
-            valueSlider(
-                "Task artwork scale",
-                value: model.taskArtScale,
-                range: 1.00...1.35,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setTaskArtScale,
-                displayScale: 100
-            )
-            valueSlider(
-                "Task sidebar opacity",
-                value: model.taskSidebarOpacity,
-                range: 0.54...0.90,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setTaskSidebarOpacity,
-                displayScale: 100
-            )
-            valueSlider(
-                "Task header opacity",
-                value: model.taskHeaderOpacity,
-                range: 0.54...0.90,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setTaskHeaderOpacity,
-                displayScale: 100
-            )
-            valueSlider(
-                "Task content opacity",
-                value: model.taskContentOpacity,
-                range: 0.60...0.84,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setTaskContentOpacity,
-                displayScale: 100
-            )
-            valueSlider(
-                "Composer opacity",
-                value: model.composerOpacity,
-                range: 0.40...1.0,
-                step: 0.01,
-                format: "%.0f%%",
-                setter: model.setComposerOpacity,
+                setter: { model.setVignetteStrength($0) },
                 displayScale: 100
             )
         }
     }
 
     @ViewBuilder
-    private var pairingSection: some View {
-        if !model.availablePets.isEmpty {
-            Section("Pet pairing") {
-                Picker("Pet", selection: Binding(
-                    get: { model.pairedPetID },
-                    set: { model.setPairedPetID($0) }
-                )) {
-                    Text("None").tag(String?.none)
-                    ForEach(model.availablePets) { pet in
-                        Text(pet.name).tag(String?.some(pet.id))
-                    }
+    private var pairingControls: some View {
+        if model.availablePets.isEmpty {
+            Text("None")
+                .foregroundStyle(.secondary)
+        } else {
+            Picker("Pet", selection: Binding(
+                get: { model.pairedPetID },
+                set: { model.setPairedPetID($0) }
+            )) {
+                Text("None").tag(String?.none)
+                ForEach(model.availablePets) { pet in
+                    Text(pet.name).tag(String?.some(pet.id))
                 }
             }
+            .pickerStyle(.menu)
+        }
+    }
+
+    private var packageControls: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceS) {
+            LabeledContent("Format", value: "Habitat Pack")
+            LabeledContent("Theme ID", value: ThemePackageBuilder.safeID(for: model.name))
+                .lineLimit(1)
+            Label("Local image", systemImage: "lock.shield")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HabitatDesignMetrics.spaceS) {
             stateLabel
-            Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
             Button("Cancel", action: close)
                 .keyboardShortcut(.cancelAction)
+                .disabled(model.state == .saving)
+                .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: beginExport) {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
             .disabled(model.state == .saving)
+            .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: saveLocally) {
                 Label("Save Locally", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(.borderedProminent)
             .disabled(model.state == .saving)
+            .frame(minHeight: HabitatDesignMetrics.prominentControlHeight)
             .accessibilityIdentifier("theme-studio.save")
         }
-        .padding(.horizontal, 18)
-        .frame(height: 58)
-    }
-
-    @ViewBuilder
-    private var preview: some View {
-        if let sourceImageURL = model.sourceImageURL, model.palette != nil {
-            VStack(spacing: 7) {
-                ThemeTreatmentPreview(
-                    model: ThemeTreatmentPreviewModel(
-                        appearance: model.previewAppearance,
-                        surfaceHex: model.color(for: .surface) ?? "#101820",
-                        panelHex: model.color(for: .panel) ?? "#182633",
-                        panelAltHex: model.color(for: .panelAlt) ?? "#24384A",
-                        textHex: model.color(for: .text) ?? "#F4FAFF",
-                        accentHex: model.color(for: .accent) ?? "#16C6D9"
-                    ),
-                    imageURL: sourceImageURL,
-                    symbol: "paintpalette.fill",
-                    route: previewRoute,
-                    height: 160
-                )
-                .frame(width: 300)
-
-                Picker("Preview route", selection: $previewRoute) {
-                    Text("Home").tag(ThemeTreatmentPreviewRoute.home)
-                    Text("Task").tag(ThemeTreatmentPreviewRoute.task)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 170)
-            }
-        } else {
-            ZStack {
-                Color.secondary.opacity(0.08)
-                Image(systemName: "photo")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(width: 300, height: 188)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
+        .padding(.horizontal, HabitatDesignMetrics.spaceL)
+        .frame(minHeight: 56, idealHeight: 58, maxHeight: 60)
+        .background(HabitatSurface(role: .toolbar))
     }
 
     @ViewBuilder
     private var stateLabel: some View {
         switch model.state {
         case .editing:
-            EmptyView()
+            if model.isDirty {
+                Label("Unsaved changes", systemImage: "circle.fill")
+                    .foregroundStyle(.secondary)
+            }
         case .saving:
-            ProgressView()
-                .controlSize(.small)
+            HStack(spacing: HabitatDesignMetrics.spaceS) {
+                ProgressView().controlSize(.small)
+                Text("Saving")
+            }
         case .replacementRequired:
             Label("Replacement confirmation required", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
                 .foregroundStyle(.orange)
         case let .validationFailure(message):
             Label(message, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
                 .foregroundStyle(.red)
-                .lineLimit(2)
         case .saved:
             Label("Saved", systemImage: "checkmark.circle.fill")
-                .font(.caption)
                 .foregroundStyle(.green)
         }
+    }
+
+    private var emptyArtwork: some View {
+        ZStack {
+            Color.secondary.opacity(0.07)
+            VStack(spacing: HabitatDesignMetrics.spaceS) {
+                Image(systemName: "photo")
+                    .font(.system(size: 28))
+                Text("Choose Image")
+                    .font(.callout)
+            }
+            .foregroundStyle(.secondary)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
+    }
+
+    private var previewModel: ThemeTreatmentPreviewModel {
+        ThemeTreatmentPreviewModel(
+            appearance: model.previewAppearance,
+            surfaceHex: model.color(for: .surface) ?? "#101820",
+            panelHex: model.color(for: .panel) ?? "#182633",
+            panelAltHex: model.color(for: .panelAlt) ?? "#24384A",
+            textHex: model.color(for: .text) ?? "#F4FAFF",
+            accentHex: model.color(for: .accent) ?? "#16C6D9"
+        )
+    }
+
+    private var accentColor: Color {
+        Color(habitatHex: model.color(for: .accent) ?? "#1687E8")
+    }
+
+    private var currentFocus: HabitatThemeFocalPoint {
+        previewRoute == .home ? model.homeArtFocus : model.taskArtFocus
+    }
+
+    private var canEditArtwork: Bool {
+        model.sourceImageURL != nil && model.palette != nil && model.state != .saving
+    }
+
+    private var sidebarOpacityRange: ClosedRange<Double> {
+        previewRoute == .home ? 0.40...1 : 0.54...0.90
+    }
+
+    private var headerOpacityRange: ClosedRange<Double> {
+        previewRoute == .home ? 0...1 : 0.54...0.90
+    }
+
+    private var focalPointAccessibilityValue: String {
+        String(format: "%.0f%%, %.0f%%", currentFocus.x * 100, currentFocus.y * 100)
+    }
+
+    private func focalDragGesture(in artworkRect: CGRect) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("theme-studio.artwork"))
+            .onChanged { value in
+                guard canEditArtwork else { return }
+                if !isDraggingFocus {
+                    isDraggingFocus = true
+                    model.beginContinuousEdit()
+                }
+                let point = ThemeFocalPointMapper.unitPoint(at: value.location, in: artworkRect)
+                setCurrentFocus(x: point.x, y: point.y)
+            }
+            .onEnded { _ in
+                guard isDraggingFocus else { return }
+                isDraggingFocus = false
+                model.endContinuousEdit()
+            }
+    }
+
+    private func setCurrentFocus(x: Double, y: Double) {
+        if previewRoute == .home {
+            model.setHomeArtFocus(x: x, y: y)
+        } else {
+            model.setTaskArtFocus(x: x, y: y)
+        }
+    }
+
+    private func adjustFocalPoint(dx: Double, dy: Double) {
+        setCurrentFocus(x: currentFocus.x + dx, y: currentFocus.y + dy)
+    }
+
+    private func moveFocalPoint(_ direction: MoveCommandDirection) {
+        switch direction {
+        case .left: adjustFocalPoint(dx: -0.01, dy: 0)
+        case .right: adjustFocalPoint(dx: 0.01, dy: 0)
+        case .up: adjustFocalPoint(dx: 0, dy: -0.01)
+        case .down: adjustFocalPoint(dx: 0, dy: 0.01)
+        @unknown default: break
+        }
+    }
+
+    private func aspectFit16By10(in available: CGSize) -> CGSize {
+        let ratio = 16.0 / 10.0
+        let width = min(available.width, available.height * ratio)
+        return CGSize(width: width, height: width / ratio)
     }
 
     private func valueSlider(
@@ -501,18 +814,41 @@ struct ThemeStudioView: View {
         setter: @MainActor @escaping @Sendable (Double) -> Void,
         displayScale: Double = 1
     ) -> some View {
-        HStack(spacing: 12) {
-            Text(L10n.text(title))
-                .frame(width: 138, alignment: .leading)
+        VStack(spacing: HabitatDesignMetrics.spaceXS) {
+            HStack(spacing: HabitatDesignMetrics.spaceS) {
+                Text(L10n.text(title))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(2)
+                Text(String(format: format, value * displayScale))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
             Slider(
                 value: Binding(get: { value }, set: { setter($0) }),
                 in: range,
-                step: step
+                step: step,
+                onEditingChanged: { isEditing in
+                    if isEditing {
+                        model.beginContinuousEdit()
+                    } else {
+                        model.endContinuousEdit()
+                    }
+                }
             )
-            Text(String(format: format, value * displayScale))
-                .monospacedDigit()
-                .frame(width: 54, alignment: .trailing)
         }
+    }
+
+    private func sectionBinding(_ section: InspectorSection) -> Binding<Bool> {
+        Binding(
+            get: { expandedSections.contains(section) },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedSections.insert(section)
+                } else {
+                    expandedSections.remove(section)
+                }
+            }
+        )
     }
 
     private func colorBinding(_ role: ThemePaletteRole) -> Binding<Color> {
@@ -526,11 +862,34 @@ struct ThemeStudioView: View {
         Label(message, systemImage: "exclamationmark.circle.fill")
             .font(.caption)
             .foregroundStyle(.red)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func focusFirstValidationError(using proxy: ScrollViewProxy) {
+        let section: InspectorSection
+        if model.nameValidationMessage != nil {
+            section = .metadata
+            focusedField = .name
+        } else if model.authorValidationMessage != nil {
+            section = .metadata
+            focusedField = .author
+        } else {
+            section = .artwork
+            focusedField = .image
+        }
+        expandedSections.insert(section)
+        if reduceMotion {
+            proxy.scrollTo(section, anchor: .top)
+        } else {
+            withAnimation(.easeOut(duration: HabitatMotion.navigationDuration)) {
+                proxy.scrollTo(section, anchor: .top)
+            }
+        }
     }
 
     private func chooseImage() {
         guard let url = ResourcePackPanels.chooseThemeImage() else { return }
-        try? model.selectImage(url)
+        Task { try? await model.selectImage(url) }
     }
 
     private func saveLocally() {
@@ -577,6 +936,55 @@ struct ThemeStudioView: View {
     }
 }
 
+private struct ThemeStudioInspectorSection<Content: View>: View {
+    let title: String
+    @Binding var isExpanded: Bool
+    let content: Content
+
+    init(
+        title: String,
+        isExpanded: Binding<Bool>,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        _isExpanded = isExpanded
+        self.content = content()
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
+                content
+            }
+            .padding(.top, HabitatDesignMetrics.spaceM)
+            .padding(.bottom, HabitatDesignMetrics.spaceL)
+        } label: {
+            Text(L10n.text(title))
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.vertical, HabitatDesignMetrics.spaceM)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+}
+
+private enum InspectorSection: Hashable {
+    case metadata
+    case artwork
+    case palette
+    case scene
+    case material
+    case petPairing
+    case package
+}
+
+private enum FocusField: Hashable {
+    case name
+    case author
+    case image
+}
+
 private extension ThemePaletteRole {
     var title: String {
         switch self {
@@ -595,17 +1003,17 @@ private extension ThemePaletteRole {
 }
 
 private extension HabitatThemeStyleFamily {
-    var shortTitle: String {
+    var studioTitle: String {
         switch self {
         case .arcade: L10n.text("Arcade")
-        case .retroMessenger: L10n.text("Retro")
-        case .greenChat: L10n.text("Chat")
-        case .classicDesktop: L10n.text("Classic")
-        case .gameCinematic: L10n.text("Cinema")
-        case .cozyWorld: L10n.text("Cozy")
-        case .animeEnergy: L10n.text("Anime")
-        case .fantasyAdventure: L10n.text("Fantasy")
-        case .pixelWorld: L10n.text("Pixel")
+        case .retroMessenger: L10n.text("Retro Messenger")
+        case .greenChat: L10n.text("Green Chat")
+        case .classicDesktop: L10n.text("Classic Desktop")
+        case .gameCinematic: L10n.text("Game Cinematic")
+        case .cozyWorld: L10n.text("Cozy World")
+        case .animeEnergy: L10n.text("Anime Energy")
+        case .fantasyAdventure: L10n.text("Fantasy Adventure")
+        case .pixelWorld: L10n.text("Pixel World")
         }
     }
 }
