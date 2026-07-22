@@ -67,6 +67,7 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Undo", "Redo", "Safe regions", "Metadata", "Artwork", "Scene", "Material",
         "Pet Pairing", "Package", "Category", "Artwork focal point", "Format",
         "Habitat Pack", "Theme ID", "Local image", "Unsaved changes", "Saving",
+        "Analyzing image",
     ] {
         #expect(localization.text(key) != key)
     }

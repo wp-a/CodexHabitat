@@ -335,6 +335,7 @@
 "Local image" = "本地图片";
 "Unsaved changes" = "有未保存的更改";
 "Saving" = "正在保存";
+"Analyzing image" = "正在分析图片";
 "Discard this theme draft?" = "丢弃此主题草稿？";
 "Discard Draft" = "丢弃草稿";
 "Keep Editing" = "继续编辑";

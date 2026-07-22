@@ -34,7 +34,7 @@ struct ThemeStudioView: View {
         }
         .frame(minWidth: 900, idealWidth: 1_000, minHeight: 620, idealHeight: 700)
         .background(HabitatSurface(role: .content))
-        .interactiveDismissDisabled(model.isDirty || model.state == .saving)
+        .interactiveDismissDisabled(model.isDirty || model.state == .saving || model.isSelectingImage)
         .confirmationDialog(
             "Discard this theme draft?",
             isPresented: $model.showsDiscardConfirmation,
@@ -105,14 +105,14 @@ struct ThemeStudioView: View {
             Button(action: model.undo) {
                 Image(systemName: "arrow.uturn.backward")
             }
-            .disabled(!model.canUndo || model.state == .saving)
+            .disabled(!model.canUndo || model.isSelectingImage || model.state == .saving)
             .help("Undo")
             .accessibilityLabel("Undo")
 
             Button(action: model.redo) {
                 Image(systemName: "arrow.uturn.forward")
             }
-            .disabled(!model.canRedo || model.state == .saving)
+            .disabled(!model.canRedo || model.isSelectingImage || model.state == .saving)
             .help("Redo")
             .accessibilityLabel("Redo")
 
@@ -342,7 +342,7 @@ struct ThemeStudioView: View {
                 }
                 .padding(.horizontal, HabitatDesignMetrics.spaceM)
                 .padding(.vertical, HabitatDesignMetrics.spaceS)
-                .disabled(model.state == .saving)
+                .disabled(model.isSelectingImage || model.state == .saving)
             }
             .onChange(of: model.state) { _, state in
                 guard case .validationFailure = state else { return }
@@ -395,6 +395,7 @@ struct ThemeStudioView: View {
             }
             .focused($focusedField, equals: .image)
             .accessibilityIdentifier("theme-studio.choose-image")
+            .disabled(model.isSelectingImage || model.state == .saving)
 
             if let sourceImageURL = model.sourceImageURL {
                 Text(sourceImageURL.lastPathComponent)
@@ -413,18 +414,16 @@ struct ThemeStudioView: View {
                 value: currentFocus.x,
                 range: 0...1,
                 step: 0.01,
-                format: "%.0f%%",
-                setter: { setCurrentFocus(x: $0, y: currentFocus.y) },
-                displayScale: 100
+                valueText: ThemeStudioUnitValueFormatter.string(for: currentFocus.x),
+                setter: { setCurrentFocus(x: $0, y: currentFocus.y) }
             )
             valueSlider(
                 "Focal point Y",
                 value: currentFocus.y,
                 range: 0...1,
                 step: 0.01,
-                format: "%.0f%%",
-                setter: { setCurrentFocus(x: currentFocus.x, y: $0) },
-                displayScale: 100
+                valueText: ThemeStudioUnitValueFormatter.string(for: currentFocus.y),
+                setter: { setCurrentFocus(x: currentFocus.x, y: $0) }
             )
             valueSlider(
                 previewRoute == .home ? "Home artwork scale" : "Task artwork scale",
@@ -670,13 +669,13 @@ struct ThemeStudioView: View {
             Button(action: beginExport) {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
-            .disabled(model.state == .saving)
+            .disabled(model.isSelectingImage || model.state == .saving)
             .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: saveLocally) {
                 Label("Save Locally", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(model.state == .saving)
+            .disabled(model.isSelectingImage || model.state == .saving)
             .frame(minHeight: HabitatDesignMetrics.prominentControlHeight)
             .accessibilityIdentifier("theme-studio.save")
         }
@@ -687,26 +686,33 @@ struct ThemeStudioView: View {
 
     @ViewBuilder
     private var stateLabel: some View {
-        switch model.state {
-        case .editing:
-            if model.isDirty {
-                Label("Unsaved changes", systemImage: "circle.fill")
-                    .foregroundStyle(.secondary)
-            }
-        case .saving:
+        if model.isSelectingImage {
             HStack(spacing: HabitatDesignMetrics.spaceS) {
                 ProgressView().controlSize(.small)
-                Text("Saving")
+                Text("Analyzing image")
             }
-        case .replacementRequired:
-            Label("Replacement confirmation required", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
-        case let .validationFailure(message):
-            Label(message, systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-        case .saved:
-            Label("Saved", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+        } else {
+            switch model.state {
+            case .editing:
+                if model.isDirty {
+                    Label("Unsaved changes", systemImage: "circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+            case .saving:
+                HStack(spacing: HabitatDesignMetrics.spaceS) {
+                    ProgressView().controlSize(.small)
+                    Text("Saving")
+                }
+            case .replacementRequired:
+                Label("Replacement confirmation required", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            case let .validationFailure(message):
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+            case .saved:
+                Label("Saved", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            }
         }
     }
 
@@ -744,7 +750,10 @@ struct ThemeStudioView: View {
     }
 
     private var canEditArtwork: Bool {
-        model.sourceImageURL != nil && model.palette != nil && model.state != .saving
+        model.sourceImageURL != nil
+            && model.palette != nil
+            && !model.isSelectingImage
+            && model.state != .saving
     }
 
     private var sidebarOpacityRange: ClosedRange<Double> {
@@ -756,7 +765,9 @@ struct ThemeStudioView: View {
     }
 
     private var focalPointAccessibilityValue: String {
-        String(format: "%.0f%%, %.0f%%", currentFocus.x * 100, currentFocus.y * 100)
+        [currentFocus.x, currentFocus.y]
+            .map(ThemeStudioUnitValueFormatter.string(for:))
+            .joined(separator: ", ")
     }
 
     private func focalDragGesture(in artworkRect: CGRect) -> some Gesture {
@@ -810,7 +821,8 @@ struct ThemeStudioView: View {
         value: Double,
         range: ClosedRange<Double>,
         step: Double,
-        format: String,
+        format: String? = nil,
+        valueText: String? = nil,
         setter: @MainActor @escaping @Sendable (Double) -> Void,
         displayScale: Double = 1
     ) -> some View {
@@ -819,7 +831,11 @@ struct ThemeStudioView: View {
                 Text(L10n.text(title))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .lineLimit(2)
-                Text(String(format: format, value * displayScale))
+                Text(
+                    valueText
+                        ?? format.map { String(format: $0, value * displayScale) }
+                        ?? String(value * displayScale)
+                )
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }

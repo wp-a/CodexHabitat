@@ -142,6 +142,13 @@ enum ThemeFocalPointMapper {
     }
 }
 
+enum ThemeStudioUnitValueFormatter {
+    static func string(for value: Double) -> String {
+        guard value.isFinite else { return "0.5" }
+        return String(value)
+    }
+}
+
 @MainActor
 final class ThemeStudioModel: ObservableObject, Identifiable {
     let id = UUID()
@@ -149,6 +156,7 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     @Published private(set) var state = ThemeStudioState.editing
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    @Published private(set) var isSelectingImage = false
     @Published var showsDiscardConfirmation = false
     @Published private(set) var nameValidationMessage: String?
     @Published private(set) var authorValidationMessage: String?
@@ -277,10 +285,7 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             )
             initial.category = appearance.category
             initial.styleFamily = appearance.styleFamily
-            initial.artFocus = ThemeFocalPointMapper.normalizedPoint(
-                x: appearance.artFocus.x,
-                y: appearance.artFocus.y
-            )
+            initial.artFocus = appearance.artFocus
             initial.safeSide = appearance.safeSide
             initial.backgroundStrength = appearance.backgroundStrength
             initial.panelOpacity = appearance.panelOpacity
@@ -294,14 +299,8 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             initial.sidebarOpacity = appearance.resolvedSidebarOpacity
             initial.headerOpacity = appearance.resolvedHeaderOpacity
             initial.composerOpacity = appearance.resolvedComposerOpacity
-            initial.homeArtFocus = ThemeFocalPointMapper.normalizedPoint(
-                x: appearance.resolvedHomeArtFocus.x,
-                y: appearance.resolvedHomeArtFocus.y
-            )
-            initial.taskArtFocus = ThemeFocalPointMapper.normalizedPoint(
-                x: appearance.resolvedTaskArtFocus.x,
-                y: appearance.resolvedTaskArtFocus.y
-            )
+            initial.homeArtFocus = appearance.resolvedHomeArtFocus
+            initial.taskArtFocus = appearance.resolvedTaskArtFocus
             initial.homeArtScale = appearance.resolvedHomeArtScale
             initial.taskArtScale = appearance.resolvedTaskArtScale
             initial.taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
@@ -319,17 +318,18 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         guard activePersistenceGeneration == nil else { return }
         imageSelectionGeneration &+= 1
         let generation = imageSelectionGeneration
+        isSelectingImage = true
         let workingRoot = self.workingRoot
         do {
             let suggested = try await operations.suggestPalette(url, workingRoot)
-            guard generation == imageSelectionGeneration else { return }
+            guard finishImageSelection(generation) else { return }
             performEdit {
                 $0.sourceImageURL = url
                 $0.palette = suggested
             }
             imageValidationMessage = nil
         } catch {
-            guard generation == imageSelectionGeneration else { return }
+            guard finishImageSelection(generation) else { return }
             imageValidationMessage = L10n.text("Choose a valid local PNG, JPEG, or WebP image.")
             state = .validationFailure(imageValidationMessage ?? "")
             throw error
@@ -525,10 +525,8 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
 
     func requestClose() -> Bool {
         guard activePersistenceGeneration == nil else { return false }
-        guard isDirty else {
-            invalidateImageSelection()
-            return true
-        }
+        invalidateImageSelection()
+        guard isDirty else { return true }
         showsDiscardConfirmation = true
         return false
     }
@@ -563,7 +561,7 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     }
 
     private func saveLocally(replacing: Bool) async {
-        guard activePersistenceGeneration == nil else { return }
+        guard activePersistenceGeneration == nil, !isSelectingImage else { return }
         invalidateImageSelection()
         endContinuousEdit()
         let savedDraft = draft
@@ -590,7 +588,7 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     }
 
     func export(to destination: URL) async {
-        guard activePersistenceGeneration == nil else { return }
+        guard activePersistenceGeneration == nil, !isSelectingImage else { return }
         invalidateImageSelection()
         endContinuousEdit()
         let exportedDraft = draft
@@ -733,6 +731,13 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
 
     private func invalidateImageSelection() {
         imageSelectionGeneration &+= 1
+        isSelectingImage = false
+    }
+
+    private func finishImageSelection(_ generation: Int) -> Bool {
+        guard generation == imageSelectionGeneration else { return false }
+        isSelectingImage = false
+        return true
     }
 
     private func beginPersistence() -> Int {

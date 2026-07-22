@@ -144,7 +144,7 @@ func focalPointDragClampsToUnitCoordinates() {
 }
 
 @Test @MainActor
-func focalPointWritesMatchTheDisplayedWholePercentPrecision() {
+func newFocalPointWritesUseTheSliderHundredthStep() {
     let rect = CGRect(x: 10, y: 20, width: 400, height: 300)
     let mapped = ThemeFocalPointMapper.unitPoint(
         at: CGPoint(
@@ -165,6 +165,16 @@ func focalPointWritesMatchTheDisplayedWholePercentPrecision() {
     #expect(model.artFocus == expected)
     #expect(model.homeArtFocus == expected)
     #expect(model.taskArtFocus == expected)
+}
+
+@Test
+func focalPointUnitTextPreservesPersistedDoublePrecision() throws {
+    let value = 0.3746
+    let text = ThemeStudioUnitValueFormatter.string(for: value)
+
+    #expect(text == "0.3746")
+    #expect(try #require(Double(text)) == value)
+    #expect(ThemeStudioUnitValueFormatter.string(for: 0.37) == "0.37")
 }
 
 @Test
@@ -239,7 +249,15 @@ func themeStudioSourceKeepsTheWideCanvasInspectorContract() throws {
     #expect(source.contains("idealHeight: 700"))
     #expect(source.contains("aspectRatio(16.0 / 10.0"))
     #expect(source.components(separatedBy: "ScrollView {").count - 1 == 1)
-    #expect(source.contains("interactiveDismissDisabled(model.isDirty || model.state == .saving)"))
+    #expect(source.contains(
+        "interactiveDismissDisabled(model.isDirty || model.state == .saving || model.isSelectingImage)"
+    ))
+    #expect(
+        source.components(
+            separatedBy: ".disabled(model.isSelectingImage || model.state == .saving)"
+        ).count - 1 >= 4
+    )
+    #expect(source.contains("Text(\"Analyzing image\")"))
 }
 
 @Test

@@ -221,6 +221,163 @@ func discardedDraftIgnoresAStaleImageSelectionFailure() async throws {
 }
 
 @Test @MainActor
+func pendingImageSelectionBlocksPersistenceWithoutDiscardingTheSelection() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioPendingImage-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceImageURL = try #require(HabitatThemeDescriptor.builtIn.first?.backgroundURL)
+    let replacementImageURL = try #require(HabitatThemeDescriptor.builtIn.dropFirst().first?.backgroundURL)
+    let library = root.appending(path: "Library", directoryHint: .isDirectory)
+    let installed = try ThemePackageBuilder(
+        workingRoot: root.appending(path: "InitialWork")
+    ).buildAndInstall(
+        highPrecisionThemeRequest(sourceImageURL: sourceImageURL),
+        libraryRoot: library
+    )
+    let paletteGate = ThemeStudioOperationGate<HabitatThemePalette>()
+    let installGate = ThemeStudioOperationGate<String>()
+    let exportGate = ThemeStudioOperationGate<Void>()
+    let model = ThemeStudioModel(
+        libraryRoot: library,
+        workingRoot: root.appending(path: "EditWork"),
+        editing: installed,
+        operations: controlledThemeStudioOperations(
+            paletteGate: paletteGate,
+            installGate: installGate,
+            exportGate: exportGate
+        )
+    )
+
+    let selection = Task { try await model.selectImage(replacementImageURL) }
+    await paletteGate.waitUntilStarted()
+    #expect(model.isSelectingImage)
+
+    let save = Task { await model.saveLocally() }
+    let export = Task { await model.export(to: root.appending(path: "blocked.habitat-pack")) }
+    for _ in 0..<100 {
+        await Task.yield()
+    }
+
+    #expect(installGate.invocationCount == 0)
+    #expect(exportGate.invocationCount == 0)
+    #expect(model.isSelectingImage)
+
+    if installGate.invocationCount > 0 {
+        installGate.succeed(installed.id)
+    }
+    if exportGate.invocationCount > 0 {
+        exportGate.succeed(())
+    }
+    paletteGate.succeed(testThemePalette)
+    try await selection.value
+    await save.value
+    await export.value
+
+    #expect(!model.isSelectingImage)
+    #expect(model.sourceImageURL == replacementImageURL)
+    #expect(model.palette == testThemePalette)
+    #expect(model.isDirty)
+}
+
+@Test @MainActor
+func closingDuringPendingImageSelectionInvalidatesItsResult() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioCloseSelection-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let imageURL = try #require(HabitatThemeDescriptor.builtIn.first?.backgroundURL)
+    let paletteGate = ThemeStudioOperationGate<HabitatThemePalette>()
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations(paletteGate: paletteGate)
+    )
+
+    let selection = Task { try await model.selectImage(imageURL) }
+    await paletteGate.waitUntilStarted()
+
+    #expect(model.requestClose())
+    #expect(!model.isSelectingImage)
+
+    paletteGate.succeed(testThemePalette)
+    try await selection.value
+
+    #expect(model.sourceImageURL == nil)
+    #expect(model.palette == nil)
+    #expect(!model.isDirty)
+}
+
+@Test @MainActor
+func staleImageSelectionCompletionCannotUnlockTheCurrentSelection() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioSelectionGeneration-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let firstImageURL = try #require(HabitatThemeDescriptor.builtIn.first?.backgroundURL)
+    let secondImageURL = try #require(HabitatThemeDescriptor.builtIn.dropFirst().first?.backgroundURL)
+    let paletteGate = ThemeStudioOperationGate<HabitatThemePalette>()
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations(paletteGate: paletteGate)
+    )
+
+    let firstSelection = Task { try await model.selectImage(firstImageURL) }
+    await paletteGate.waitUntilStarted()
+    let secondSelection = Task { try await model.selectImage(secondImageURL) }
+    await paletteGate.waitUntilStarted(2)
+
+    paletteGate.succeed(testThemePalette)
+    try await firstSelection.value
+
+    #expect(model.isSelectingImage)
+    #expect(model.sourceImageURL == nil)
+
+    paletteGate.succeed(testThemePalette)
+    try await secondSelection.value
+
+    #expect(!model.isSelectingImage)
+    #expect(model.sourceImageURL == secondImageURL)
+}
+
+@Test @MainActor
+func installedThemePreservesHighPrecisionFocusThroughUnrelatedSave() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioFocusRoundTrip-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceImageURL = try #require(HabitatThemeDescriptor.builtIn.first?.backgroundURL)
+    let library = root.appending(path: "Library", directoryHint: .isDirectory)
+    let request = highPrecisionThemeRequest(sourceImageURL: sourceImageURL)
+    let installed = try ThemePackageBuilder(
+        workingRoot: root.appending(path: "InitialWork")
+    ).buildAndInstall(request, libraryRoot: library)
+    let model = ThemeStudioModel(
+        libraryRoot: library,
+        workingRoot: root.appending(path: "EditWork"),
+        editing: installed
+    )
+
+    #expect(model.artFocus == request.artFocus)
+    #expect(model.homeArtFocus == request.homeArtFocus)
+    #expect(model.taskArtFocus == request.taskArtFocus)
+    #expect(!model.isDirty)
+
+    model.author = "Updated Author"
+    await model.saveLocally()
+    guard case .replacementRequired = model.state else {
+        Issue.record("Expected replacement confirmation, got \(model.state)")
+        return
+    }
+    await model.replaceExistingTheme()
+
+    let saved = try #require(InstalledPackageLibrary(
+        root: library,
+        runtimeVersion: "1.0.0"
+    ).currentPackages().first?.manifest.theme)
+    #expect(saved.artFocus == request.artFocus)
+    #expect(saved.homeArtFocus == request.homeArtFocus)
+    #expect(saved.taskArtFocus == request.taskArtFocus)
+}
+
+@Test @MainActor
 func saveIsSingleFlightAndNewerEditsRemainUnsaved() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatThemeStudioSingleSave-\(UUID().uuidString)")
@@ -525,6 +682,41 @@ private let testThemePalette = HabitatThemePalette(
     attention: "#FFB547",
     error: "#FF5C70"
 )
+
+private func highPrecisionThemeRequest(sourceImageURL: URL) -> ThemePackageRequest {
+    ThemePackageRequest(
+        name: "High Precision Theme",
+        author: "Original Author",
+        sourceImageURL: sourceImageURL,
+        palette: testThemePalette,
+        category: .custom,
+        styleFamily: .retroMessenger,
+        artFocus: HabitatThemeFocalPoint(x: 0.3746, y: 0.6254),
+        safeSide: .trailing,
+        backgroundStrength: 0.51,
+        panelOpacity: 0.79,
+        blurRadius: 13,
+        density: .compact,
+        homeMode: .framed,
+        taskMode: .banner,
+        chromeMaterial: .glass,
+        homeStrength: 0.62,
+        taskStrength: 0.28,
+        sidebarOpacity: 0.74,
+        headerOpacity: 0.69,
+        composerOpacity: 0.91,
+        homeArtFocus: HabitatThemeFocalPoint(x: 0.1846, y: 0.6246),
+        taskArtFocus: HabitatThemeFocalPoint(x: 0.2746, y: 0.5746),
+        homeArtScale: 1.13,
+        taskArtScale: 1.05,
+        taskSidebarOpacity: 0.77,
+        taskHeaderOpacity: 0.70,
+        homeContentOpacity: 0.56,
+        taskContentOpacity: 0.73,
+        homeContentWidth: 0.58,
+        vignetteStrength: 0.42
+    )
+}
 
 private func controlledThemeStudioOperations(
     paletteGate: ThemeStudioOperationGate<HabitatThemePalette>? = nil,
