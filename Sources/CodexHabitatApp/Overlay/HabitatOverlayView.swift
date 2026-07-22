@@ -39,6 +39,7 @@ struct HabitatOverlayView: View {
     let renderer: SpriteSheetRenderer
     var renderMode: PetRenderMode = .auto
     var pixelArtHint = false
+    var isPressed = false
 
     var body: some View {
         PetView(
@@ -48,5 +49,9 @@ struct HabitatOverlayView: View {
             pixelArtHint: pixelArtHint
         )
         .frame(width: model.overlaySize.width, height: model.overlaySize.height)
+        .modifier(HabitatPetPressFeedback(
+            isPressed: isPressed,
+            reduceMotion: model.reduceMotion
+        ))
     }
 }

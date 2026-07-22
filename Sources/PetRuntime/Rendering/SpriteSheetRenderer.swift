@@ -5,6 +5,7 @@ import ImageIO
 public struct SpriteSheetRenderer: Sendable {
     private let frames: [CGImage]
     public let atlas: PetAtlasMetadata
+    public var isRenderable: Bool { !frames.isEmpty }
 
     public init(image: CGImage?, atlas: PetAtlasMetadata) {
         self.atlas = atlas

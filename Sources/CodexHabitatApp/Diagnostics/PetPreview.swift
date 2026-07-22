@@ -7,29 +7,38 @@ import PetRuntime
 enum PetPreview {
     private static var coordinator: PetPreviewCoordinator?
 
-    static func run(id: String) -> Int32 {
-        do {
-            let entry = try PetLibrary(root: PetLibrary.petRoot())
-                .discover()
-                .first { $0.status == .valid && $0.manifest?.id == id }
-            guard let entry,
-                  let spritesheetURL = entry.spritesheetURL,
-                  let atlas = entry.atlas
-            else {
-                print("pet-preview: unavailable")
-                return 1
-            }
-            let coordinator = PetPreviewCoordinator(
-                renderer: SpriteSheetRenderer(contentsOf: spritesheetURL, atlas: atlas),
-                availableRows: Set(0..<min(atlas.rows, 9))
-            )
-            self.coordinator = coordinator
-            coordinator.run()
-            return 0
-        } catch {
+    static func run(id: String) async -> Int32 {
+        let loaded = await Task.detached(priority: .userInitiated) {
+            try? loadPet(id: id)
+        }.value
+        guard let loaded else {
             print("pet-preview: unavailable")
             return 1
         }
+        let coordinator = PetPreviewCoordinator(
+            renderer: loaded.renderer,
+            availableRows: loaded.availableRows
+        )
+        self.coordinator = coordinator
+        coordinator.run()
+        return 0
+    }
+
+    nonisolated private static func loadPet(
+        id: String
+    ) throws -> (renderer: SpriteSheetRenderer, availableRows: Set<Int>)? {
+        let entry = try PetLibrary(root: PetLibrary.petRoot())
+            .discover()
+            .first { $0.status == .valid && $0.manifest?.id == id }
+        guard let entry,
+              let spritesheetURL = entry.spritesheetURL,
+              let atlas = entry.atlas
+        else {
+            return nil
+        }
+        let renderer = SpriteSheetRenderer(contentsOf: spritesheetURL, atlas: atlas)
+        guard renderer.isRenderable else { return nil }
+        return (renderer, Set(0..<min(atlas.rows, 9)))
     }
 }
 

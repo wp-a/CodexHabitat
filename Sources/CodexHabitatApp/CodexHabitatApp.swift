@@ -448,7 +448,7 @@ enum CodexHabitatEntryPoint {
         }
         if let previewPetIndex = CommandLine.arguments.firstIndex(of: "--preview-pet"),
            CommandLine.arguments.indices.contains(previewPetIndex + 1) {
-            let status = PetPreview.run(id: CommandLine.arguments[previewPetIndex + 1])
+            let status = await PetPreview.run(id: CommandLine.arguments[previewPetIndex + 1])
             exit(status)
         }
         CodexHabitatGUI.main()

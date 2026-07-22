@@ -16,18 +16,27 @@ struct HabitatPetAsset {
 private struct HabitatPetAssetSource: Equatable {
     let entry: PetLibraryEntry
     let presentation: HabitatPetPresentation
-    let fileSize: Int?
-    let modificationDate: Date?
 
     init(entry: PetLibraryEntry, presentation: HabitatPetPresentation) {
         self.entry = entry
         self.presentation = presentation
-        let attributes = entry.spritesheetURL.flatMap {
-            try? FileManager.default.attributesOfItem(atPath: $0.path)
-        }
+    }
+}
+
+private struct HabitatPetFileSignature: Equatable, Sendable {
+    let fileSize: Int?
+    let modificationDate: Date?
+
+    init(url: URL) {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         fileSize = (attributes?[.size] as? NSNumber)?.intValue
         modificationDate = attributes?[.modificationDate] as? Date
     }
+}
+
+private enum HabitatPetRendererLoad: Sendable {
+    case unchanged(HabitatPetFileSignature)
+    case loaded(SpriteSheetRenderer, HabitatPetFileSignature)
 }
 
 private struct HabitatDesktopApplication {
@@ -49,25 +58,35 @@ private actor HabitatPetRendererWorker {
 
     func load(
         contentsOf url: URL,
-        atlas: PetAtlasMetadata
-    ) -> SpriteSheetRenderer? {
+        atlas: PetAtlasMetadata,
+        matching cachedSignature: HabitatPetFileSignature?
+    ) -> HabitatPetRendererLoad? {
         guard !Task.isCancelled else { return nil }
+        let signature = HabitatPetFileSignature(url: url)
+        if cachedSignature == signature {
+            return .unchanged(signature)
+        }
         let renderer = loader(url, atlas)
         guard !Task.isCancelled else { return nil }
-        return renderer
+        return .loaded(renderer, signature)
     }
 }
 
 @MainActor
 final class HabitatOverlayPresentation: ObservableObject {
-    @Published var isWidgetRailExpanded = true {
-        didSet {
-            guard isWidgetRailExpanded != oldValue else { return }
-            onExpansionChange?(isWidgetRailExpanded)
-        }
-    }
+    @Published var isWidgetRailExpanded: Bool
+    @Published var containerWidth: CGFloat
 
-    var onExpansionChange: ((Bool) -> Void)?
+    @Published var isPetPressed = false
+    @Published var selectedPetID: String?
+    @Published var positionLocked = false
+
+    init(isWidgetRailExpanded: Bool) {
+        self.isWidgetRailExpanded = isWidgetRailExpanded
+        containerWidth = isWidgetRailExpanded
+            ? HabitatOverlayLayout.expandedSize.width
+            : HabitatOverlayLayout.collapsedSize.width
+    }
 }
 
 @MainActor
@@ -75,10 +94,11 @@ final class HabitatDesktopController: ObservableObject {
     typealias PetRendererLoader = @Sendable (URL, PetAtlasMetadata) -> SpriteSheetRenderer
 
     private var overlay: OverlayController?
-    private let presentation = HabitatOverlayPresentation()
+    private let presentation: HabitatOverlayPresentation
     @Published private(set) var widgetModel = WidgetRailModel()
     @Published private(set) var currentSnapshot = HabitatSnapshot()
     @Published private(set) var isTemporaryMoveMode = false
+    @Published private(set) var petLoadError: String?
     private var petModel: HabitatOverlayModel?
     private var cancellable: AnyCancellable?
     private weak var boundModel: HabitatAppModel?
@@ -91,14 +111,19 @@ final class HabitatDesktopController: ObservableObject {
     private let petRendererWorker: HabitatPetRendererWorker
     private var cachedPetAssetSource: HabitatPetAssetSource?
     private var cachedPetAsset: HabitatPetAsset?
+    private var cachedPetFileSignature: HabitatPetFileSignature?
     private var pendingPetAssetSource: HabitatPetAssetSource?
     private var petRendererLoadTask: Task<Void, Never>?
     private var latestApplication: HabitatDesktopApplication?
     private var storedClickThrough = false
     private var storedPositionLocked = false
+    private let expansionAnimationDuration: Double
+    private let expansionFrameInterval: Double
+    private var expansionTask: Task<Void, Never>?
 
     @Published private(set) var isVisible = false
     var currentThemeID: String? { renderedThemeID }
+    var currentSelectedPetID: String? { presentation.selectedPetID }
     var onOpenSettings: (() -> Void)?
 
     var isInteractive: Bool { overlay?.isInteractive ?? false }
@@ -115,23 +140,23 @@ final class HabitatDesktopController: ObservableObject {
         ).containerSize
     }
     var panelFrame: CGRect { overlay?.panel.frame ?? .zero }
+    var contentSize: CGSize { overlay?.panel.contentView?.bounds.size ?? .zero }
     var dragRegionFrame: CGRect { overlay?.dragRegionFrame ?? .zero }
 
     init(
         isWidgetRailExpanded: Bool = true,
+        expansionAnimationDuration: Double = 0.18,
+        expansionFrameInterval: Double = 1.0 / 60.0,
         petRendererLoader: @escaping PetRendererLoader = {
             SpriteSheetRenderer(contentsOf: $0, atlas: $1)
         }
     ) {
+        presentation = HabitatOverlayPresentation(
+            isWidgetRailExpanded: isWidgetRailExpanded
+        )
+        self.expansionAnimationDuration = max(0, expansionAnimationDuration)
+        self.expansionFrameInterval = max(0.001, expansionFrameInterval)
         petRendererWorker = HabitatPetRendererWorker(loader: petRendererLoader)
-        presentation.isWidgetRailExpanded = isWidgetRailExpanded
-        presentation.onExpansionChange = { [weak self] _ in
-            let rightEdge = self?.overlay?.panel.frame.maxX
-            Task { @MainActor [weak self] in
-                await Task.yield()
-                self?.resizePanelForPresentation(rightEdgeAnchor: rightEdge)
-            }
-        }
     }
 
     func bind(to model: HabitatAppModel) {
@@ -165,8 +190,12 @@ final class HabitatDesktopController: ObservableObject {
             isVisible: requestedVisibility,
             themes: themes
         )
+        presentation.selectedPetID = settings.selectedPetID
+        presentation.positionLocked = settings.positionLocked
         let shouldShow = settings.onboardingCompleted && requestedVisibility
         guard shouldShow else {
+            expansionTask?.cancel()
+            expansionTask = nil
             cancelPendingPetAssetLoad()
             endTemporaryMoveMode()
             petModel?.setAnimationActive(false)
@@ -190,6 +219,7 @@ final class HabitatDesktopController: ObservableObject {
                 && !settings.widgetOrder.isEmpty
         )
         let needsNewPanel = overlay == nil || renderedScale != scale
+        let widgetsChanged = renderedWidgets != settings.widgetOrder
         let needsNewContent = needsNewPanel
             || renderedPetID != petAsset?.id
             || renderedPetPresentation != petAsset?.presentation
@@ -201,11 +231,17 @@ final class HabitatDesktopController: ObservableObject {
             : nil
 
         if needsNewPanel {
+            expansionTask?.cancel()
+            expansionTask = nil
+            presentation.containerWidth = layout.containerSize.width
             overlay?.hide()
             overlay = OverlayController(panelSize: Self.scaledSize(layout.containerSize, scale: scale))
             overlay?.setDragFrame(Self.scaledFrame(layout.petFrame, scale: scale))
-            overlay?.onPrimaryClick = { [weak presentation] in
-                presentation?.isWidgetRailExpanded.toggle()
+            overlay?.onPrimaryClick = { [weak self] in
+                self?.toggleWidgetRailExpansion()
+            }
+            overlay?.onPrimaryPressChange = { [weak presentation] pressed in
+                presentation?.isPetPressed = pressed
             }
             overlay?.onPlacementChange = { [weak self] placement in
                 self?.boundModel?.setOverlayPosition(
@@ -236,11 +272,10 @@ final class HabitatDesktopController: ObservableObject {
                         HabitatPetChoice(id: $0.id, name: $0.displayName)
                     }
                 },
-                selectedPetID: settings.selectedPetID,
                 enabledWidgets: settings.widgetOrder,
                 theme: theme,
                 scale: scale,
-                positionLocked: settings.positionLocked,
+                onToggleWidgets: { [weak self] in self?.toggleWidgetRailExpansion() },
                 onSelectPet: { [weak self] id in self?.boundModel?.selectPet(id) },
                 onTogglePositionLock: { [weak self] in
                     guard let model = self?.boundModel else { return }
@@ -257,6 +292,11 @@ final class HabitatDesktopController: ObservableObject {
         renderedThemeID = theme.id
         renderedScale = scale
         renderedReduceMotion = reduceMotion
+        if widgetsChanged, !needsNewPanel {
+            expansionTask?.cancel()
+            expansionTask = nil
+            presentation.containerWidth = layout.containerSize.width
+        }
         resizePanelForPresentation()
         storedClickThrough = settings.clickThrough
         storedPositionLocked = settings.positionLocked
@@ -287,7 +327,93 @@ final class HabitatDesktopController: ObservableObject {
     }
 
     func setWidgetRailExpanded(_ expanded: Bool) {
+        guard presentation.isWidgetRailExpanded != expanded else { return }
         presentation.isWidgetRailExpanded = expanded
+        animatePanelExpansion(to: expanded)
+    }
+
+    func retryPetRendererLoad() {
+        guard petLoadError != nil, let application = latestApplication else { return }
+        cancelPendingPetAssetLoad()
+        petLoadError = nil
+        apply(
+            settings: application.settings,
+            pets: application.pets,
+            petPresentations: application.petPresentations,
+            isVisible: application.isVisible,
+            themes: application.themes
+        )
+    }
+
+    private func toggleWidgetRailExpansion() {
+        setWidgetRailExpanded(!presentation.isWidgetRailExpanded)
+    }
+
+    private func animatePanelExpansion(to expanded: Bool) {
+        expansionTask?.cancel()
+        let targetWidth = expanded && !renderedWidgets.isEmpty
+            ? HabitatOverlayLayout.expandedSize.width
+            : HabitatOverlayLayout.collapsedSize.width
+        let startWidth = presentation.containerWidth
+        guard startWidth != targetWidth else { return }
+        let rightEdge = overlay?.panel.frame.maxX
+        let shouldReduceMotion = renderedReduceMotion ?? false
+        guard expansionAnimationDuration > 0, !shouldReduceMotion else {
+            applyContainerWidth(targetWidth, rightEdgeAnchor: rightEdge)
+            return
+        }
+
+        let duration = expansionAnimationDuration
+        let interval = expansionFrameInterval
+        let steps = max(1, Int(ceil(duration / interval)))
+        expansionTask = Task { @MainActor [weak self] in
+            for step in 1...steps {
+                do {
+                    try await Task.sleep(for: .seconds(interval))
+                } catch {
+                    return
+                }
+                guard let self, !Task.isCancelled else { return }
+                let progress = Double(step) / Double(steps)
+                let eased = 1 - pow(1 - progress, 3)
+                let width = step == steps
+                    ? targetWidth
+                    : startWidth + (targetWidth - startWidth) * eased
+                self.applyContainerWidth(width, rightEdgeAnchor: rightEdge)
+            }
+            self?.expansionTask = nil
+        }
+    }
+
+    private func applyContainerWidth(
+        _ width: CGFloat,
+        rightEdgeAnchor: CGFloat?
+    ) {
+        guard let overlay, let scale = renderedScale else {
+            presentation.containerWidth = width
+            return
+        }
+        let containerSize = CGSize(width: width, height: HabitatOverlayLayout.petSize.height)
+        let petFrame = CGRect(
+            x: width - HabitatOverlayLayout.petSize.width,
+            y: 0,
+            width: HabitatOverlayLayout.petSize.width,
+            height: HabitatOverlayLayout.petSize.height
+        )
+        overlay.resize(
+            to: Self.scaledSize(containerSize, scale: scale),
+            preservingRightEdge: true,
+            rightEdgeAnchor: rightEdgeAnchor
+        )
+        let effectiveWidth = overlay.panel.frame.width / scale
+        let effectivePetFrame = CGRect(
+            x: effectiveWidth - HabitatOverlayLayout.petSize.width,
+            y: petFrame.minY,
+            width: petFrame.width,
+            height: petFrame.height
+        )
+        overlay.setDragFrame(Self.scaledFrame(effectivePetFrame, scale: scale))
+        presentation.containerWidth = effectiveWidth
     }
 
     private func asset(
@@ -303,6 +429,7 @@ final class HabitatDesktopController: ObservableObject {
             cancelPendingPetAssetLoad()
             cachedPetAssetSource = nil
             cachedPetAsset = nil
+            cachedPetFileSignature = nil
             return nil
         }
         let source = HabitatPetAssetSource(
@@ -313,7 +440,16 @@ final class HabitatDesktopController: ObservableObject {
             )
         )
         if source == cachedPetAssetSource {
-            cancelPendingPetAssetLoad()
+            petLoadError = nil
+            if pendingPetAssetSource != source {
+                startPetAssetLoad(
+                    source: source,
+                    id: id,
+                    spritesheetURL: spritesheetURL,
+                    atlas: atlas,
+                    matchingFileSignature: cachedPetFileSignature
+                )
+            }
             return cachedPetAsset
         }
         if source != pendingPetAssetSource {
@@ -321,7 +457,8 @@ final class HabitatDesktopController: ObservableObject {
                 source: source,
                 id: id,
                 spritesheetURL: spritesheetURL,
-                atlas: atlas
+                atlas: atlas,
+                matchingFileSignature: nil
             )
         }
         return cachedPetAsset
@@ -331,30 +468,50 @@ final class HabitatDesktopController: ObservableObject {
         source: HabitatPetAssetSource,
         id: String,
         spritesheetURL: URL,
-        atlas: PetAtlasMetadata
+        atlas: PetAtlasMetadata,
+        matchingFileSignature: HabitatPetFileSignature?
     ) {
         cancelPendingPetAssetLoad()
+        petLoadError = nil
         pendingPetAssetSource = source
         let worker = petRendererWorker
         petRendererLoadTask = Task { [weak self] in
-            guard let renderer = await worker.load(
+            let result = await worker.load(
                 contentsOf: spritesheetURL,
-                atlas: atlas
-            ), !Task.isCancelled,
+                atlas: atlas,
+                matching: matchingFileSignature
+            )
+            guard !Task.isCancelled,
                   let self,
                   self.pendingPetAssetSource == source
             else {
                 return
             }
-            self.cachedPetAssetSource = source
-            self.cachedPetAsset = HabitatPetAsset(
-                id: id,
-                renderer: renderer,
-                availableRows: Set(0..<min(atlas.rows, 9)),
-                presentation: source.presentation
-            )
             self.pendingPetAssetSource = nil
             self.petRendererLoadTask = nil
+            guard let result else { return }
+            switch result {
+            case .unchanged:
+                return
+            case let .loaded(renderer, signature):
+                guard renderer.isRenderable else {
+                    self.petLoadError = L10n.text("Unable to load pet artwork")
+                    return
+                }
+                self.cachedPetFileSignature = signature
+                self.cachedPetAssetSource = source
+                self.cachedPetAsset = HabitatPetAsset(
+                    id: id,
+                    renderer: renderer,
+                    availableRows: Set(0..<min(atlas.rows, 9)),
+                    presentation: source.presentation
+                )
+            }
+            guard self.cachedPetAssetSource == source else {
+                self.petLoadError = L10n.text("Unable to load pet artwork")
+                return
+            }
+            self.petLoadError = nil
             guard let application = self.latestApplication else { return }
             self.apply(
                 settings: application.settings,
@@ -387,16 +544,30 @@ final class HabitatDesktopController: ObservableObject {
 
     private func resizePanelForPresentation(rightEdgeAnchor: CGFloat? = nil) {
         guard let overlay, let scale = renderedScale else { return }
-        let layout = HabitatOverlayLayout(
-            isWidgetRailExpanded: presentation.isWidgetRailExpanded
-                && !renderedWidgets.isEmpty
+        let width = renderedWidgets.isEmpty
+            ? HabitatOverlayLayout.collapsedSize.width
+            : presentation.containerWidth
+        let containerSize = CGSize(width: width, height: HabitatOverlayLayout.petSize.height)
+        let petFrame = CGRect(
+            x: width - HabitatOverlayLayout.petSize.width,
+            y: 0,
+            width: HabitatOverlayLayout.petSize.width,
+            height: HabitatOverlayLayout.petSize.height
         )
         overlay.resize(
-            to: Self.scaledSize(layout.containerSize, scale: scale),
+            to: Self.scaledSize(containerSize, scale: scale),
             preservingRightEdge: true,
             rightEdgeAnchor: rightEdgeAnchor
         )
-        overlay.setDragFrame(Self.scaledFrame(layout.petFrame, scale: scale))
+        let effectiveWidth = overlay.panel.frame.width / scale
+        let effectivePetFrame = CGRect(
+            x: effectiveWidth - HabitatOverlayLayout.petSize.width,
+            y: petFrame.minY,
+            width: petFrame.width,
+            height: petFrame.height
+        )
+        overlay.setDragFrame(Self.scaledFrame(effectivePetFrame, scale: scale))
+        presentation.containerWidth = effectiveWidth
     }
 
     private func applyInteractionState() {
@@ -476,11 +647,10 @@ private struct HabitatDesktopView: View {
     @ObservedObject var petModel: HabitatOverlayModel
     let petAsset: HabitatPetAsset?
     let petChoices: [HabitatPetChoice]
-    let selectedPetID: String?
     let enabledWidgets: [WidgetIdentifier]
     let theme: HabitatThemeDescriptor
     let scale: Double
-    let positionLocked: Bool
+    let onToggleWidgets: () -> Void
     let onSelectPet: (String) -> Void
     let onTogglePositionLock: () -> Void
     let onHide: () -> Void
@@ -489,36 +659,40 @@ private struct HabitatDesktopView: View {
     var body: some View {
         baseContent
             .frame(
-                width: layout.containerSize.width,
-                height: layout.containerSize.height,
+                width: presentation.containerWidth,
+                height: HabitatOverlayLayout.petSize.height,
                 alignment: .topLeading
             )
             .scaleEffect(scale, anchor: .topLeading)
             .frame(
-                width: layout.containerSize.width * scale,
-                height: layout.containerSize.height * scale,
+                width: presentation.containerWidth * scale,
+                height: HabitatOverlayLayout.petSize.height * scale,
                 alignment: .topLeading
             )
     }
 
-    private var layout: HabitatOverlayLayout {
-        HabitatOverlayLayout(
-            isWidgetRailExpanded: presentation.isWidgetRailExpanded
-                && !enabledWidgets.isEmpty
+    private var petFrame: CGRect {
+        CGRect(
+            x: presentation.containerWidth - HabitatOverlayLayout.petSize.width,
+            y: 0,
+            width: HabitatOverlayLayout.petSize.width,
+            height: HabitatOverlayLayout.petSize.height
         )
     }
 
     private var baseContent: some View {
         ZStack(alignment: .topLeading) {
-            if presentation.isWidgetRailExpanded, !enabledWidgets.isEmpty {
+            if presentation.containerWidth > HabitatOverlayLayout.collapsedSize.width,
+               !enabledWidgets.isEmpty
+            {
                 WidgetRailView(
                     model: widgetModel,
                     enabledWidgets: enabledWidgets,
                     theme: theme
                 )
                     .offset(
-                        x: layout.widgetRailFrame?.minX ?? 0,
-                        y: layout.widgetRailFrame?.minY ?? 0
+                        x: 4,
+                        y: 4
                     )
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
@@ -528,10 +702,11 @@ private struct HabitatDesktopView: View {
                     width: HabitatOverlayLayout.petSize.width,
                     height: HabitatOverlayLayout.petSize.height
                 )
+                .modifier(HabitatPetPressFeedback(
+                    isPressed: presentation.isPetPressed,
+                    reduceMotion: petModel.reduceMotion
+                ))
                 .contentShape(Rectangle())
-                .onTapGesture {
-                    presentation.isWidgetRailExpanded.toggle()
-                }
                 .contextMenu {
                     if !petChoices.isEmpty {
                         Menu(L10n.text("Pet")) {
@@ -541,7 +716,7 @@ private struct HabitatDesktopView: View {
                                 } label: {
                                     Label(
                                         pet.name,
-                                        systemImage: pet.id == selectedPetID
+                                        systemImage: pet.id == presentation.selectedPetID
                                             ? "checkmark"
                                             : "pawprint"
                                     )
@@ -551,8 +726,10 @@ private struct HabitatDesktopView: View {
                     }
                     Button(action: onTogglePositionLock) {
                         Label(
-                            L10n.text(positionLocked ? "Unlock Position" : "Lock Position"),
-                            systemImage: positionLocked ? "lock.open" : "lock"
+                            L10n.text(
+                                presentation.positionLocked ? "Unlock Position" : "Lock Position"
+                            ),
+                            systemImage: presentation.positionLocked ? "lock.open" : "lock"
                         )
                     }
                     Divider()
@@ -565,10 +742,10 @@ private struct HabitatDesktopView: View {
                 }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction {
-                    presentation.isWidgetRailExpanded.toggle()
+                    onToggleWidgets()
                 }
                 .accessibilityIdentifier("overlay.pet.toggle-widgets")
-                .offset(x: layout.petFrame.minX, y: layout.petFrame.minY)
+                .offset(x: petFrame.minX, y: petFrame.minY)
         }
     }
 

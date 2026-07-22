@@ -68,6 +68,9 @@ func simplifiedChineseCatalogCoversPrimaryHabitatSurfaces() {
         "Pet Pairing", "Package", "Category", "Artwork focal point", "Format",
         "Habitat Pack", "Theme ID", "Local image", "Unsaved changes", "Saving",
         "Analyzing image",
+        "Pet Library", "Preview", "Behavior", "Edit Behavior", "Select pet",
+        "Loading pet artwork…", "Unable to load pet artwork", "Retry",
+        "Sprite version", "Frame size", "Atlas",
     ] {
         #expect(localization.text(key) != key)
     }

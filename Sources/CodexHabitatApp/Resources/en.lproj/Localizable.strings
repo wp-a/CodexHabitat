@@ -194,6 +194,7 @@
 "LIVE" = "LIVE";
 "Loading Codex Habitat" = "Loading Codex Habitat";
 "Loading Petdex catalog..." = "Loading Petdex catalog...";
+"Loading pet artwork…" = "Loading pet artwork…";
 "Local and redacted" = "Local and redacted";
 "Local data" = "Local data";
 "Local data could not be cleared" = "Local data could not be cleared";
@@ -207,6 +208,8 @@
 "Pause countdown" = "Pause countdown";
 "Pause focus timer" = "Pause focus timer";
 "Petdex returned data Habitat could not safely use." = "Petdex returned data Habitat could not safely use.";
+"Pet Library" = "Pet Library";
+"Preview" = "Preview";
 "Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed." = "Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed.";
 "Place Habitat" = "Place Habitat";
 "Preparing export..." = "Preparing export...";
@@ -215,6 +218,7 @@
 "Quiet Garden" = "Quiet Garden";
 "REST" = "REST";
 "RETRY" = "RETRY";
+"Retry" = "Retry";
 "Recovery" = "Recovery";
 "Redacted diagnostics exported" = "Redacted diagnostics exported";
 "Refresh Petdex" = "Refresh Petdex";
@@ -242,6 +246,13 @@
 "The package failed verification or installation." = "The package failed verification or installation.";
 "The package operation failed validation." = "The package operation failed validation.";
 "Theme copied" = "Theme copied";
+"Behavior" = "Behavior";
+"Edit Behavior" = "Edit Behavior";
+"Select pet" = "Select pet";
+"Sprite version" = "Sprite version";
+"Frame size" = "Frame size";
+"Atlas" = "Atlas";
+"Unable to load pet artwork" = "Unable to load pet artwork";
 "This entry is missing a license, content ID, or SHA-256 checksum." = "This entry is missing a license, content ID, or SHA-256 checksum.";
 "Unknown" = "Unknown";
 "Unknown creator" = "Unknown creator";

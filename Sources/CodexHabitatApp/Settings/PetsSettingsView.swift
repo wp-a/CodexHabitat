@@ -1,3 +1,4 @@
+import HabitatCore
 import PetRuntime
 import SwiftUI
 
@@ -24,6 +25,8 @@ actor PetThumbnailStore {
     private struct Key: Hashable, Sendable {
         let packageURL: URL
         let spritesheetURL: URL?
+        let fileSize: Int?
+        let modificationDate: Date?
         let pixelWidth: Int?
         let pixelHeight: Int?
         let columns: Int?
@@ -32,6 +35,17 @@ actor PetThumbnailStore {
         init(pet: PetLibraryEntry) {
             packageURL = pet.packageURL
             spritesheetURL = pet.spritesheetURL
+            if let spritesheetURL = pet.spritesheetURL,
+               let values = try? spritesheetURL.resourceValues(
+                   forKeys: [.fileSizeKey, .contentModificationDateKey]
+               )
+            {
+                fileSize = values.fileSize
+                modificationDate = values.contentModificationDate
+            } else {
+                fileSize = nil
+                modificationDate = nil
+            }
             pixelWidth = pet.atlas?.pixelWidth
             pixelHeight = pet.atlas?.pixelHeight
             columns = pet.atlas?.columns
@@ -41,12 +55,17 @@ actor PetThumbnailStore {
 
     private let loader: Loader
     private var cache: [Key: CachedResult] = [:]
+    private struct InFlight {
+        let token: UUID
+        let task: Task<CGImage?, Never>
+    }
+    private var inFlight: [Key: InFlight] = [:]
 
     init(loader: @escaping Loader) {
         self.loader = loader
     }
 
-    func image(for pet: PetLibraryEntry) -> CGImage? {
+    func image(for pet: PetLibraryEntry) async -> CGImage? {
         let key = Key(pet: pet)
         if let cached = cache[key] {
             switch cached {
@@ -56,12 +75,64 @@ actor PetThumbnailStore {
                 return nil
             }
         }
-        guard let image = loader(pet) else {
+        if let existing = inFlight[key] {
+            return await existing.task.value
+        }
+        let loader = self.loader
+        let token = UUID()
+        let task = Task.detached(priority: .userInitiated) {
+            loader(pet)
+        }
+        inFlight[key] = InFlight(token: token, task: task)
+        let loadedImage = await task.value
+        guard inFlight[key]?.token == token else { return loadedImage }
+        inFlight[key] = nil
+        guard let image = loadedImage else {
             cache[key] = .missing
             return nil
         }
         cache[key] = .image(image)
         return image
+    }
+
+    func invalidate(_ pet: PetLibraryEntry) {
+        let packageURL = pet.packageURL
+        cache = cache.filter { $0.key.packageURL != packageURL }
+        let matchingKeys = inFlight.keys.filter { $0.packageURL == packageURL }
+        for key in matchingKeys {
+            inFlight.removeValue(forKey: key)?.task.cancel()
+        }
+    }
+}
+
+struct PetPreviewPresentationState {
+    enum Status: Equatable, Sendable {
+        case idle
+        case loading
+        case ready
+        case failed
+    }
+
+    private(set) var selectedPetID: String?
+    private(set) var displayedImage: CGImage?
+    private(set) var status = Status.idle
+    private var request = 0
+
+    mutating func select(petID: String) -> Int {
+        request += 1
+        selectedPetID = petID
+        status = .loading
+        return request
+    }
+
+    mutating func complete(petID: String, request: Int, image: CGImage?) {
+        guard selectedPetID == petID, self.request == request else { return }
+        if let image {
+            displayedImage = image
+            status = .ready
+        } else {
+            status = .failed
+        }
     }
 }
 
@@ -76,25 +147,24 @@ struct PetsSettingsView: View {
     @ObservedObject var model: HabitatAppModel
     @StateObject private var marketplaceModel = PetMarketplaceModel.live()
     @State private var source = Source.local
-    private let columns = [GridItem(.adaptive(minimum: 142, maximum: 180), spacing: 12)]
+    @State private var showsCompactInspector = false
 
     var body: some View {
         SettingsPage(
             "Pets",
-            subtitle: "Use validated local companions or optionally browse Petdex"
+            subtitle: "Use validated local companions or optionally browse Petdex",
+            scrollBehavior: .pageOwned
         ) {
-            Picker("Pet source", selection: $source) {
-                ForEach(Source.allCases) { source in
-                    Text(L10n.text(source.rawValue)).tag(source)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("pets.source")
+            VStack(spacing: 0) {
+                toolbar
+                Divider()
 
-            if source == .local {
-                localPets
-            } else {
-                PetMarketplaceView(model: marketplaceModel)
+                if source == .local {
+                    localPets
+                } else {
+                    PetMarketplaceView(model: marketplaceModel)
+                        .padding(24)
+                }
             }
         }
         .onChange(of: source) { _, newValue in
@@ -110,55 +180,360 @@ struct PetsSettingsView: View {
         .resourceReplacementConfirmation(model: model)
     }
 
+    private var toolbar: some View {
+        HStack(spacing: HabitatDesignMetrics.spaceM) {
+            Picker("Pet source", selection: $source) {
+                ForEach(Source.allCases) { source in
+                    Text(L10n.text(source.rawValue)).tag(source)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 220)
+            .accessibilityIdentifier("pets.source")
+
+            Text(L10n.format("%d available", model.validPets.count))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Button(action: importPack) {
+                Image(systemName: "square.and.arrow.down")
+            }
+            .buttonStyle(.borderless)
+            .help("Import Habitat pack")
+            .accessibilityLabel("Import Habitat pack")
+            .accessibilityIdentifier("pets.import-pack")
+
+            Button(action: model.refreshResources) {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .help("Refresh pets")
+            .accessibilityLabel("Refresh pets")
+            .accessibilityIdentifier("pets.refresh")
+        }
+        .padding(.horizontal, HabitatDesignMetrics.spaceXL)
+        .frame(minHeight: 52)
+    }
+
     @ViewBuilder
     private var localPets: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text(L10n.format("%d available", model.validPets.count))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button(action: importPack) {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .buttonStyle(.borderless)
-                .help("Import Habitat pack")
-                .accessibilityLabel("Import Habitat pack")
-                .accessibilityIdentifier("pets.import-pack")
-                Button(action: model.refreshResources) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("Refresh pets")
-                .accessibilityLabel("Refresh pets")
-                .accessibilityIdentifier("pets.refresh")
-            }
-
+        VStack(spacing: 0) {
             ResourceOperationStatusView(state: model.resourceOperationState)
+                .padding(.horizontal, HabitatDesignMetrics.spaceXL)
 
             if model.validPets.isEmpty {
-                ContentUnavailableView(
-                    "No Valid Pets",
-                    systemImage: "pawprint",
-                    description: Text("Habitat will keep running while the local pet library is empty.")
-                )
-                .frame(maxWidth: .infinity, minHeight: 250)
+                emptyLibrary
             } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                    ForEach(model.validPets, id: \.packageURL) { pet in
-                        PetChoiceCard(
-                            pet: pet,
-                            isSelected: model.settings.selectedPetID == pet.manifest?.id,
-                            action: { model.selectPet(pet.manifest?.id) }
-                        )
+                GeometryReader { proxy in
+                    if proxy.size.width >= 760 {
+                        HStack(spacing: 0) {
+                            petResourceList
+                                .frame(minWidth: 220, idealWidth: 260, maxWidth: 300)
+                            Divider()
+                            PetPreviewPane(pet: selectedPet)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            Divider()
+                            PetBehaviorInspector(model: model, pet: selectedPet)
+                                .frame(width: 270)
+                        }
+                    } else {
+                        compactWorkspace
                     }
                 }
             }
         }
     }
 
+    private var selectedPet: PetLibraryEntry? {
+        model.validPets.first { $0.manifest?.id == model.settings.selectedPetID }
+            ?? model.validPets.first
+    }
+
+    private var petResourceList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(L10n.text("Pet Library"))
+                .font(.headline)
+                .padding(.horizontal, HabitatDesignMetrics.spaceL)
+                .frame(minHeight: 44, alignment: .leading)
+            Divider()
+            ScrollView {
+                LazyVStack(spacing: 4) {
+                    ForEach(model.validPets, id: \.packageURL) { pet in
+                        PetResourceRow(
+                            pet: pet,
+                            isSelected: model.settings.selectedPetID == pet.manifest?.id,
+                            action: { model.selectPet(pet.manifest?.id) }
+                        )
+                    }
+                }
+                .padding(HabitatDesignMetrics.spaceS)
+            }
+        }
+        .background(.background.opacity(0.35))
+    }
+
+    private var compactWorkspace: some View {
+        VStack(spacing: 0) {
+            petResourceList
+                .frame(height: 176)
+            Divider()
+            PetPreviewPane(pet: selectedPet)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider()
+            HStack {
+                Text(L10n.text("Behavior"))
+                    .font(.headline)
+                Spacer()
+                Button {
+                    showsCompactInspector = true
+                } label: {
+                    Label("Edit Behavior", systemImage: "slider.horizontal.3")
+                }
+                .accessibilityIdentifier("pets.behavior.open")
+            }
+            .padding(.horizontal, HabitatDesignMetrics.spaceL)
+            .frame(minHeight: 52)
+        }
+        .sheet(isPresented: $showsCompactInspector) {
+            PetBehaviorInspector(model: model, pet: selectedPet)
+                .frame(minWidth: 320, minHeight: 440)
+                .padding(HabitatDesignMetrics.spaceXL)
+        }
+    }
+
+    private var emptyLibrary: some View {
+        VStack(spacing: HabitatDesignMetrics.spaceM) {
+            Label("No Valid Pets", systemImage: "pawprint")
+                .font(.title3.weight(.semibold))
+            Text(L10n.text("Habitat will keep running while the local pet library is empty."))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            HStack(spacing: HabitatDesignMetrics.spaceS) {
+                Button(action: importPack) {
+                    Label("Import Pack", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+                Button {
+                    source = .petdex
+                } label: {
+                    Label("Browse Petdex", systemImage: "square.grid.2x2")
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(HabitatDesignMetrics.spaceXXL)
+        .frame(maxWidth: .infinity, minHeight: 160)
+    }
+
     private func importPack() {
         guard let url = ResourcePackPanels.chooseImport() else { return }
         Task { await model.importResourcePackage(from: url) }
+    }
+}
+
+private struct PetResourceRow: View {
+    let pet: PetLibraryEntry
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: HabitatDesignMetrics.spaceM) {
+                PetThumbnail(pet: pet)
+                    .frame(width: 46, height: 46)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pet.manifest?.displayName ?? pet.packageURL.lastPathComponent)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    Text(pet.manifest?.description ?? "")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.tint)
+                }
+            }
+            .padding(.horizontal, HabitatDesignMetrics.spaceS)
+            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .habitatSelectedStyle(isSelected, radius: HabitatDesignMetrics.cardRadius)
+        .accessibilityLabel(pet.manifest?.displayName ?? "Pet")
+        .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
+        .accessibilityHint("Select pet")
+        .accessibilityIdentifier("pets.choice.\(pet.manifest?.id ?? "unknown")")
+    }
+}
+
+private struct PetPreviewPane: View {
+    let pet: PetLibraryEntry?
+    @State private var presentation = PetPreviewPresentationState()
+    @State private var retryGeneration = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceL) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(pet?.manifest?.displayName ?? L10n.text("Preview"))
+                    .font(.title2.weight(.semibold))
+                Text(pet?.manifest?.description ?? "")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius)
+                    .fill(.quaternary.opacity(0.45))
+                if let image = presentation.displayedImage {
+                    Image(decorative: image, scale: 1, orientation: .up)
+                        .resizable()
+                        .interpolation(.none)
+                        .aspectRatio(contentMode: .fit)
+                        .padding(HabitatDesignMetrics.spaceXXL)
+                } else if presentation.status == .loading {
+                    ProgressView()
+                        .controlSize(.large)
+                } else {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 54, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .aspectRatio(1.45, contentMode: .fit)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .bottom) {
+                if presentation.status == .loading, presentation.displayedImage != nil {
+                    ProgressView(L10n.text("Loading pet artwork…"))
+                        .controlSize(.small)
+                        .padding(8)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding()
+                }
+            }
+
+            if presentation.status == .failed, let pet {
+                HStack(spacing: HabitatDesignMetrics.spaceS) {
+                    Label("Unable to load pet artwork", systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Retry") {
+                        Task {
+                            await PetThumbnailStore.shared.invalidate(pet)
+                            retryGeneration += 1
+                        }
+                    }
+                    .accessibilityIdentifier("pets.preview.retry")
+                }
+            }
+        }
+        .padding(HabitatDesignMetrics.spaceXL)
+        .task(id: requestID) {
+            guard let pet, let petID = pet.manifest?.id else { return }
+            let request = presentation.select(petID: petID)
+            let image = await PetThumbnailStore.shared.image(for: pet)
+            guard !Task.isCancelled else { return }
+            presentation.complete(petID: petID, request: request, image: image)
+        }
+    }
+
+    private var requestID: String {
+        "\(pet?.manifest?.id ?? "none"):\(retryGeneration)"
+    }
+}
+
+private struct PetBehaviorInspector: View {
+    @ObservedObject var model: HabitatAppModel
+    let pet: PetLibraryEntry?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceXL) {
+                Text(L10n.text("Behavior"))
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceS) {
+                    HStack {
+                        Text(L10n.text("Scale"))
+                        Spacer()
+                        Text(model.settings.scale, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { model.settings.scale },
+                            set: { model.setScale($0) }
+                        ),
+                        in: 0.75...1.5,
+                        step: 0.05
+                    )
+                    .accessibilityIdentifier("pets.behavior.scale")
+                }
+
+                Picker(
+                    "Motion",
+                    selection: Binding(
+                        get: { model.settings.reduceMotion },
+                        set: { model.setReduceMotion($0) }
+                    )
+                ) {
+                    Text("System").tag(ReduceMotionPreference.system)
+                    Text("Reduced").tag(ReduceMotionPreference.reduce)
+                    Text("Full").tag(ReduceMotionPreference.full)
+                }
+                .pickerStyle(.segmented)
+
+                Toggle(
+                    "Click through the overlay",
+                    isOn: Binding(
+                        get: { model.settings.clickThrough },
+                        set: { model.setClickThrough($0) }
+                    )
+                )
+                Toggle(
+                    "Lock overlay position",
+                    isOn: Binding(
+                        get: { model.settings.positionLocked },
+                        set: { model.setPositionLocked($0) }
+                    )
+                )
+                .disabled(model.settings.clickThrough)
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceS) {
+                    inspectorValue("Sprite version", value: pet?.manifest.map {
+                        String($0.effectiveSpriteVersion)
+                    } ?? "—")
+                    inspectorValue("Frame size", value: pet?.atlas.map {
+                        "\($0.cellWidth) × \($0.cellHeight)"
+                    } ?? "—")
+                    inspectorValue("Atlas", value: pet?.atlas.map {
+                        "\($0.columns) × \($0.rows)"
+                    } ?? "—")
+                }
+            }
+            .padding(HabitatDesignMetrics.spaceL)
+        }
+        .background(.background.opacity(0.35))
+    }
+
+    private func inspectorValue(_ label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(L10n.text(label))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .monospacedDigit()
+        }
+        .font(.caption)
     }
 }
 
@@ -196,8 +571,15 @@ struct PetChoiceCard: View {
 }
 
 private struct PetThumbnail: View {
+    private enum Phase {
+        case loading
+        case ready
+        case failed
+    }
+
     let pet: PetLibraryEntry
     @State private var idleFrame: CGImage?
+    @State private var phase = Phase.loading
 
     var body: some View {
         Group {
@@ -206,16 +588,29 @@ private struct PetThumbnail: View {
                     .resizable()
                     .interpolation(.none)
                     .aspectRatio(contentMode: .fit)
+            } else if phase == .loading {
+                ProgressView()
+                    .controlSize(.small)
             } else {
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: 34, weight: .medium))
                     .foregroundStyle(.secondary)
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if phase == .failed {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel("Unable to load pet artwork")
+            }
+        }
         .task(id: pet.packageURL) {
+            phase = .loading
             let image = await PetThumbnailStore.shared.image(for: pet)
             guard !Task.isCancelled else { return }
             idleFrame = image
+            phase = image == nil ? .failed : .ready
         }
     }
 }

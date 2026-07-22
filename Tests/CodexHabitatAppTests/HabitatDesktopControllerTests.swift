@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import HabitatCore
 import PetRuntime
 import Testing
@@ -27,8 +28,8 @@ func completedSetupShowsAndHidesTheDesktopHabitat() {
 }
 
 @Test @MainActor
-func collapsingAndExpandingDeferPanelResizeAndKeepThePetRightAnchored() async {
-    let controller = HabitatDesktopController()
+func collapsingAndExpandingResizeImmediatelyAndKeepThePetRightAnchored() {
+    let controller = HabitatDesktopController(expansionAnimationDuration: 0)
     var settings = HabitatSettings.default
     settings.onboardingCompleted = true
     controller.apply(settings: settings, pets: [], isVisible: true)
@@ -37,13 +38,6 @@ func collapsingAndExpandingDeferPanelResizeAndKeepThePetRightAnchored() async {
 
     controller.setWidgetRailExpanded(false)
 
-    #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
-    await waitForPanelLayout(
-        size: HabitatOverlayLayout.collapsedSize,
-        rightEdge: rightEdge,
-        dragRegionFrame: CGRect(origin: .zero, size: HabitatOverlayLayout.petSize),
-        in: controller
-    )
     #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
     #expect(controller.panelFrame.maxX == rightEdge)
     #expect(controller.isTemporaryMoveMode)
@@ -54,16 +48,6 @@ func collapsingAndExpandingDeferPanelResizeAndKeepThePetRightAnchored() async {
 
     controller.setWidgetRailExpanded(true)
 
-    #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
-    await waitForPanelLayout(
-        size: HabitatOverlayLayout.expandedSize,
-        rightEdge: rightEdge,
-        dragRegionFrame: CGRect(
-            origin: CGPoint(x: 188, y: 0),
-            size: HabitatOverlayLayout.petSize
-        ),
-        in: controller
-    )
     #expect(controller.panelSize == HabitatOverlayLayout.expandedSize)
     #expect(controller.panelFrame.maxX == rightEdge)
     #expect(controller.isTemporaryMoveMode)
@@ -73,19 +57,38 @@ func collapsingAndExpandingDeferPanelResizeAndKeepThePetRightAnchored() async {
     ))
 }
 
-@MainActor
-private func waitForPanelLayout(
-    size expectedSize: CGSize,
-    rightEdge expectedRightEdge: CGFloat,
-    dragRegionFrame expectedDragRegionFrame: CGRect,
-    in controller: HabitatDesktopController
-) async {
-    for _ in 0..<100 where controller.panelSize != expectedSize
-        || controller.panelFrame.maxX != expectedRightEdge
-        || controller.dragRegionFrame != expectedDragRegionFrame
-    {
+@Test @MainActor
+func rapidExpansionChangesCannotReplayAStaleResize() async throws {
+    let controller = HabitatDesktopController(
+        expansionAnimationDuration: 0.05,
+        expansionFrameInterval: 0.005
+    )
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    controller.apply(settings: settings, pets: [], isVisible: true)
+    let rightEdge = controller.panelFrame.maxX
+
+    controller.setWidgetRailExpanded(false)
+    await Task.yield()
+    controller.setWidgetRailExpanded(true)
+    await Task.yield()
+    controller.setWidgetRailExpanded(false)
+
+    for _ in 0..<100 {
+        #expect(controller.panelFrame.maxX == rightEdge)
+        #expect(controller.contentSize == controller.panelSize)
+        #expect(controller.dragRegionFrame.maxX == controller.panelSize.width)
+        if controller.panelSize == HabitatOverlayLayout.collapsedSize {
+            break
+        }
         await Task.yield()
     }
+
+    try await Task.sleep(for: .milliseconds(80))
+
+    #expect(controller.panelSize == HabitatOverlayLayout.collapsedSize)
+    #expect(controller.panelFrame.maxX == rightEdge)
+    #expect(controller.dragRegionFrame == CGRect(origin: .zero, size: HabitatOverlayLayout.petSize))
 }
 
 @Test @MainActor
@@ -201,7 +204,7 @@ func switchingPetsBuildsTheNewRendererAwayFromTheMainActor() async {
     let recorder = RendererThreadRecorder()
     let controller = HabitatDesktopController { _, atlas in
         recorder.recordLoad(onMainThread: Thread.isMainThread)
-        return SpriteSheetRenderer(image: nil, atlas: atlas)
+        return SpriteSheetRenderer(image: desktopRenderableTestImage(), atlas: atlas)
     }
     let firstPet = desktopTestPet(id: "first-pet")
     let secondPet = desktopTestPet(id: "second-pet")
@@ -232,6 +235,82 @@ func switchingPetsBuildsTheNewRendererAwayFromTheMainActor() async {
 
     #expect(recorder.mainThreadLoads.count == 2)
     #expect(recorder.mainThreadLoads[1] == false)
+}
+
+@Test @MainActor
+func failedPetDecodeKeepsThePreviousRendererAndReportsTheRequestedSelection() async throws {
+    let validImage = try desktopTestImage()
+    let controller = HabitatDesktopController { url, atlas in
+        SpriteSheetRenderer(
+            image: url.deletingLastPathComponent().lastPathComponent == "first-pet"
+                ? validImage
+                : nil,
+            atlas: atlas
+        )
+    }
+    let firstPet = desktopTestPet(id: "first-pet")
+    let secondPet = desktopTestPet(id: "second-pet")
+    let presentations = [
+        "first-pet": HabitatPetPresentation(renderMode: .smooth, scale: 1),
+        "second-pet": HabitatPetPresentation(renderMode: .pixelated, scale: 1),
+    ]
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.selectedPetID = "first-pet"
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForPetRenderMode(.smooth, in: controller)
+
+    settings.selectedPetID = "second-pet"
+    controller.apply(
+        settings: settings,
+        pets: [firstPet, secondPet],
+        petPresentations: presentations,
+        isVisible: true
+    )
+    await waitForPetLoadFailure(in: controller)
+
+    #expect(controller.currentSelectedPetID == "second-pet")
+    #expect(controller.currentPetRenderMode == .smooth)
+    #expect(controller.petLoadError != nil)
+}
+
+@Test @MainActor
+func failedPetDecodeCanBeRetriedWithoutDroppingThePreviousRenderer() async throws {
+    let validImage = try desktopTestImage()
+    let attempts = PetDecodeAttemptCounter()
+    let controller = HabitatDesktopController { url, atlas in
+        let petID = url.deletingLastPathComponent().lastPathComponent
+        let attempt = attempts.record(petID)
+        return SpriteSheetRenderer(
+            image: petID == "first-pet" || attempt > 1 ? validImage : nil,
+            atlas: atlas
+        )
+    }
+    let firstPet = desktopTestPet(id: "first-pet")
+    let secondPet = desktopTestPet(id: "second-pet")
+    let presentations = [
+        "first-pet": HabitatPetPresentation(renderMode: .smooth, scale: 1),
+        "second-pet": HabitatPetPresentation(renderMode: .pixelated, scale: 1),
+    ]
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    settings.selectedPetID = "first-pet"
+    controller.apply(settings: settings, pets: [firstPet, secondPet], petPresentations: presentations, isVisible: true)
+    await waitForPetRenderMode(.smooth, in: controller)
+
+    settings.selectedPetID = "second-pet"
+    controller.apply(settings: settings, pets: [firstPet, secondPet], petPresentations: presentations, isVisible: true)
+    await waitForPetLoadFailure(in: controller)
+    controller.retryPetRendererLoad()
+    await waitForPetRenderMode(.pixelated, in: controller)
+
+    #expect(controller.petLoadError == nil)
+    #expect(attempts.count(for: "second-pet") == 2)
 }
 
 @Test @MainActor
@@ -400,6 +479,13 @@ private func waitForPetRenderMode(
     }
 }
 
+@MainActor
+private func waitForPetLoadFailure(in controller: HabitatDesktopController) async {
+    for _ in 0..<1_000 where controller.petLoadError == nil {
+        await Task.yield()
+    }
+}
+
 private final class RendererThreadRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var recordedMainThreadLoads: [Bool] = []
@@ -410,6 +496,22 @@ private final class RendererThreadRecorder: @unchecked Sendable {
 
     func recordLoad(onMainThread: Bool) {
         lock.withLock { recordedMainThreadLoads.append(onMainThread) }
+    }
+}
+
+private final class PetDecodeAttemptCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var counts: [String: Int] = [:]
+
+    func record(_ petID: String) -> Int {
+        lock.withLock {
+            counts[petID, default: 0] += 1
+            return counts[petID, default: 0]
+        }
+    }
+
+    func count(for petID: String) -> Int {
+        lock.withLock { counts[petID, default: 0] }
     }
 }
 
@@ -453,7 +555,7 @@ private final class RendererLoadGate: @unchecked Sendable {
             return completedWaiters.removeValue(forKey: petID) ?? []
         }
         completionContinuations.forEach { $0.resume() }
-        return SpriteSheetRenderer(image: nil, atlas: atlas)
+        return SpriteSheetRenderer(image: desktopRenderableTestImage(), atlas: atlas)
     }
 
     func releaseBlockedLoad() {
@@ -525,4 +627,33 @@ private func desktopTestPet(id: String) -> PetLibraryEntry {
         atlas: PetAtlasMetadata(pixelWidth: 8, pixelHeight: 9, columns: 8, rows: 9),
         status: .valid
     )
+}
+
+private func desktopTestImage() throws -> CGImage {
+    let context = try #require(CGContext(
+        data: nil,
+        width: 8,
+        height: 9,
+        bitsPerComponent: 8,
+        bytesPerRow: 32,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ))
+    return try #require(context.makeImage())
+}
+
+private func desktopRenderableTestImage() -> CGImage {
+    guard let context = CGContext(
+        data: nil,
+        width: 8,
+        height: 9,
+        bitsPerComponent: 8,
+        bytesPerRow: 32,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ), let image = context.makeImage()
+    else {
+        fatalError("Could not build the renderer test image")
+    }
+    return image
 }

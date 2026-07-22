@@ -10,6 +10,9 @@ public final class OverlayController: NSObject {
     public var onPrimaryClick: (() -> Void)? {
         didSet { dragRegion.onClick = onPrimaryClick }
     }
+    public var onPrimaryPressChange: ((Bool) -> Void)? {
+        didSet { dragRegion.onPressChange = onPrimaryPressChange }
+    }
 
     public var isMovementEnabled: Bool {
         isInteractive && !isMovementLocked
@@ -88,6 +91,8 @@ public final class OverlayController: NSObject {
     }
 
     public func setMovementLocked(_ locked: Bool) {
+        guard locked != isMovementLocked else { return }
+        dragRegion.cancelPointerInteraction()
         isMovementLocked = locked
         updateDragRegion()
     }
@@ -103,6 +108,7 @@ public final class OverlayController: NSObject {
         preservingRightEdge: Bool = true,
         rightEdgeAnchor: CGFloat? = nil
     ) {
+        dragRegion.cancelPointerInteraction()
         let nextSize = Self.boundedSize(requestedSize)
         guard nextSize != panelSize else { return }
 
@@ -113,13 +119,28 @@ public final class OverlayController: NSObject {
         if preservingRightEdge {
             origin.x = (rightEdgeAnchor ?? oldFrame.maxX) - nextSize.width
         }
-        panelSize = nextSize
         if let activeDisplay {
             origin = activeDisplay.clampedOrigin(origin, panelSize: nextSize)
         }
         panel.setFrame(CGRect(origin: origin, size: nextSize), display: true)
+        let appliedSize = panel.frame.size
+        if preservingRightEdge {
+            var correctedOrigin = panel.frame.origin
+            correctedOrigin.x = (rightEdgeAnchor ?? oldFrame.maxX) - appliedSize.width
+            if let activeDisplay {
+                correctedOrigin = activeDisplay.clampedOrigin(
+                    correctedOrigin,
+                    panelSize: appliedSize
+                )
+            }
+            panel.setFrameOrigin(correctedOrigin)
+            origin = correctedOrigin
+        } else {
+            origin = panel.frame.origin
+        }
+        panelSize = appliedSize
         let clippedDragFrame = dragRegion.frame.intersection(
-            CGRect(origin: .zero, size: nextSize)
+            CGRect(origin: .zero, size: appliedSize)
         )
         dragRegion.frame = clippedDragFrame.isNull ? .zero : clippedDragFrame
 
@@ -128,12 +149,13 @@ public final class OverlayController: NSObject {
             displayID: activeDisplay.id,
             relativePosition: activeDisplay.relativePosition(
                 for: origin,
-                panelSize: nextSize
+                panelSize: appliedSize
             )
         )
     }
 
     public func hide() {
+        dragRegion.cancelPointerInteraction()
         panel.orderOut(nil)
     }
 
@@ -216,8 +238,9 @@ public final class OverlayController: NSObject {
     }
 
     private func updateDragRegion() {
+        dragRegion.isInteractionEnabled = isInteractive
         dragRegion.isDragEnabled = isMovementEnabled
-        dragRegion.isHidden = !isMovementEnabled
+        dragRegion.isHidden = !isInteractive
     }
 
     private func display(containingPanelAt origin: CGPoint) -> DisplayGeometry? {
@@ -261,53 +284,104 @@ public final class OverlayController: NSObject {
 }
 
 @MainActor
-private final class OverlayDragRegionView: NSView {
+final class OverlayDragRegionView: NSView {
+    var isInteractionEnabled = false {
+        didSet {
+            if !isInteractionEnabled {
+                cancelPointerInteraction()
+            }
+        }
+    }
     var isDragEnabled = false
     var onMove: ((CGPoint) -> Void)?
     var onFinish: ((CGPoint) -> Void)?
     var onClick: (() -> Void)?
+    var onPressChange: ((Bool) -> Void)?
 
-    private var initialMouseLocation = CGPoint.zero
-    private var initialWindowOrigin = CGPoint.zero
-    private var didBeginDragging = false
+    private var interaction = PetPointerInteraction(dragThreshold: 6)
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        switch NSApp.currentEvent?.type {
-        case .rightMouseDown, .rightMouseUp, .rightMouseDragged:
-            nil
-        default:
-            super.hitTest(point)
-        }
+        guard let event = NSApp.currentEvent else { return super.hitTest(point) }
+        return Self.ownsPrimaryPointerEvent(event) ? super.hitTest(point) : nil
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard isDragEnabled, let window else { return }
-        initialMouseLocation = NSEvent.mouseLocation
-        initialWindowOrigin = window.frame.origin
-        didBeginDragging = false
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard isDragEnabled else { return }
-        let location = NSEvent.mouseLocation
-        let deltaX = location.x - initialMouseLocation.x
-        let deltaY = location.y - initialMouseLocation.y
-        guard didBeginDragging || hypot(deltaX, deltaY) >= 3 else { return }
-        didBeginDragging = true
-        onMove?(
-            CGPoint(
-                x: initialWindowOrigin.x + deltaX,
-                y: initialWindowOrigin.y + deltaY
-            )
+        guard isInteractionEnabled,
+              Self.ownsPrimaryPointerEvent(event),
+              let window
+        else {
+            return
+        }
+        handlePointerDown(
+            at: screenLocation(for: event, in: window),
+            windowOrigin: window.frame.origin
         )
     }
 
+    override func mouseDragged(with event: NSEvent) {
+        guard isInteractionEnabled, let window else { return }
+        handlePointerMoved(to: screenLocation(for: event, in: window))
+    }
+
     override func mouseUp(with event: NSEvent) {
-        guard isDragEnabled, let window else { return }
-        if didBeginDragging {
-            onFinish?(window.frame.origin)
-        } else {
+        guard isInteractionEnabled, let window else { return }
+        handlePointerUp(at: screenLocation(for: event, in: window))
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow == nil {
+            cancelPointerInteraction()
+        }
+        super.viewWillMove(toWindow: newWindow)
+    }
+
+    func cancelPointerInteraction() {
+        consume(interaction.cancel())
+    }
+
+    func handlePointerDown(at location: CGPoint, windowOrigin: CGPoint) {
+        guard isInteractionEnabled else { return }
+        consume(interaction.pointerDown(
+            at: location,
+            windowOrigin: windowOrigin,
+            canDrag: isDragEnabled
+        ))
+    }
+
+    func handlePointerMoved(to location: CGPoint) {
+        guard isInteractionEnabled else { return }
+        consume(interaction.pointerMoved(to: location))
+    }
+
+    func handlePointerUp(at location: CGPoint) {
+        guard isInteractionEnabled else { return }
+        consume(interaction.pointerUp(at: location))
+    }
+
+    private func screenLocation(for event: NSEvent, in window: NSWindow) -> CGPoint {
+        window.convertPoint(toScreen: event.locationInWindow)
+    }
+
+    private static func ownsPrimaryPointerEvent(_ event: NSEvent) -> Bool {
+        PetPointerInteraction.ownsPrimaryButton(
+            buttonNumber: event.buttonNumber,
+            controlPressed: event.modifierFlags.contains(.control)
+        )
+    }
+
+    private func consume(_ update: PetPointerInteraction.Update) {
+        if let pressed = update.pressChanged {
+            onPressChange?(pressed)
+        }
+        switch update.command {
+        case .toggle:
             onClick?()
+        case let .move(origin):
+            onMove?(origin)
+        case let .finishMove(origin):
+            onFinish?(origin)
+        case nil:
+            break
         }
     }
 }

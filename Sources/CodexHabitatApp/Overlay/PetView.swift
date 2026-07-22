@@ -22,3 +22,14 @@ struct PetView: View {
         .accessibilityLabel(L10n.text("Codex Habitat pet"))
     }
 }
+
+struct HabitatPetPressFeedback: ViewModifier {
+    let isPressed: Bool
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !reduceMotion ? 0.96 : 1, anchor: .bottom)
+            .opacity(isPressed ? 0.82 : 1)
+    }
+}

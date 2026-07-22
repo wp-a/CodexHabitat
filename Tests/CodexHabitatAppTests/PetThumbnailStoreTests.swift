@@ -36,6 +36,90 @@ func missingPetThumbnailResultsAreCached() async {
     #expect(counter.value == 1)
 }
 
+@Test
+func differentPetThumbnailsDecodeConcurrently() async {
+    let probe = ConcurrentThumbnailProbe()
+    let store = PetThumbnailStore { _ in
+        probe.begin()
+        Thread.sleep(forTimeInterval: 0.04)
+        probe.end()
+        return nil
+    }
+
+    async let first = store.image(for: thumbnailTestPet(id: "first"))
+    async let second = store.image(for: thumbnailTestPet(id: "second"))
+    _ = await (first, second)
+
+    #expect(probe.maximumConcurrentLoads == 2)
+}
+
+@Test
+func concurrentRequestsForTheSamePetShareOneDecode() async {
+    let counter = ThumbnailLoadCounter()
+    let store = PetThumbnailStore { _ in
+        counter.increment()
+        Thread.sleep(forTimeInterval: 0.03)
+        return nil
+    }
+    let pet = thumbnailTestPet()
+
+    async let first = store.image(for: pet)
+    async let second = store.image(for: pet)
+    _ = await (first, second)
+
+    #expect(counter.value == 1)
+}
+
+@Test
+func invalidatingAMissingThumbnailAllowsRetry() async throws {
+    let image = try thumbnailTestImage()
+    let attempts = ThumbnailLoadCounter()
+    let store = PetThumbnailStore { _ in
+        attempts.increment()
+        return attempts.value == 1 ? nil : image
+    }
+    let pet = thumbnailTestPet()
+
+    #expect(await store.image(for: pet) == nil)
+    await store.invalidate(pet)
+    #expect(await store.image(for: pet) === image)
+    #expect(attempts.value == 2)
+}
+
+@Test
+func petPreviewSelectionChangesImmediatelyWhileKeepingThePreviousImage() throws {
+    let previousImage = try thumbnailTestImage()
+    var state = PetPreviewPresentationState()
+    let firstRequest = state.select(petID: "first")
+    state.complete(petID: "first", request: firstRequest, image: previousImage)
+
+    _ = state.select(petID: "second")
+
+    #expect(state.selectedPetID == "second")
+    #expect(state.status == .loading)
+    #expect(state.displayedImage === previousImage)
+}
+
+@Test
+func petPreviewIgnoresStaleCompletionAndKeepsOldImageOnCurrentFailure() throws {
+    let previousImage = try thumbnailTestImage()
+    let staleImage = try thumbnailTestImage()
+    var state = PetPreviewPresentationState()
+    let firstRequest = state.select(petID: "first")
+    state.complete(petID: "first", request: firstRequest, image: previousImage)
+    let staleRequest = state.select(petID: "second")
+    let currentRequest = state.select(petID: "third")
+
+    state.complete(petID: "second", request: staleRequest, image: staleImage)
+    #expect(state.selectedPetID == "third")
+    #expect(state.displayedImage === previousImage)
+    #expect(state.status == .loading)
+
+    state.complete(petID: "third", request: currentRequest, image: nil)
+    #expect(state.displayedImage === previousImage)
+    #expect(state.status == .failed)
+}
+
 private final class ThumbnailLoadCounter: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0
@@ -49,8 +133,29 @@ private final class ThumbnailLoadCounter: @unchecked Sendable {
     }
 }
 
-private func thumbnailTestPet() -> PetLibraryEntry {
-    let root = URL(fileURLWithPath: "/tmp/test-thumbnail-pet", isDirectory: true)
+private final class ConcurrentThumbnailProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var activeLoads = 0
+    private var maximum = 0
+
+    var maximumConcurrentLoads: Int {
+        lock.withLock { maximum }
+    }
+
+    func begin() {
+        lock.withLock {
+            activeLoads += 1
+            maximum = max(maximum, activeLoads)
+        }
+    }
+
+    func end() {
+        lock.withLock { activeLoads -= 1 }
+    }
+}
+
+private func thumbnailTestPet(id: String = "test-thumbnail-pet") -> PetLibraryEntry {
+    let root = URL(fileURLWithPath: "/tmp/\(id)", isDirectory: true)
     return PetLibraryEntry(
         packageURL: root,
         manifest: nil,

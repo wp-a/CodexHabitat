@@ -194,6 +194,7 @@
 "LIVE" = "实时";
 "Loading Codex Habitat" = "正在加载 Codex Habitat";
 "Loading Petdex catalog..." = "正在加载 Petdex 目录…";
+"Loading pet artwork…" = "正在加载宠物图像…";
 "Local and redacted" = "本地且已脱敏";
 "Local data" = "本地数据";
 "Local data could not be cleared" = "无法清除本地数据";
@@ -207,6 +208,8 @@
 "Pause countdown" = "暂停倒计时";
 "Pause focus timer" = "暂停专注计时";
 "Petdex returned data Habitat could not safely use." = "Petdex 返回的数据无法被 Habitat 安全使用。";
+"Pet Library" = "宠物库";
+"Preview" = "预览";
 "Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed." = "此资源包提供的宠物和主题将从 Habitat 移除，不会修改 Codex 文件。";
 "Place Habitat" = "放置 Habitat";
 "Preparing export..." = "正在准备导出…";
@@ -215,6 +218,7 @@
 "Quiet Garden" = "静谧花园";
 "REST" = "休息";
 "RETRY" = "重试";
+"Retry" = "重试";
 "Recovery" = "恢复";
 "Redacted diagnostics exported" = "已导出脱敏诊断";
 "Refresh Petdex" = "刷新 Petdex";
@@ -242,6 +246,13 @@
 "The package failed verification or installation." = "资源包验证或安装失败。";
 "The package operation failed validation." = "资源包操作未通过验证。";
 "Theme copied" = "主题已复制";
+"Behavior" = "行为";
+"Edit Behavior" = "编辑行为";
+"Select pet" = "选择宠物";
+"Sprite version" = "精灵版本";
+"Frame size" = "帧尺寸";
+"Atlas" = "图集";
+"Unable to load pet artwork" = "无法加载宠物图像";
 "This entry is missing a license, content ID, or SHA-256 checksum." = "此条目缺少许可证、内容 ID 或 SHA-256 校验值。";
 "Unknown" = "未知";
 "Unknown creator" = "未知作者";
