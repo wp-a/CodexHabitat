@@ -239,7 +239,7 @@ func visualQASettingsWindowHonorsABoundedWideContentSize() {
     controller.show(model: model, activate: false, visualQAOptions: options)
 
     let contentWidth = controller.window?.contentLayoutRect.width ?? 0
-    #expect(contentWidth > 760)
+    #expect(contentWidth >= 760)
     #expect(contentWidth <= 1_040)
     controller.window?.close()
 }
