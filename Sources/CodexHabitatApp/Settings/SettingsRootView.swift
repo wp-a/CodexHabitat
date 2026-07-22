@@ -73,7 +73,7 @@ struct SettingsRootView: View {
                 desktopController: desktopController
             )
         case .pets:
-            PetsSettingsView(model: model)
+            makePetsSettingsView()
         case .widgets:
             WidgetsSettingsView(model: model)
         case .themes:
@@ -83,6 +83,14 @@ struct SettingsRootView: View {
         case .privacy:
             PrivacySettingsView(model: model)
         }
+    }
+
+    @MainActor
+    func makePetsSettingsView() -> PetsSettingsView {
+        PetsSettingsView(
+            model: model,
+            desktopController: desktopController
+        )
     }
 }
 

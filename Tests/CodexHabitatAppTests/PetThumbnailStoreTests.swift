@@ -120,6 +120,45 @@ func petPreviewIgnoresStaleCompletionAndKeepsOldImageOnCurrentFailure() throws {
     #expect(state.status == .failed)
 }
 
+@Test
+func petRendererRecoveryShowsOnlyTheCurrentSelectionsFailure() {
+    let failure = PetRendererFailure(
+        petID: "second",
+        message: "Unable to load pet artwork"
+    )
+
+    let matching = PetRendererRecoveryState(
+        selectedPetID: "second",
+        failure: failure
+    )
+    let stale = PetRendererRecoveryState(
+        selectedPetID: "third",
+        failure: failure
+    )
+
+    #expect(matching.inlineMessage == failure.message)
+    #expect(stale.inlineMessage == nil)
+}
+
+@Test @MainActor
+func petRendererRecoveryRetriesThePreviewAndDesktopRendererExactlyOnce() async {
+    var invalidatedPetIDs: [String] = []
+    var rendererRetryCount = 0
+    let coordinator = PetRendererRecoveryCoordinator(
+        invalidatePreview: { pet in
+            invalidatedPetIDs.append(pet.packageURL.lastPathComponent)
+        },
+        retryRenderer: {
+            rendererRetryCount += 1
+        }
+    )
+
+    await coordinator.retry(pet: thumbnailTestPet(id: "second"))
+
+    #expect(invalidatedPetIDs == ["second"])
+    #expect(rendererRetryCount == 1)
+}
+
 private final class ThumbnailLoadCounter: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0

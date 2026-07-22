@@ -156,6 +156,26 @@ func settingsNavigationUsesLocalSelectionState() {
     #expect(model.selectedSettingsSection == .integrations)
 }
 
+@Test @MainActor
+func settingsRootConstructsPetsWithTheSharedDesktopController() {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatPetSettingsWiringTests-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: root),
+        petRoot: root.appending(path: "Pets")
+    )
+    let desktopController = HabitatDesktopController()
+    let settingsRoot = SettingsRootView(
+        model: model,
+        desktopController: desktopController
+    )
+
+    let pets = settingsRoot.makePetsSettingsView()
+
+    #expect(pets.desktopController === desktopController)
+}
+
 @Test
 func themeGalleryDoesNotRefreshTheEntireResourceLibraryOnAppearance() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)

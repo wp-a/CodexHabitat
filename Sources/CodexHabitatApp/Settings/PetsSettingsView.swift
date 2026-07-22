@@ -136,6 +136,27 @@ struct PetPreviewPresentationState {
     }
 }
 
+struct PetRendererRecoveryState: Equatable, Sendable {
+    let selectedPetID: String?
+    let failure: PetRendererFailure?
+
+    var inlineMessage: String? {
+        guard failure?.petID == selectedPetID else { return nil }
+        return failure?.message
+    }
+}
+
+@MainActor
+struct PetRendererRecoveryCoordinator {
+    let invalidatePreview: (PetLibraryEntry) async -> Void
+    let retryRenderer: () -> Void
+
+    func retry(pet: PetLibraryEntry) async {
+        await invalidatePreview(pet)
+        retryRenderer()
+    }
+}
+
 struct PetsSettingsView: View {
     private enum Source: String, CaseIterable, Identifiable {
         case local = "Installed"
@@ -145,6 +166,7 @@ struct PetsSettingsView: View {
     }
 
     @ObservedObject var model: HabitatAppModel
+    @ObservedObject var desktopController: HabitatDesktopController
     @StateObject private var marketplaceModel = PetMarketplaceModel.live()
     @State private var source = Source.local
     @State private var showsCompactInspector = false
@@ -232,7 +254,11 @@ struct PetsSettingsView: View {
                             petResourceList
                                 .frame(minWidth: 220, idealWidth: 260, maxWidth: 300)
                             Divider()
-                            PetPreviewPane(pet: selectedPet)
+                            PetPreviewPane(
+                                pet: selectedPet,
+                                rendererError: rendererRecoveryState.inlineMessage,
+                                onRetry: recoverPet
+                            )
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                             Divider()
                             PetBehaviorInspector(model: model, pet: selectedPet)
@@ -279,7 +305,11 @@ struct PetsSettingsView: View {
             petResourceList
                 .frame(height: 176)
             Divider()
-            PetPreviewPane(pet: selectedPet)
+            PetPreviewPane(
+                pet: selectedPet,
+                rendererError: rendererRecoveryState.inlineMessage,
+                onRetry: recoverPet
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             HStack {
@@ -325,6 +355,24 @@ struct PetsSettingsView: View {
         }
         .padding(HabitatDesignMetrics.spaceXXL)
         .frame(maxWidth: .infinity, minHeight: 160)
+    }
+
+    private var rendererRecoveryState: PetRendererRecoveryState {
+        PetRendererRecoveryState(
+            selectedPetID: model.settings.selectedPetID,
+            failure: desktopController.petLoadFailure
+        )
+    }
+
+    @MainActor
+    private func recoverPet(_ pet: PetLibraryEntry) async {
+        let coordinator = PetRendererRecoveryCoordinator(
+            invalidatePreview: { pet in
+                await PetThumbnailStore.shared.invalidate(pet)
+            },
+            retryRenderer: desktopController.retryPetRendererLoad
+        )
+        await coordinator.retry(pet: pet)
     }
 
     private func importPack() {
@@ -373,6 +421,8 @@ private struct PetResourceRow: View {
 
 private struct PetPreviewPane: View {
     let pet: PetLibraryEntry?
+    let rendererError: String?
+    let onRetry: (PetLibraryEntry) async -> Void
     @State private var presentation = PetPreviewPresentationState()
     @State private var retryGeneration = 0
 
@@ -417,15 +467,19 @@ private struct PetPreviewPane: View {
                 }
             }
 
-            if presentation.status == .failed, let pet {
+            if presentation.status == .failed || rendererError != nil, let pet {
                 HStack(spacing: HabitatDesignMetrics.spaceS) {
-                    Label("Unable to load pet artwork", systemImage: "exclamationmark.triangle")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                    Label {
+                        Text(rendererError ?? L10n.text("Unable to load pet artwork"))
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                     Spacer()
                     Button("Retry") {
                         Task {
-                            await PetThumbnailStore.shared.invalidate(pet)
+                            await onRetry(pet)
                             retryGeneration += 1
                         }
                     }

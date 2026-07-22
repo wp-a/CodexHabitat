@@ -13,6 +13,20 @@ struct HabitatPetAsset {
     let presentation: HabitatPetPresentation
 }
 
+struct PetRendererFailure: Equatable, Sendable {
+    let petID: String
+    let message: String
+}
+
+enum HabitatWidgetRailTransitionStyle: Equatable, Sendable {
+    case opacity
+    case moveAndOpacity
+
+    static func resolve(reduceMotion: Bool) -> Self {
+        reduceMotion ? .opacity : .moveAndOpacity
+    }
+}
+
 private struct HabitatPetAssetSource: Equatable {
     let entry: PetLibraryEntry
     let presentation: HabitatPetPresentation
@@ -98,7 +112,7 @@ final class HabitatDesktopController: ObservableObject {
     @Published private(set) var widgetModel = WidgetRailModel()
     @Published private(set) var currentSnapshot = HabitatSnapshot()
     @Published private(set) var isTemporaryMoveMode = false
-    @Published private(set) var petLoadError: String?
+    @Published private(set) var petLoadFailure: PetRendererFailure?
     private var petModel: HabitatOverlayModel?
     private var cancellable: AnyCancellable?
     private weak var boundModel: HabitatAppModel?
@@ -124,6 +138,7 @@ final class HabitatDesktopController: ObservableObject {
     @Published private(set) var isVisible = false
     var currentThemeID: String? { renderedThemeID }
     var currentSelectedPetID: String? { presentation.selectedPetID }
+    var petLoadError: String? { petLoadFailure?.message }
     var onOpenSettings: (() -> Void)?
 
     var isInteractive: Bool { overlay?.isInteractive ?? false }
@@ -333,9 +348,14 @@ final class HabitatDesktopController: ObservableObject {
     }
 
     func retryPetRendererLoad() {
-        guard petLoadError != nil, let application = latestApplication else { return }
+        guard let failure = petLoadFailure,
+              let application = latestApplication,
+              application.settings.selectedPetID == failure.petID
+        else {
+            return
+        }
         cancelPendingPetAssetLoad()
-        petLoadError = nil
+        petLoadFailure = nil
         apply(
             settings: application.settings,
             pets: application.pets,
@@ -440,7 +460,7 @@ final class HabitatDesktopController: ObservableObject {
             )
         )
         if source == cachedPetAssetSource {
-            petLoadError = nil
+            petLoadFailure = nil
             if pendingPetAssetSource != source {
                 startPetAssetLoad(
                     source: source,
@@ -472,7 +492,7 @@ final class HabitatDesktopController: ObservableObject {
         matchingFileSignature: HabitatPetFileSignature?
     ) {
         cancelPendingPetAssetLoad()
-        petLoadError = nil
+        petLoadFailure = nil
         pendingPetAssetSource = source
         let worker = petRendererWorker
         petRendererLoadTask = Task { [weak self] in
@@ -495,7 +515,10 @@ final class HabitatDesktopController: ObservableObject {
                 return
             case let .loaded(renderer, signature):
                 guard renderer.isRenderable else {
-                    self.petLoadError = L10n.text("Unable to load pet artwork")
+                    self.petLoadFailure = PetRendererFailure(
+                        petID: id,
+                        message: L10n.text("Unable to load pet artwork")
+                    )
                     return
                 }
                 self.cachedPetFileSignature = signature
@@ -508,10 +531,13 @@ final class HabitatDesktopController: ObservableObject {
                 )
             }
             guard self.cachedPetAssetSource == source else {
-                self.petLoadError = L10n.text("Unable to load pet artwork")
+                self.petLoadFailure = PetRendererFailure(
+                    petID: id,
+                    message: L10n.text("Unable to load pet artwork")
+                )
                 return
             }
-            self.petLoadError = nil
+            self.petLoadFailure = nil
             guard let application = self.latestApplication else { return }
             self.apply(
                 settings: application.settings,
@@ -694,7 +720,7 @@ private struct HabitatDesktopView: View {
                         x: 4,
                         y: 4
                     )
-                    .transition(.move(edge: .leading).combined(with: .opacity))
+                    .transition(widgetRailTransition)
             }
 
             petView
@@ -746,6 +772,15 @@ private struct HabitatDesktopView: View {
                 }
                 .accessibilityIdentifier("overlay.pet.toggle-widgets")
                 .offset(x: petFrame.minX, y: petFrame.minY)
+        }
+    }
+
+    private var widgetRailTransition: AnyTransition {
+        switch HabitatWidgetRailTransitionStyle.resolve(reduceMotion: petModel.reduceMotion) {
+        case .opacity:
+            .opacity
+        case .moveAndOpacity:
+            .move(edge: .leading).combined(with: .opacity)
         }
     }
 

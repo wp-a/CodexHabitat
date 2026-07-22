@@ -91,6 +91,12 @@ func rapidExpansionChangesCannotReplayAStaleResize() async throws {
     #expect(controller.dragRegionFrame == CGRect(origin: .zero, size: HabitatOverlayLayout.petSize))
 }
 
+@Test
+func widgetRailTransitionAvoidsMovementWhenReduceMotionIsEnabled() {
+    #expect(HabitatWidgetRailTransitionStyle.resolve(reduceMotion: true) == .opacity)
+    #expect(HabitatWidgetRailTransitionStyle.resolve(reduceMotion: false) == .moveAndOpacity)
+}
+
 @Test @MainActor
 func visualQAInitializerCanStartWithThePhysicalPanelCollapsed() {
     let controller = HabitatDesktopController(isWidgetRailExpanded: false)
@@ -277,6 +283,7 @@ func failedPetDecodeKeepsThePreviousRendererAndReportsTheRequestedSelection() as
     #expect(controller.currentSelectedPetID == "second-pet")
     #expect(controller.currentPetRenderMode == .smooth)
     #expect(controller.petLoadError != nil)
+    #expect(controller.petLoadFailure?.petID == "second-pet")
 }
 
 @Test @MainActor
