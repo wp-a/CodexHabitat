@@ -143,6 +143,30 @@ func focalPointDragClampsToUnitCoordinates() {
     ) == HabitatThemeFocalPoint(x: 0.5, y: 0.5))
 }
 
+@Test @MainActor
+func focalPointWritesMatchTheDisplayedWholePercentPrecision() {
+    let rect = CGRect(x: 10, y: 20, width: 400, height: 300)
+    let mapped = ThemeFocalPointMapper.unitPoint(
+        at: CGPoint(
+            x: rect.minX + rect.width * 0.3746,
+            y: rect.minY + rect.height * 0.6254
+        ),
+        in: rect
+    )
+    let expected = HabitatThemeFocalPoint(x: 0.37, y: 0.63)
+
+    #expect(mapped == expected)
+
+    let model = makeHistoryModel()
+    model.setArtFocus(x: 0.3746, y: 0.6254)
+    model.setHomeArtFocus(x: 0.3746, y: 0.6254)
+    model.setTaskArtFocus(x: 0.3746, y: 0.6254)
+
+    #expect(model.artFocus == expected)
+    #expect(model.homeArtFocus == expected)
+    #expect(model.taskArtFocus == expected)
+}
+
 @Test
 func focalPointMapperReturnsStableCenterForDegenerateOrNonfiniteInput() {
     let center = HabitatThemeFocalPoint(x: 0.5, y: 0.5)

@@ -122,10 +122,19 @@ enum ThemeFocalPointMapper {
         else {
             return HabitatThemeFocalPoint(x: 0.5, y: 0.5)
         }
-        return HabitatThemeFocalPoint(
-            x: clamp((point.x - rect.minX) / rect.width),
-            y: clamp((point.y - rect.minY) / rect.height)
+        return normalizedPoint(
+            x: (point.x - rect.minX) / rect.width,
+            y: (point.y - rect.minY) / rect.height
         )
+    }
+
+    static func normalizedPoint(x: Double, y: Double) -> HabitatThemeFocalPoint {
+        HabitatThemeFocalPoint(x: quantize(x), y: quantize(y))
+    }
+
+    private static func quantize(_ value: Double) -> Double {
+        guard value.isFinite else { return 0.5 }
+        return (clamp(value) * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 
     private static func clamp(_ value: Double) -> Double {
@@ -268,7 +277,10 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             )
             initial.category = appearance.category
             initial.styleFamily = appearance.styleFamily
-            initial.artFocus = appearance.artFocus
+            initial.artFocus = ThemeFocalPointMapper.normalizedPoint(
+                x: appearance.artFocus.x,
+                y: appearance.artFocus.y
+            )
             initial.safeSide = appearance.safeSide
             initial.backgroundStrength = appearance.backgroundStrength
             initial.panelOpacity = appearance.panelOpacity
@@ -282,8 +294,14 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             initial.sidebarOpacity = appearance.resolvedSidebarOpacity
             initial.headerOpacity = appearance.resolvedHeaderOpacity
             initial.composerOpacity = appearance.resolvedComposerOpacity
-            initial.homeArtFocus = appearance.resolvedHomeArtFocus
-            initial.taskArtFocus = appearance.resolvedTaskArtFocus
+            initial.homeArtFocus = ThemeFocalPointMapper.normalizedPoint(
+                x: appearance.resolvedHomeArtFocus.x,
+                y: appearance.resolvedHomeArtFocus.y
+            )
+            initial.taskArtFocus = ThemeFocalPointMapper.normalizedPoint(
+                x: appearance.resolvedTaskArtFocus.x,
+                y: appearance.resolvedTaskArtFocus.y
+            )
             initial.homeArtScale = appearance.resolvedHomeArtScale
             initial.taskArtScale = appearance.resolvedTaskArtScale
             initial.taskSidebarOpacity = appearance.resolvedTaskSidebarOpacity
@@ -676,10 +694,7 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
         y: Double,
         keyPath: WritableKeyPath<ThemeStudioDraft, HabitatThemeFocalPoint>
     ) {
-        let value = HabitatThemeFocalPoint(
-            x: min(max(x, 0), 1),
-            y: min(max(y, 0), 1)
-        )
+        let value = ThemeFocalPointMapper.normalizedPoint(x: x, y: y)
         performEdit { $0[keyPath: keyPath] = value }
     }
 
