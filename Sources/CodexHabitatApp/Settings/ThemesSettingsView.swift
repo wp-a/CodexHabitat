@@ -613,7 +613,10 @@ struct StaticThemeThumbnail: View {
     let symbol: String
     let surfaceHex: String
     let accentHex: String
+    let reloadGeneration: Int
+    @Binding var retryAvailable: Bool
     @State private var image: CGImage?
+    @State private var presentationState = ThemePreviewPresentationState()
 
     var body: some View {
         ZStack {
@@ -633,17 +636,34 @@ struct StaticThemeThumbnail: View {
         .clipped()
         .accessibilityHidden(true)
         .allowsHitTesting(false)
-        .task(id: previewRequestKey) {
+        .task(id: previewLoadIdentity) {
+            let requestID = presentationState.beginRequest()
+            retryAvailable = false
             let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
             guard !Task.isCancelled else { return }
-            if let loadedImage {
+            switch presentationState.complete(
+                requestID: requestID,
+                succeeded: loadedImage != nil
+            ) {
+            case .displayImage:
                 image = loadedImage
+                retryAvailable = false
+            case .clearImage:
+                image = nil
+                retryAvailable = imageURL != nil
+            case .ignored:
+                break
             }
         }
     }
 
     private var previewRequestKey: ThemePreviewRequestKey? {
         imageURL.map(ThemePreviewRequestKey.init(url:))
+    }
+
+    private var previewLoadIdentity: String {
+        let request = previewRequestKey
+        return "\(request?.url.path ?? "missing")|\(request?.fileSize ?? -1)|\(request?.modificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(reloadGeneration)"
     }
 }
 
@@ -654,6 +674,8 @@ struct ThemeChoiceCard: View {
     let isFavorite: Bool
     let action: () -> Void
     let favoriteAction: (() -> Void)?
+    @State private var previewRetryAvailable = false
+    @State private var previewReloadGeneration = 0
 
     init(
         theme: HabitatThemeDescriptor,
@@ -673,14 +695,16 @@ struct ThemeChoiceCard: View {
 
     var body: some View {
         let previewPlan = ThemeGalleryPreviewPlan(theme: theme)
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .center) {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 0) {
                     StaticThemeThumbnail(
                         imageURL: previewPlan.imageURL,
                         symbol: theme.symbol,
                         surfaceHex: theme.surfaceHex,
-                        accentHex: theme.accentHex
+                        accentHex: theme.accentHex,
+                        reloadGeneration: previewReloadGeneration,
+                        retryAvailable: $previewRetryAvailable
                     )
                     HStack(spacing: 6) {
                         VStack(alignment: .leading, spacing: 1) {
@@ -721,6 +745,20 @@ struct ThemeChoiceCard: View {
             .accessibilityValue(accessibilityValue)
             .accessibilityIdentifier("themes.choice.\(theme.id)")
 
+            if previewRetryAvailable, previewPlan.imageURL != nil {
+                Button(action: retryPreview) {
+                    Image(systemName: "arrow.clockwise")
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help(retryAccessibilityLabel)
+                .accessibilityLabel(retryAccessibilityLabel)
+                .accessibilityIdentifier("themes.choice.\(theme.id).retry")
+                .padding(7)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
             if let favoriteAction {
                 Button(action: favoriteAction) {
                     Image(systemName: isFavorite ? "star.fill" : "star")
@@ -732,7 +770,8 @@ struct ThemeChoiceCard: View {
                 .accessibilityLabel(L10n.text(isFavorite ? "Remove from Favorites" : "Add to Favorites"))
                 .padding(7)
             }
-
+        }
+        .overlay(alignment: .topLeading) {
             if isActive {
                 Label(L10n.text("Active"), systemImage: "checkmark.seal.fill")
                     .font(.system(size: 10, weight: .semibold))
@@ -740,7 +779,6 @@ struct ThemeChoiceCard: View {
                     .frame(height: 24)
                     .background(.regularMaterial, in: Capsule())
                     .padding(7)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
                     .allowsHitTesting(false)
             }
         }
@@ -753,6 +791,19 @@ struct ThemeChoiceCard: View {
             L10n.text(isActive ? "Active" : "Inactive"),
             L10n.text(isFavorite ? "Favorite" : "Not favorite"),
         ].joined(separator: ", ")
+    }
+
+    private var retryAccessibilityLabel: String {
+        L10n.format("Retry %@ preview", L10n.text(theme.name))
+    }
+
+    private func retryPreview() {
+        guard let imageURL = theme.previewURL else { return }
+        Task {
+            await ThemePreviewStore.shared.invalidate(url: imageURL)
+            guard !Task.isCancelled else { return }
+            previewReloadGeneration += 1
+        }
     }
 }
 

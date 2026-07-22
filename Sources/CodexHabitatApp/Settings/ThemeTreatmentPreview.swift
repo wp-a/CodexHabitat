@@ -223,7 +223,7 @@ struct ThemeTreatmentPreview: View {
     var height = 100.0
     var showsRetryControl = false
     @State private var image: CGImage?
-    @State private var previewLoadFailed = false
+    @State private var presentationState = ThemePreviewPresentationState()
     @State private var reloadGeneration = 0
 
     var body: some View {
@@ -244,7 +244,7 @@ struct ThemeTreatmentPreview: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .overlay {
-            if showsRetryControl, previewLoadFailed, imageURL != nil {
+            if showsRetryControl, presentationState.showsRetry, imageURL != nil {
                 Button(action: retryPreview) {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -255,14 +255,19 @@ struct ThemeTreatmentPreview: View {
             }
         }
         .task(id: previewLoadIdentity) {
-            previewLoadFailed = false
+            let requestID = presentationState.beginRequest()
             let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
             guard !Task.isCancelled else { return }
-            if let loadedImage {
+            switch presentationState.complete(
+                requestID: requestID,
+                succeeded: loadedImage != nil
+            ) {
+            case .displayImage:
                 image = loadedImage
-                previewLoadFailed = false
-            } else {
-                previewLoadFailed = true
+            case .clearImage:
+                image = nil
+            case .ignored:
+                break
             }
         }
     }

@@ -302,6 +302,7 @@
 "Active in Codex" = "已在 Codex 中启用";
 "Apply to Codex" = "应用到 Codex";
 "Retry preview" = "重试预览";
+"Retry %@ preview" = "重试%@预览";
 "Retro Messenger" = "复古即时通讯";
 "Green Chat" = "绿色聊天桌面";
 "Classic Desktop" = "经典桌面";

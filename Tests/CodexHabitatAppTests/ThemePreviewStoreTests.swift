@@ -123,10 +123,19 @@ func galleryPlansUseOnlyStaticPackagedPreviewsWithoutBackdropMaterial() throws {
     #expect(cardSource.contains("isSelected ? \"Selected\" : \"Not selected\""))
     #expect(cardSource.contains("isActive ? \"Active\" : \"Inactive\""))
     #expect(cardSource.contains("isFavorite ? \"Favorite\" : \"Not favorite\""))
+    #expect(cardSource.contains("themes.choice.\\(theme.id).retry"))
+    #expect(cardSource.contains("Retry %@ preview"))
+    let cardButton = try #require(cardSource.range(of: "Button(action: action)"))
+    let retryButton = try #require(cardSource.range(of: "Button(action: retryPreview)"))
+    #expect(retryButton.lowerBound > cardButton.upperBound)
+    #expect(cardSource.contains("ZStack(alignment: .center)"))
+    let favoriteOverlay = try #require(cardSource.range(of: ".overlay(alignment: .topTrailing)"))
+    let retryControlSource = cardSource[retryButton.lowerBound..<favoriteOverlay.lowerBound]
+    #expect(!retryControlSource.contains("maxWidth: .infinity"))
 }
 
 @Test
-func treatmentPreviewClearsOldFailureBeforeStartingAReplacementLoad() throws {
+func treatmentPreviewUsesRequestStateToClearFailedReplacementImages() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -137,12 +146,11 @@ func treatmentPreviewClearsOldFailureBeforeStartingAReplacementLoad() throws {
         ),
         encoding: .utf8
     )
-    let taskStart = try #require(source.range(of: ".task(id: previewLoadIdentity)"))
-    let taskSource = source[taskStart.lowerBound...]
-    let reset = try #require(taskSource.range(of: "previewLoadFailed = false"))
-    let load = try #require(taskSource.range(of: "ThemePreviewStore.shared.image"))
-
-    #expect(reset.lowerBound < load.lowerBound)
+    #expect(source.contains("ThemePreviewPresentationState"))
+    #expect(source.contains("presentationState.beginRequest()"))
+    #expect(source.contains("case .clearImage:"))
+    #expect(source.contains("image = nil"))
+    #expect(source.contains("case .ignored:"))
 }
 
 private final class ThemePreviewLoadCounter: @unchecked Sendable {
