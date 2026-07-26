@@ -325,6 +325,9 @@ actor HabitatRuntimeService {
                 threadIDHash: threadIDHash,
                 eventTimestamp: timestamp
             )
+            if activity == .working {
+                nudgeMetricsMonitor()
+            }
         case let .completed(threadIDHash, timestamp):
             await metricsMonitor?.selectThread(idHash: threadIDHash)
             Task {
@@ -344,9 +347,22 @@ actor HabitatRuntimeService {
     private func startFallbackMonitor() {
         guard fallbackTask == nil, let fallbackMonitor else { return }
         fallbackTask = Task { [weak self] in
+            // The first offline sample only rebuilds the on-disk baseline, so
+            // its diff against a stale fingerprint set is discarded.
+            var needsBaseline = true
             while !Task.isCancelled {
-                let activity = await fallbackMonitor.sample()
-                await self?.applyFallback(activity)
+                if let self {
+                    if await self.primaryOnline {
+                        needsBaseline = true
+                    } else {
+                        let activity = await fallbackMonitor.sample()
+                        if needsBaseline {
+                            needsBaseline = false
+                        } else {
+                            await self.applyFallback(activity)
+                        }
+                    }
+                }
                 do {
                     try await Task.sleep(for: .milliseconds(500))
                 } catch {
@@ -361,14 +377,29 @@ actor HabitatRuntimeService {
         metricsTask = Task { [weak self] in
             while !Task.isCancelled {
                 let metrics = await metricsMonitor.sample(at: Date())
-                await self?.state.setTokenMetrics(metrics)
+                guard let self else { return }
+                await self.state.setTokenMetrics(metrics)
+                let activity = await self.state.currentSnapshot().activity
+                let interval: Duration = switch activity {
+                case .working, .attention:
+                    .seconds(1)
+                case .resting, .succeeded, .failed, .offline:
+                    .seconds(5)
+                }
                 do {
-                    try await Task.sleep(for: .seconds(1))
+                    try await Task.sleep(for: interval)
                 } catch {
                     return
                 }
             }
         }
+    }
+
+    private func nudgeMetricsMonitor() {
+        guard monitoringActive, metricsTask != nil else { return }
+        metricsTask?.cancel()
+        metricsTask = nil
+        startMetricsMonitor()
     }
 
     private func applyFallback(_ activity: SessionMetadataActivity?) async {
@@ -390,6 +421,7 @@ actor HabitatRuntimeService {
                 threadIDHash: nil,
                 eventTimestamp: Date()
             )
+            nudgeMetricsMonitor()
         case .completed:
             Task {
                 await state.markCompleted(

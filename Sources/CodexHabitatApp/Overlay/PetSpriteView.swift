@@ -89,6 +89,8 @@ final class PetSpriteNSView: NSView {
     private var refreshTimer: Timer?
     private var refreshInterval: TimeInterval?
     private var interpolation = CALayerContentsFilter.linear
+    private var lastRenderedImage: CGImage?
+    private var occlusionObserver: (any NSObjectProtocol)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -107,12 +109,26 @@ final class PetSpriteNSView: NSView {
         layer?.contentsScale = window?.backingScaleFactor
             ?? NSScreen.main?.backingScaleFactor
             ?? 2
-        guard window != nil else { return }
+        guard let window else { return }
+        occlusionObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.updateTimerIfNeeded()
+                self?.renderCurrentFrame()
+            }
+        }
         updateTimerIfNeeded()
         renderCurrentFrame()
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if let occlusionObserver {
+            NotificationCenter.default.removeObserver(occlusionObserver)
+            self.occlusionObserver = nil
+        }
         if newWindow == nil {
             stopAnimating()
         }
@@ -153,7 +169,7 @@ final class PetSpriteNSView: NSView {
     }
 
     private func updateTimerIfNeeded() {
-        let desiredInterval = driver?.refreshInterval
+        let desiredInterval = effectiveRefreshInterval
         guard desiredInterval != refreshInterval else { return }
         stopAnimating()
         guard let desiredInterval else { return }
@@ -168,17 +184,21 @@ final class PetSpriteNSView: NSView {
         RunLoop.main.add(timer, forMode: .common)
     }
 
+    private var effectiveRefreshInterval: TimeInterval? {
+        guard let window else { return nil }
+        guard window.occlusionState.contains(.visible) else { return nil }
+        return driver?.refreshInterval
+    }
+
     private func renderCurrentFrame() {
-        guard let driver,
-              let image = renderer?.frame(driver.currentFrame())
-        else {
-            layer?.contents = fallbackImage
-            return
-        }
+        let image = driver.flatMap { renderer?.frame($0.currentFrame()) }
+            ?? cachedFallbackImage
+        guard image !== lastRenderedImage else { return }
+        lastRenderedImage = image
         layer?.contents = image
     }
 
-    private var fallbackImage: CGImage? {
+    private lazy var cachedFallbackImage: CGImage? = {
         guard let image = NSImage(
             systemSymbolName: "pawprint.fill",
             accessibilityDescription: nil
@@ -187,5 +207,5 @@ final class PetSpriteNSView: NSView {
         }
         var rect = NSRect(x: 0, y: 0, width: 64, height: 64)
         return image.cgImage(forProposedRect: &rect, context: nil, hints: nil)
-    }
+    }()
 }
