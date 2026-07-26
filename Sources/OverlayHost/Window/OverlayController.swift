@@ -31,6 +31,10 @@ public final class OverlayController: NSObject {
         snapper = EdgeSnapper(threshold: snapThreshold)
         panel = HabitatPanel(contentRect: NSRect(origin: .zero, size: panelSize))
         hostingView = NSHostingView(rootView: AnyView(EmptyView()))
+        // The panel frame is the single sizing authority. Without this, the
+        // hosting view's SwiftUI-derived constraints re-expand the panel on the
+        // next layout pass whenever content updates lag a resize.
+        hostingView.sizingOptions = []
         super.init()
         configureContentView()
         configureDragRegion()

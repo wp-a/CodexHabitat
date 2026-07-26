@@ -134,6 +134,7 @@ final class HabitatDesktopController: ObservableObject {
     private let expansionAnimationDuration: Double
     private let expansionFrameInterval: Double
     private var expansionTask: Task<Void, Never>?
+    private var expansionGeneration = 0
 
     @Published private(set) var isVisible = false
     var currentThemeID: String? { renderedThemeID }
@@ -209,8 +210,7 @@ final class HabitatDesktopController: ObservableObject {
         presentation.positionLocked = settings.positionLocked
         let shouldShow = settings.onboardingCompleted && requestedVisibility
         guard shouldShow else {
-            expansionTask?.cancel()
-            expansionTask = nil
+            cancelExpansionAnimation()
             cancelPendingPetAssetLoad()
             endTemporaryMoveMode()
             petModel?.setAnimationActive(false)
@@ -246,8 +246,7 @@ final class HabitatDesktopController: ObservableObject {
             : nil
 
         if needsNewPanel {
-            expansionTask?.cancel()
-            expansionTask = nil
+            cancelExpansionAnimation()
             presentation.containerWidth = layout.containerSize.width
             overlay?.hide()
             overlay = OverlayController(panelSize: Self.scaledSize(layout.containerSize, scale: scale))
@@ -308,8 +307,7 @@ final class HabitatDesktopController: ObservableObject {
         renderedScale = scale
         renderedReduceMotion = reduceMotion
         if widgetsChanged, !needsNewPanel {
-            expansionTask?.cancel()
-            expansionTask = nil
+            cancelExpansionAnimation()
             presentation.containerWidth = layout.containerSize.width
         }
         resizePanelForPresentation()
@@ -370,7 +368,7 @@ final class HabitatDesktopController: ObservableObject {
     }
 
     private func animatePanelExpansion(to expanded: Bool) {
-        expansionTask?.cancel()
+        cancelExpansionAnimation()
         let targetWidth = expanded && !renderedWidgets.isEmpty
             ? HabitatOverlayLayout.expandedSize.width
             : HabitatOverlayLayout.collapsedSize.width
@@ -383,26 +381,37 @@ final class HabitatDesktopController: ObservableObject {
             return
         }
 
+        let generation = expansionGeneration
         let duration = expansionAnimationDuration
         let interval = expansionFrameInterval
-        let steps = max(1, Int(ceil(duration / interval)))
         expansionTask = Task { @MainActor [weak self] in
-            for step in 1...steps {
+            let clock = ContinuousClock()
+            let start = clock.now
+            while true {
                 do {
                     try await Task.sleep(for: .seconds(interval))
                 } catch {
                     return
                 }
-                guard let self, !Task.isCancelled else { return }
-                let progress = Double(step) / Double(steps)
+                guard let self, self.expansionGeneration == generation else { return }
+                let progress = min(1, (clock.now - start) / .seconds(duration))
                 let eased = 1 - pow(1 - progress, 3)
-                let width = step == steps
+                let width = progress >= 1
                     ? targetWidth
                     : startWidth + (targetWidth - startWidth) * eased
                 self.applyContainerWidth(width, rightEdgeAnchor: rightEdge)
+                if progress >= 1 {
+                    self.expansionTask = nil
+                    return
+                }
             }
-            self?.expansionTask = nil
         }
+    }
+
+    private func cancelExpansionAnimation() {
+        expansionGeneration += 1
+        expansionTask?.cancel()
+        expansionTask = nil
     }
 
     private func applyContainerWidth(
