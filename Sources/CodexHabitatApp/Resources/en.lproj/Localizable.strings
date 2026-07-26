@@ -1,5 +1,11 @@
+"5-hour limit" = "5-hour limit";
 "Access mode" = "Access mode";
 "Account quota" = "Account quota";
+"Account quota unavailable" = "Account quota unavailable";
+"Account quota used: %@" = "Account quota used: %@";
+"Account usage" = "Account usage";
+"Resets in %@" = "Resets in %@";
+"Weekly limit" = "Weekly limit";
 "Appearance" = "Appearance";
 "Apply Selected Theme to Codex" = "Apply Selected Theme to Codex";
 "Applying and checking layout" = "Applying and checking layout";

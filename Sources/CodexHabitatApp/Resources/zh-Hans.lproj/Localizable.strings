@@ -1,5 +1,11 @@
+"5-hour limit" = "5 小时限额";
 "Access mode" = "访问模式";
 "Account quota" = "账户配额";
+"Account quota unavailable" = "账户配额不可用";
+"Account quota used: %@" = "账户配额已用 %@";
+"Account usage" = "账户用量";
+"Resets in %@" = "%@后重置";
+"Weekly limit" = "每周限额";
 "Appearance" = "外观";
 "Apply Selected Theme to Codex" = "将所选主题应用到 Codex";
 "Applying and checking layout" = "正在应用并检查布局";

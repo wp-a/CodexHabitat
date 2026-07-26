@@ -303,6 +303,8 @@ struct WidgetRailView: View {
                 .foregroundStyle(textColor.opacity(0.62))
                 .frame(minWidth: 32, alignment: .trailing)
         }
+        .help(usageDetail)
+        .accessibilityHint(usageDetail)
     }
 
     private var tokenRow: some View {
@@ -324,13 +326,20 @@ struct WidgetRailView: View {
 
     private var contextRow: some View {
         WidgetRow(systemImage: "chart.bar.fill", tint: attentionColor) {
-            Gauge(value: contextPercent, in: 0...100) {
-                EmptyView()
+            if model.snapshot.tokenMetrics?.contextUsedPercent != nil {
+                Gauge(value: contextPercent, in: 0...100) {
+                    EmptyView()
+                }
+                .gaugeStyle(.accessoryLinear)
+                .tint(attentionColor)
+                .accessibilityLabel(L10n.text("Context used"))
+                .accessibilityValue(contextValue)
+            } else {
+                Text(L10n.text("Context"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(textColor.opacity(0.62))
+                Spacer(minLength: 2)
             }
-            .gaugeStyle(.accessoryLinear)
-            .tint(attentionColor)
-            .accessibilityLabel(L10n.text("Context used"))
-            .accessibilityValue(contextValue)
 
             Text(contextValue)
                 .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
@@ -435,6 +444,32 @@ struct WidgetRailView: View {
         .help(L10n.text(label))
         .accessibilityLabel(L10n.text(label))
         .accessibilityIdentifier(identifier)
+    }
+
+    static func quotaResetText(_ resetAt: Date?, now: Date = Date()) -> String? {
+        guard let resetAt, resetAt > now else { return nil }
+        let formatter = DateComponentsFormatter()
+        var calendar = Calendar.current
+        calendar.locale = Locale(identifier: L10n.current.resolvedLanguage)
+        formatter.calendar = calendar
+        let remaining = resetAt.timeIntervalSince(now)
+        formatter.allowedUnits = remaining >= 86_400
+            ? [.day, .hour]
+            : remaining >= 3_600 ? [.hour, .minute] : [.minute]
+        formatter.unitsStyle = .brief
+        guard let text = formatter.string(from: now, to: resetAt) else { return nil }
+        return L10n.format("Resets in %@", text)
+    }
+
+    private var usageDetail: String {
+        guard selectedRateLimit?.usedPercent != nil else {
+            return L10n.text("Account quota unavailable")
+        }
+        let used = L10n.format("Account quota used: %@", usageValue)
+        guard let reset = Self.quotaResetText(selectedRateLimit?.resetAt) else {
+            return used
+        }
+        return "\(used) · \(reset)"
     }
 
     private var usagePercent: Double {

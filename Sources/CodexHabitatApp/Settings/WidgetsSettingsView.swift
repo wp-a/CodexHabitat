@@ -41,6 +41,7 @@ struct WidgetsSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .toggleStyle(.switch)
         .padding(.vertical, 11)

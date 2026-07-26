@@ -135,14 +135,52 @@ struct CodexHabitatGUI: App {
     @StateObject private var model = HabitatAppEnvironment.model
 
     var body: some Scene {
-        MenuBarExtra("Codex Habitat", systemImage: "pawprint.fill") {
+        MenuBarExtra {
             HabitatMenuBarView(
                 model: model,
+                desktopController: HabitatAppEnvironment.desktopController
+            )
+        } label: {
+            HabitatMenuBarLabel(
                 desktopController: HabitatAppEnvironment.desktopController
             )
         }
         .menuBarExtraStyle(.window)
 
+    }
+}
+
+struct HabitatMenuBarStatusPresentation: Equatable {
+    let symbol: String
+    let accessibilityTitle: String
+
+    init(activity: AgentActivity) {
+        switch activity {
+        case .offline:
+            (symbol, accessibilityTitle) = ("pawprint", "No activity available")
+        case .resting:
+            (symbol, accessibilityTitle) = ("pawprint.fill", "Codex resting")
+        case .working:
+            (symbol, accessibilityTitle) = ("pawprint.circle.fill", "Codex working")
+        case .attention:
+            (symbol, accessibilityTitle) = ("exclamationmark.bubble.fill", "Review requested")
+        case .succeeded:
+            (symbol, accessibilityTitle) = ("checkmark.circle.fill", "Task complete")
+        case .failed:
+            (symbol, accessibilityTitle) = ("exclamationmark.triangle.fill", "Needs attention")
+        }
+    }
+}
+
+private struct HabitatMenuBarLabel: View {
+    @ObservedObject var desktopController: HabitatDesktopController
+
+    var body: some View {
+        let presentation = HabitatMenuBarStatusPresentation(
+            activity: desktopController.currentSnapshot.activity
+        )
+        Image(systemName: presentation.symbol)
+            .accessibilityLabel(L10n.text(presentation.accessibilityTitle))
     }
 }
 
@@ -174,7 +212,9 @@ private struct HabitatMenuBarView: View {
 
             connectionRow
 
-            Toggle("Show Habitat", isOn: $model.isHabitatVisible)
+            usageSection
+
+            Toggle(L10n.text("Show Habitat"), isOn: $model.isHabitatVisible)
                 .toggleStyle(.switch)
                 .accessibilityIdentifier("menu.show-habitat")
 
@@ -201,7 +241,7 @@ private struct HabitatMenuBarView: View {
 
             Divider()
             Button(action: openSettings) {
-                Label("Settings…", systemImage: "gearshape")
+                Label(L10n.text("Settings…"), systemImage: "gearshape")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
@@ -209,7 +249,7 @@ private struct HabitatMenuBarView: View {
 
             if HabitatAppEnvironment.updaterController.isAvailable {
                 Button(action: HabitatAppEnvironment.updaterController.checkForUpdates) {
-                    Label("Check for Updates…", systemImage: "arrow.down.circle")
+                    Label(L10n.text("Check for Updates…"), systemImage: "arrow.down.circle")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
@@ -219,7 +259,7 @@ private struct HabitatMenuBarView: View {
             Divider()
 
             Button(action: { NSApp.terminate(nil) }) {
-                Label("Quit Codex Habitat", systemImage: "power")
+                Label(L10n.text("Quit Codex Habitat"), systemImage: "power")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
@@ -246,6 +286,52 @@ private struct HabitatMenuBarView: View {
         } else {
             desktopController.beginTemporaryMoveMode()
         }
+    }
+
+    @ViewBuilder
+    private var usageSection: some View {
+        let snapshot = desktopController.currentSnapshot
+        let primary = snapshot.primaryRateLimit
+        let secondary = snapshot.secondaryRateLimit
+        if primary?.usedPercent != nil || secondary?.usedPercent != nil {
+            VStack(spacing: 6) {
+                quotaRow(titleKey: "5-hour limit", limit: primary)
+                quotaRow(titleKey: "Weekly limit", limit: secondary)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(L10n.text("Account usage"))
+        }
+    }
+
+    @ViewBuilder
+    private func quotaRow(titleKey: String, limit: RateLimitSummary?) -> some View {
+        if let usedPercent = limit?.usedPercent {
+            let percent = min(max(usedPercent, 0), 100)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(L10n.text(titleKey))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(quotaDetailText(percent: percent, resetAt: limit?.resetAt))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                ProgressView(value: percent, total: 100)
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
+                    .tint(percent >= 90 ? .orange : .teal)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(L10n.text(titleKey))
+            .accessibilityValue(quotaDetailText(percent: percent, resetAt: limit?.resetAt))
+        }
+    }
+
+    private func quotaDetailText(percent: Double, resetAt: Date?) -> String {
+        let used = "\(Int(percent.rounded()))%"
+        guard let reset = WidgetRailView.quotaResetText(resetAt) else { return used }
+        return "\(used) · \(reset)"
     }
 
     private var connectionRow: some View {
