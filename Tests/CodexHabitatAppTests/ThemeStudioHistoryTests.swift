@@ -255,9 +255,42 @@ func themeStudioSourceKeepsTheWideCanvasInspectorContract() throws {
     #expect(
         source.components(
             separatedBy: ".disabled(model.isSelectingImage || model.state == .saving)"
-        ).count - 1 >= 4
+        ).count - 1 >= 2
     )
     #expect(source.contains("Text(L10n.text(\"Analyzing image\"))"))
+}
+
+@Test
+func themeStudioSourceMakesTheFirstRunFlowObviousAndValidatesBeforeExportPanels() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeStudioView.swift"
+        ),
+        encoding: .utf8
+    )
+
+    #expect(source.contains("private var emptyArtwork: some View {\n        Button(action: chooseImage)"))
+    #expect(source.contains(".accessibilityIdentifier(\"theme-studio.empty-artwork\")"))
+    #expect(source.contains("Text(L10n.text(\"Theme name\"))"))
+    #expect(source.contains("Text(L10n.text(\"Author (optional)\"))"))
+    #expect(!source.contains("Image(systemName: \"xmark\")"))
+    #expect(source.contains(".disabled(!model.canPersistDraft || model.isSelectingImage || model.state == .saving)"))
+    #expect(source.contains(".accessibilityLabel(L10n.text(title))"))
+    #expect(source.contains(".accessibilityValue(displayValue)"))
+
+    let beginExport = try #require(source.range(of: "private func beginExport() {"))
+    let validation = try #require(
+        source.range(of: "guard model.validateDraftForPersistence() else { return }")
+    )
+    let exportPanel = try #require(
+        source.range(of: "ResourcePackPanels.chooseThemeExport", range: beginExport.lowerBound..<source.endIndex)
+    )
+    #expect(validation.lowerBound > beginExport.lowerBound)
+    #expect(validation.lowerBound < exportPanel.lowerBound)
 }
 
 @Test

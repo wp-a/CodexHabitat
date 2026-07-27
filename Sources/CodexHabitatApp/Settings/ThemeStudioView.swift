@@ -115,13 +115,6 @@ struct ThemeStudioView: View {
             .disabled(!model.canRedo || model.isSelectingImage || model.state == .saving)
             .help(L10n.text("Redo"))
             .accessibilityLabel(L10n.text("Redo"))
-
-            Button(action: close) {
-                Image(systemName: "xmark")
-            }
-            .disabled(model.state == .saving)
-            .help(L10n.text("Close"))
-            .accessibilityLabel(L10n.text("Close Theme Studio"))
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, HabitatDesignMetrics.spaceL)
@@ -354,24 +347,34 @@ struct ThemeStudioView: View {
 
     private var metadataControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
-            TextField(L10n.text("Theme name"), text: Binding(
-                get: { model.name },
-                set: { model.name = $0 }
-            ))
-            .textFieldStyle(.roundedBorder)
-            .focused($focusedField, equals: .name)
-            .accessibilityIdentifier("theme-studio.name")
+            VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceXS) {
+                Text(L10n.text("Theme name"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField(L10n.text("Theme name"), text: Binding(
+                    get: { model.name },
+                    set: { model.name = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .name)
+                .accessibilityIdentifier("theme-studio.name")
+            }
             if let message = model.nameValidationMessage {
                 validation(message)
             }
 
-            TextField(L10n.text("Author (optional)"), text: Binding(
-                get: { model.author },
-                set: { model.author = $0 }
-            ))
-            .textFieldStyle(.roundedBorder)
-            .focused($focusedField, equals: .author)
-            .accessibilityIdentifier("theme-studio.author")
+            VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceXS) {
+                Text(L10n.text("Author (optional)"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField(L10n.text("Author (optional)"), text: Binding(
+                    get: { model.author },
+                    set: { model.author = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .author)
+                .accessibilityIdentifier("theme-studio.author")
+            }
             if let message = model.authorValidationMessage {
                 validation(message)
             }
@@ -669,13 +672,13 @@ struct ThemeStudioView: View {
             Button(action: beginExport) {
                 Label(L10n.text("Export"), systemImage: "square.and.arrow.up")
             }
-            .disabled(model.isSelectingImage || model.state == .saving)
+            .disabled(!model.canPersistDraft || model.isSelectingImage || model.state == .saving)
             .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: saveLocally) {
                 Label(L10n.text("Save Locally"), systemImage: "square.and.arrow.down")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(model.isSelectingImage || model.state == .saving)
+            .disabled(!model.canPersistDraft || model.isSelectingImage || model.state == .saving)
             .frame(minHeight: HabitatDesignMetrics.prominentControlHeight)
             .accessibilityIdentifier("theme-studio.save")
         }
@@ -717,17 +720,23 @@ struct ThemeStudioView: View {
     }
 
     private var emptyArtwork: some View {
-        ZStack {
-            Color.secondary.opacity(0.07)
-            VStack(spacing: HabitatDesignMetrics.spaceS) {
-                Image(systemName: "photo")
-                    .font(.system(size: 28))
-                Text(L10n.text("Choose Image"))
-                    .font(.callout)
+        Button(action: chooseImage) {
+            ZStack {
+                Color.secondary.opacity(0.07)
+                VStack(spacing: HabitatDesignMetrics.spaceS) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 28))
+                    Text(L10n.text("Choose Image"))
+                        .font(.callout)
+                }
+                .foregroundStyle(.secondary)
             }
-            .foregroundStyle(.secondary)
+            .clipShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
+            .contentShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
         }
-        .clipShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
+        .buttonStyle(.plain)
+        .disabled(model.isSelectingImage || model.state == .saving)
+        .accessibilityIdentifier("theme-studio.empty-artwork")
     }
 
     private var previewModel: ThemeTreatmentPreviewModel {
@@ -826,16 +835,15 @@ struct ThemeStudioView: View {
         setter: @MainActor @escaping @Sendable (Double) -> Void,
         displayScale: Double = 1
     ) -> some View {
-        VStack(spacing: HabitatDesignMetrics.spaceXS) {
+        let displayValue = valueText
+            ?? format.map { String(format: $0, value * displayScale) }
+            ?? String(value * displayScale)
+        return VStack(spacing: HabitatDesignMetrics.spaceXS) {
             HStack(spacing: HabitatDesignMetrics.spaceS) {
                 Text(L10n.text(title))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .lineLimit(2)
-                Text(
-                    valueText
-                        ?? format.map { String(format: $0, value * displayScale) }
-                        ?? String(value * displayScale)
-                )
+                Text(displayValue)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -851,6 +859,8 @@ struct ThemeStudioView: View {
                     }
                 }
             )
+            .accessibilityLabel(L10n.text(title))
+            .accessibilityValue(displayValue)
         }
     }
 
@@ -930,6 +940,7 @@ struct ThemeStudioView: View {
     }
 
     private func beginExport() {
+        guard model.validateDraftForPersistence() else { return }
         guard let url = ResourcePackPanels.chooseThemeExport(name: model.name) else { return }
         pendingExportURL = url
         if rightsAccepted {

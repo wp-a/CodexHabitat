@@ -216,6 +216,17 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     var vignetteStrength: Double { draft.vignetteStrength }
     var pairedPetID: String? { draft.pairedPetID }
     var isDirty: Bool { draft != baselineDraft }
+    var canPersistDraft: Bool {
+        let trimmedName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAuthor = draft.author.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmedName.isEmpty
+            && trimmedName.count <= 100
+            && !Self.containsControlCharacters(trimmedName)
+            && trimmedAuthor.count <= 100
+            && !Self.containsControlCharacters(trimmedAuthor)
+            && draft.sourceImageURL != nil
+            && draft.palette != nil
+    }
 
     var previewAppearance: HabitatThemeAppearance {
         HabitatThemeAppearance(
@@ -558,6 +569,13 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     func cancelReplacement() {
         guard case .replacementRequired = state else { return }
         state = .editing
+    }
+
+    @discardableResult
+    func validateDraftForPersistence() -> Bool {
+        guard activePersistenceGeneration == nil, !isSelectingImage else { return false }
+        endContinuousEdit()
+        return validatedRequest(from: draft) != nil
     }
 
     private func saveLocally(replacing: Bool) async {

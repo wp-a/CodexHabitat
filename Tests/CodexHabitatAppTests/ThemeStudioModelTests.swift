@@ -87,6 +87,34 @@ func themeStudioTracksDirtyDraftClampsAppearanceAndRequiresDiscardConfirmation()
 }
 
 @Test @MainActor
+func themeStudioOnlyEnablesPersistenceForACompleteValidDraft() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeStudioPersistence-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = ThemeStudioModel(
+        libraryRoot: root.appending(path: "Library"),
+        workingRoot: root.appending(path: "Work"),
+        operations: controlledThemeStudioOperations()
+    )
+
+    #expect(!model.canPersistDraft)
+    model.name = "Complete Theme"
+    #expect(!model.canPersistDraft)
+
+    try await model.selectImage(root.appending(path: "local-background.jpg"))
+    #expect(model.canPersistDraft)
+
+    model.author = String(repeating: "A", count: 101)
+    #expect(!model.canPersistDraft)
+    #expect(!model.validateDraftForPersistence())
+    #expect(model.authorValidationMessage != nil)
+    guard case .validationFailure = model.state else {
+        Issue.record("Expected validation failure, got \(model.state)")
+        return
+    }
+}
+
+@Test @MainActor
 func themeStudioSelectsLocalImageSuggestsPaletteAndSavesThroughInstaller() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatThemeStudioSave-\(UUID().uuidString)", directoryHint: .isDirectory)
