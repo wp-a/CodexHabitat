@@ -408,16 +408,19 @@ func homeTextUsesABoundedSurfaceHaloWithoutOwningTheContainer() throws {
 }
 
 @Test
-func submitControlsUseTheHighestContrastThemeForeground() throws {
+func submitControlsUseAccessibleForegrounds() throws {
     let profile = try currentCompleteSurfaceProfile()
     let compiler = try ThemeCompiler.bundled()
     let greenChat = try #require(BridgeTheme.builtIn(id: "green-chat-desk"))
     let workbench = try #require(BridgeTheme.builtIn(id: "workbench"))
+    let quietGarden = try #require(BridgeTheme.builtIn(id: "quiet-garden"))
 
     let greenCSS = try compiler.compile(theme: greenChat, profile: profile)
     let darkCSS = try compiler.compile(theme: workbench, profile: profile)
-    #expect(greenCSS.contains("--habitat-on-accent: #113B25"))
+    let quietCSS = try compiler.compile(theme: quietGarden, profile: profile)
+    #expect(greenCSS.contains("--habitat-on-accent: #000000"))
     #expect(darkCSS.contains("--habitat-on-accent: #171A21"))
+    #expect(quietCSS.contains("--habitat-on-accent: #000000"))
     #expect(greenCSS.contains("color: var(--habitat-on-accent)"))
 }
 
@@ -1005,7 +1008,7 @@ func eightDigitProtocolColorsCompileWithoutChangingRGBColorScheme() throws {
     )
 
     #expect(css.contains("--habitat-surface: #10182080"))
-    #expect(css.contains("--habitat-on-accent: #F4FAFF"))
+    #expect(css.contains("--habitat-on-accent: #000000"))
     #expect(css.contains("color-scheme: dark"))
 
     let lowAlphaTextPalette = HabitatThemePalette(
@@ -1030,7 +1033,7 @@ func eightDigitProtocolColorsCompileWithoutChangingRGBColorScheme() throws {
             try CompatibilityProfileStore.bundled().profile(forVersion: "26.707.91948")
         )
     )
-    #expect(lowAlphaCSS.contains("--habitat-on-accent: #101820"))
+    #expect(lowAlphaCSS.contains("--habitat-on-accent: #FFFFFF"))
 
     let translucentWinnerPalette = HabitatThemePalette(
         surface: "#000000FF",
