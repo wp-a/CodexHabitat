@@ -72,6 +72,24 @@ struct ThemeBridgeIntegrationModelTests {
     }
 
     @Test
+    func helperCommandForceTerminatesAProcessThatIgnoresTermination() async {
+        let runner = ThemeBridgeHelperRunner(
+            executableURL: URL(fileURLWithPath: "/bin/sh"),
+            commandTimeout: .milliseconds(30)
+        )
+        let clock = ContinuousClock()
+        let started = clock.now
+
+        await #expect(throws: ThemeBridgeCommandError.timedOut) {
+            try await runner.run(arguments: [
+                "-c", "trap '' TERM; exec /bin/sleep 2",
+            ])
+        }
+
+        #expect(clock.now - started < .milliseconds(500))
+    }
+
+    @Test
     func activeSessionCanApplyAnotherThemeAndMoveTheWatcher() async {
         let runner = StubThemeBridgeRunner(results: [
             ThemeBridgeCommandResult(exitCode: 0, output: "applied"),

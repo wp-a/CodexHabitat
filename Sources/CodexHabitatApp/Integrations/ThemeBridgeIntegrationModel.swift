@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import HabitatCore
 
@@ -582,12 +583,24 @@ private final class ThemeBridgeProcessInvocation: @unchecked Sendable {
     }
 
     private func cancel() {
-        let shouldTerminate = lock.withLock {
+        let processID = lock.withLock { () -> pid_t? in
             cancellationRequested = true
-            return process.isRunning
-        }
-        if shouldTerminate {
+            guard process.isRunning else { return nil }
             process.terminate()
+            return process.processIdentifier
+        }
+        guard let processID else { return }
+
+        _ = Task.detached(priority: .utility) { [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard let self else { return }
+            let shouldForceTerminate = self.lock.withLock {
+                self.process.isRunning
+                    && self.process.processIdentifier == processID
+            }
+            if shouldForceTerminate {
+                Darwin.kill(processID, SIGKILL)
+            }
         }
     }
 }
