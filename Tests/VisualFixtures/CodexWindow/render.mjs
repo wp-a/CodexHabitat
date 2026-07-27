@@ -722,7 +722,7 @@ async function inspectFixturePage(
     );
     assert(
       Number.isFinite(materialHierarchy.homeActionBackgroundAlpha)
-        && Math.abs(materialHierarchy.homeActionBackgroundAlpha - 0.82) <= alphaTolerance,
+        && Math.abs(materialHierarchy.homeActionBackgroundAlpha - 1) <= alphaTolerance,
       `home action background alpha is ${materialHierarchy.homeActionBackgroundAlpha}`,
     );
   }

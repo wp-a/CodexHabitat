@@ -538,7 +538,7 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
       );
       requireApproximateAlpha(
         metric.homeActionBackgroundAlpha,
-        0.82,
+        1,
         `${context} home action background alpha`,
       );
       requireMaterialChain(

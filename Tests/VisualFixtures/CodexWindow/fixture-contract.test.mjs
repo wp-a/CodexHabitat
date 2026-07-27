@@ -234,7 +234,7 @@ test("scene material checks enforce one computed background layer on real DOM pa
     ["minimumControlContrast", 4.49, /minimum control contrast/],
     ["homeContentBackgroundAlpha", 0.2, /home content background alpha/],
     ["homeSuggestionsBackgroundAlpha", 0.2, /home suggestions background alpha/],
-    ["homeActionBackgroundAlpha", 0.7, /home action background alpha/],
+    ["homeActionBackgroundAlpha", 0.82, /home action background alpha/],
     ["composerContextBackgroundAlpha", 0.2, /composer context background alpha/],
     ["composerBackgroundAlpha", 0.5, /composer background alpha/],
   ]) {
@@ -482,7 +482,7 @@ function representativeMetrics() {
     taskReadingTileCount: index % 2 === 0 ? null : 12,
     homeContentBackgroundAlpha: index % 2 === 0 ? 0 : null,
     homeSuggestionsBackgroundAlpha: index % 2 === 0 ? 0 : null,
-    homeActionBackgroundAlpha: index % 2 === 0 ? 0.82 : null,
+    homeActionBackgroundAlpha: index % 2 === 0 ? 1 : null,
     composerContextBackgroundAlpha: 0,
     composerBackgroundAlpha: 0.86,
     layoutGeometry: {
@@ -547,7 +547,7 @@ function representativeMetrics() {
       ? representativeInteractionStates()
       : representativeTaskInteractionStates(),
     homeMaterialChain: index % 2 === 0 ? [
-      { surface: "home-action", backgroundAlpha: 0.82 },
+      { surface: "home-action", backgroundAlpha: 1 },
       { surface: "home-suggestions", backgroundAlpha: 0 },
       { surface: "home-content", backgroundAlpha: 0 },
       { surface: "main-surface", backgroundAlpha: 0 },
