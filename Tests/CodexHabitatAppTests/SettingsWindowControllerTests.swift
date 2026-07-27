@@ -84,6 +84,7 @@ func launchPresentsSettingsBeforeBridgeStatusCompletes() async {
     let gate = LaunchSequenceGate()
 
     let bridgeTask = HabitatLaunchSequence.start(
+        shouldPresentSettings: true,
         presentSettings: {
             recorder.record("settings")
         },
@@ -97,6 +98,24 @@ func launchPresentsSettingsBeforeBridgeStatusCompletes() async {
     await gate.resume()
     await bridgeTask.value
     #expect(recorder.events == ["settings", "bridge"])
+}
+
+@Test @MainActor
+func quietLoginLaunchStillRunsBridgeWork() async {
+    let recorder = LaunchSequenceRecorder()
+
+    let bridgeTask = HabitatLaunchSequence.start(
+        shouldPresentSettings: false,
+        presentSettings: {
+            recorder.record("settings")
+        },
+        bridgeWork: {
+            recorder.record("bridge")
+        }
+    )
+
+    await bridgeTask.value
+    #expect(recorder.events == ["bridge"])
 }
 
 @Test
@@ -138,8 +157,11 @@ func testAndVisualQAExitsNeverRestoreCodexAppearance() {
     )
 
     #expect(normal.allowsAppearanceRestore)
+    #expect(normal.allowsPersistentBridgeStateMutation)
     #expect(!test.allowsAppearanceRestore)
+    #expect(!test.allowsPersistentBridgeStateMutation)
     #expect(!visualQA.allowsAppearanceRestore)
+    #expect(!visualQA.allowsPersistentBridgeStateMutation)
 }
 
 @Test

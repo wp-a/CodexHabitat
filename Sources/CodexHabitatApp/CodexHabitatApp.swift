@@ -50,21 +50,26 @@ struct HabitatBridgeLaunchPolicy: Equatable {
 
 struct HabitatBridgeTerminationPolicy: Equatable {
     let allowsAppearanceRestore: Bool
+    let allowsPersistentBridgeStateMutation: Bool
 
     init(arguments: [String], environment: [String: String]) {
         let isRunningTests = environment["XCTestConfigurationFilePath"] != nil
         let isVisualQA = arguments.contains("--visual-qa")
         allowsAppearanceRestore = !isRunningTests && !isVisualQA
+        allowsPersistentBridgeStateMutation = !isRunningTests && !isVisualQA
     }
 }
 
 @MainActor
 enum HabitatLaunchSequence {
     static func start(
+        shouldPresentSettings: Bool,
         presentSettings: () -> Void,
         bridgeWork: @escaping @MainActor @Sendable () async -> Void
     ) -> Task<Void, Never> {
-        presentSettings()
+        if shouldPresentSettings {
+            presentSettings()
+        }
         return Task {
             await bridgeWork()
         }
@@ -120,7 +125,6 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
                 requiresOnboarding: model.requiresOnboarding,
                 arguments: CommandLine.arguments
             )
-            guard shouldShowSettings else { return }
             if let sectionFlag = CommandLine.arguments.firstIndex(
                 of: "--show-settings-section"
             ), CommandLine.arguments.indices.contains(sectionFlag + 1),
@@ -136,8 +140,8 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
             )
             self.bridgeLaunchTask?.cancel()
             self.bridgeLaunchTask = HabitatLaunchSequence.start(
+                shouldPresentSettings: shouldShowSettings,
                 presentSettings: {
-                    guard shouldShowSettings else { return }
                     HabitatAppEnvironment.settingsWindowController.show(
                         model: model,
                         desktopController: HabitatAppEnvironment.desktopController
@@ -176,7 +180,9 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
             if bridgeTerminationPolicy.allowsAppearanceRestore {
                 await ThemeBridgeIntegrationModel.shared.restoreForApplicationTermination()
             }
-            HabitatAppEnvironment.model.setThemeBridgeEnabled(false)
+            if bridgeTerminationPolicy.allowsPersistentBridgeStateMutation {
+                HabitatAppEnvironment.model.setThemeBridgeEnabled(false)
+            }
             await HabitatAppEnvironment.model.flushSettings()
             sender.reply(toApplicationShouldTerminate: true)
         }
