@@ -118,6 +118,33 @@ func draggingDuringExpansionCancelsRemainingFramesAndKeepsTheCurrentRightEdge() 
     #expect(controller.dragRegionFrame.maxX == interruptedSize.width)
 }
 
+@Test @MainActor
+func pressingDuringExpansionFreezesTheWindowBeforeTheDragThreshold() async throws {
+    let controller = HabitatDesktopController(
+        expansionAnimationDuration: 0.20,
+        expansionFrameInterval: 0.005
+    )
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    controller.apply(settings: settings, pets: [], isVisible: true)
+
+    controller.setWidgetRailExpanded(false)
+    for _ in 0..<100 where controller.panelSize.width == HabitatOverlayLayout.expandedSize.width {
+        try await Task.sleep(for: .milliseconds(2))
+    }
+    let pressedSize = controller.panelSize
+    let pressedRightEdge = controller.panelFrame.maxX
+    #expect(pressedSize.width < HabitatOverlayLayout.expandedSize.width)
+    #expect(pressedSize.width > HabitatOverlayLayout.collapsedSize.width)
+
+    controller.handlePrimaryPressChange(true)
+    try await Task.sleep(for: .milliseconds(240))
+
+    #expect(controller.panelSize == pressedSize)
+    #expect(controller.panelFrame.maxX == pressedRightEdge)
+    #expect(controller.dragRegionFrame.maxX == pressedSize.width)
+}
+
 @Test
 func widgetRailTransitionAvoidsMovementWhenReduceMotionIsEnabled() {
     #expect(HabitatWidgetRailTransitionStyle.resolve(reduceMotion: true) == .opacity)

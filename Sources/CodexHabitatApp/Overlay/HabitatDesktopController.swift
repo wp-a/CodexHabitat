@@ -254,8 +254,8 @@ final class HabitatDesktopController: ObservableObject {
             overlay?.onPrimaryClick = { [weak self] in
                 self?.toggleWidgetRailExpansion()
             }
-            overlay?.onPrimaryPressChange = { [weak presentation] pressed in
-                presentation?.isPetPressed = pressed
+            overlay?.onPrimaryPressChange = { [weak self] pressed in
+                self?.handlePrimaryPressChange(pressed)
             }
             overlay?.onPrimaryDragStart = { [weak self] in
                 self?.handlePrimaryDragStart()
@@ -349,6 +349,16 @@ final class HabitatDesktopController: ObservableObject {
     }
 
     func handlePrimaryDragStart() {
+        freezeExpansionAtCurrentWidth()
+    }
+
+    func handlePrimaryPressChange(_ pressed: Bool) {
+        presentation.isPetPressed = pressed
+        guard pressed else { return }
+        freezeExpansionAtCurrentWidth()
+    }
+
+    private func freezeExpansionAtCurrentWidth() {
         cancelExpansionAnimation()
         guard let overlay, let scale = renderedScale else { return }
         presentation.containerWidth = overlay.panel.frame.width / scale
