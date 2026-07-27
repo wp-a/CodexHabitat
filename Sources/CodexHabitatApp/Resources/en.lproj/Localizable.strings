@@ -312,6 +312,10 @@
 "Active" = "Active";
 "Inactive" = "Inactive";
 "Not favorite" = "Not favorite";
+"Previewed" = "Previewed";
+"Not previewed" = "Not previewed";
+"Inactive in Habitat" = "Inactive in Habitat";
+"Inactive in Codex" = "Inactive in Codex";
 "Theme family" = "Theme family";
 "Codex compatibility" = "Codex compatibility";
 "Supported" = "Supported";

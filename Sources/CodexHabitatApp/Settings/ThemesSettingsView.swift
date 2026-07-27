@@ -415,8 +415,9 @@ struct ThemesSettingsView: View {
                         ForEach(filteredThemes) { theme in
                             ThemeChoiceCard(
                                 theme: theme,
-                                isSelected: libraryState.previewedThemeID == theme.id,
-                                isActive: bridge.state == .active && bridge.activeThemeID == theme.id,
+                                isPreviewed: libraryState.previewedThemeID == theme.id,
+                                isActiveInHabitat: model.settings.selectedThemeID == theme.id,
+                                isActiveInCodex: bridge.state == .active && bridge.activeThemeID == theme.id,
                                 isFavorite: model.settings.favoriteThemeIDs.contains(theme.id),
                                 action: { selectTheme(theme.id) },
                                 favoriteAction: { model.toggleThemeFavorite(theme.id) }
@@ -786,8 +787,9 @@ struct StaticThemeThumbnail: View {
 
 struct ThemeChoiceCard: View {
     let theme: HabitatThemeDescriptor
-    let isSelected: Bool
-    let isActive: Bool
+    let isPreviewed: Bool
+    let isActiveInHabitat: Bool
+    let isActiveInCodex: Bool
     let isFavorite: Bool
     let action: () -> Void
     let favoriteAction: (() -> Void)?
@@ -796,15 +798,17 @@ struct ThemeChoiceCard: View {
 
     init(
         theme: HabitatThemeDescriptor,
-        isSelected: Bool,
-        isActive: Bool = false,
+        isPreviewed: Bool,
+        isActiveInHabitat: Bool = false,
+        isActiveInCodex: Bool = false,
         isFavorite: Bool = false,
         action: @escaping () -> Void,
         favoriteAction: (() -> Void)? = nil
     ) {
         self.theme = theme
-        self.isSelected = isSelected
-        self.isActive = isActive
+        self.isPreviewed = isPreviewed
+        self.isActiveInHabitat = isActiveInHabitat
+        self.isActiveInCodex = isActiveInCodex
         self.isFavorite = isFavorite
         self.action = action
         self.favoriteAction = favoriteAction
@@ -835,8 +839,8 @@ struct ThemeChoiceCard: View {
                                 .lineLimit(1)
                         }
                         Spacer()
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
+                        if isPreviewed {
+                            Image(systemName: "eye.fill")
                                 .foregroundStyle(.tint)
                                 .accessibilityHidden(true)
                         }
@@ -845,15 +849,15 @@ struct ThemeChoiceCard: View {
                     .frame(height: 46)
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                .background(Color.primary.opacity(isSelected ? 0.07 : 0.035))
+                .background(Color.primary.opacity(isPreviewed ? 0.07 : 0.035))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(
-                            isSelected
+                            isPreviewed
                                 ? Color(habitatHex: theme.accentHex)
                                 : Color.primary.opacity(0.10),
-                            lineWidth: isSelected ? 2 : 1
+                            lineWidth: isPreviewed ? 2 : 1
                         )
                 }
             }
@@ -889,12 +893,15 @@ struct ThemeChoiceCard: View {
             }
         }
         .overlay(alignment: .topLeading) {
-            if isActive {
-                Label(L10n.text("Active"), systemImage: "checkmark.seal.fill")
-                    .font(.system(size: 10, weight: .semibold))
-                    .padding(.horizontal, 7)
-                    .frame(height: 24)
-                    .background(.regularMaterial, in: Capsule())
+            if isActiveInHabitat || isActiveInCodex {
+                HStack(spacing: 4) {
+                    if isActiveInHabitat {
+                        statusBadge("Habitat", systemImage: "macwindow")
+                    }
+                    if isActiveInCodex {
+                        statusBadge("Codex", systemImage: "paintbrush.fill")
+                    }
+                }
                     .padding(7)
                     .allowsHitTesting(false)
             }
@@ -904,10 +911,19 @@ struct ThemeChoiceCard: View {
 
     private var accessibilityValue: String {
         [
-            L10n.text(isSelected ? "Selected" : "Not selected"),
-            L10n.text(isActive ? "Active" : "Inactive"),
+            L10n.text(isPreviewed ? "Previewed" : "Not previewed"),
+            L10n.text(isActiveInHabitat ? "Active in Habitat" : "Inactive in Habitat"),
+            L10n.text(isActiveInCodex ? "Active in Codex" : "Inactive in Codex"),
             L10n.text(isFavorite ? "Favorite" : "Not favorite"),
         ].joined(separator: ", ")
+    }
+
+    private func statusBadge(_ title: String, systemImage: String) -> some View {
+        Label(L10n.text(title), systemImage: systemImage)
+            .font(.system(size: 9, weight: .semibold))
+            .padding(.horizontal, 6)
+            .frame(height: 22)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
     }
 
     private var retryAccessibilityLabel: String {

@@ -312,6 +312,10 @@
 "Active" = "已启用";
 "Inactive" = "未启用";
 "Not favorite" = "未收藏";
+"Previewed" = "正在预览";
+"Not previewed" = "未预览";
+"Inactive in Habitat" = "未用于 Habitat";
+"Inactive in Codex" = "未在 Codex 中启用";
 "Theme family" = "主题家族";
 "Codex compatibility" = "Codex 兼容性";
 "Supported" = "支持";

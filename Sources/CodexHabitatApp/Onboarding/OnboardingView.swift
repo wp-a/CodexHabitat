@@ -77,7 +77,8 @@ struct OnboardingView: View {
                     ForEach(HabitatThemeDescriptor.builtIn) { theme in
                         ThemeChoiceCard(
                             theme: theme,
-                            isSelected: model.settings.selectedThemeID == theme.id,
+                            isPreviewed: model.settings.selectedThemeID == theme.id,
+                            isActiveInHabitat: model.settings.selectedThemeID == theme.id,
                             action: { model.selectTheme(theme.id) }
                         )
                     }
