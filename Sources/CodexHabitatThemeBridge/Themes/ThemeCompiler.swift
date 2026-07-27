@@ -316,6 +316,11 @@ struct ThemeCompiler {
             "panel-alt": theme.tokens.panelAlt,
             "text": theme.tokens.text,
             "muted-text": theme.tokens.mutedText,
+            "home-action-text": Self.higherContrastForeground(
+                against: theme.tokens.panelAlt,
+                first: "#000000",
+                second: "#FFFFFF"
+            ),
             "on-accent": Self.higherContrastForeground(
                 against: submitAccent,
                 first: theme.tokens.text,
@@ -879,7 +884,7 @@ struct ThemeCompiler {
             """
             /* habitat-surface: home-actions */
             \(root) \(action) {
-              color: var(--habitat-text);
+              color: var(--habitat-home-action-text);
               background-color: color-mix(in srgb, var(--habitat-panel-alt) 82%, transparent);
               \(styleHomeAction(for: recipe))
             }

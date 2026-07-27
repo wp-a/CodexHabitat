@@ -428,6 +428,16 @@ func submitControlsUseAccessibleForegrounds() throws {
 }
 
 @Test
+func homeActionControlsUseAnOpaqueMaximumContrastForeground() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "win95-workbench"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+
+    #expect(css.contains("--habitat-home-action-text: #000000"))
+    #expect(css.contains("color: var(--habitat-home-action-text)"))
+}
+
+@Test
 func immersiveHomeLetsTheContinuousSceneOwnLargeSurfaces() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
@@ -934,7 +944,10 @@ func everyStyleFamilyOwnsDistinctHomeActionChrome() throws {
     let rules = try HabitatThemeStyleFamily.allCases.map { family in
         let treatment = ThemeCompiler.styleTreatment(for: family, profile: profile)
         let rule = try cssRuleBody(selector: selector, in: treatment)
-        #expect(rule.contains("color: var(--habitat-text)"), "\(family.rawValue) keeps host action text")
+        #expect(
+            rule.contains("color: var(--habitat-home-action-text)"),
+            "\(family.rawValue) keeps accessible host action text"
+        )
         #expect(rule.contains("background-color:"), "\(family.rawValue) has no action fill")
         #expect(rule.contains("border"), "\(family.rawValue) has no action structure")
         #expect(!rule.contains("backdrop-filter"), "\(family.rawValue) blurs a repeated action")
