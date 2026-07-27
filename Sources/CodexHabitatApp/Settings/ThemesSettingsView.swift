@@ -22,6 +22,11 @@ struct ThemePreviewRequestKey: Equatable, Hashable, Sendable {
     }
 }
 
+struct ThemePreviewLoadIdentity: Equatable, Hashable, Sendable {
+    let url: URL?
+    let reloadGeneration: Int
+}
+
 actor ThemePreviewStore {
     typealias Loader = @Sendable (ThemePreviewRequestKey) -> CGImage?
 
@@ -746,13 +751,8 @@ struct StaticThemeThumbnail: View {
         }
     }
 
-    private var previewRequestKey: ThemePreviewRequestKey? {
-        imageURL.map(ThemePreviewRequestKey.init(url:))
-    }
-
-    private var previewLoadIdentity: String {
-        let request = previewRequestKey
-        return "\(request?.url.path ?? "missing")|\(request?.fileSize ?? -1)|\(request?.modificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(reloadGeneration)"
+    private var previewLoadIdentity: ThemePreviewLoadIdentity {
+        ThemePreviewLoadIdentity(url: imageURL, reloadGeneration: reloadGeneration)
     }
 }
 

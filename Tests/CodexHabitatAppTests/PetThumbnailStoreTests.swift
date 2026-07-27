@@ -119,6 +119,25 @@ func changingPetAtlasChangesTheViewRequestIdentity() {
 }
 
 @Test
+func petThumbnailViewIdentityDoesNotSynchronouslyTrackFileRevision() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatPetViewIdentity-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let spritesheetURL = root.appending(path: "spritesheet.png")
+    try Data([0]).write(to: spritesheetURL)
+    let pet = thumbnailTestPet(id: root.lastPathComponent, root: root)
+    let first = PetThumbnailLoadIdentity(pet: pet, retryGeneration: 0)
+
+    try Data([0, 1]).write(to: spritesheetURL)
+    let second = PetThumbnailLoadIdentity(pet: pet, retryGeneration: 0)
+    let retry = PetThumbnailLoadIdentity(pet: pet, retryGeneration: 1)
+
+    #expect(first == second)
+    #expect(first != retry)
+}
+
+@Test
 func petPreviewSelectionChangesImmediatelyWhileKeepingThePreviousImage() throws {
     let previousImage = try thumbnailTestImage()
     var state = PetPreviewPresentationState()

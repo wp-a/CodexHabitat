@@ -135,6 +135,24 @@ func themePreviewPixelSizeChangesTheRequestIdentity() {
 }
 
 @Test
+func themePreviewViewIdentityDoesNotSynchronouslyTrackFileRevision() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatThemeViewIdentity-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let previewURL = root.appending(path: "preview.png")
+    try Data([0]).write(to: previewURL)
+    let first = ThemePreviewLoadIdentity(url: previewURL, reloadGeneration: 0)
+
+    try Data([0, 1]).write(to: previewURL)
+    let second = ThemePreviewLoadIdentity(url: previewURL, reloadGeneration: 0)
+    let retry = ThemePreviewLoadIdentity(url: previewURL, reloadGeneration: 1)
+
+    #expect(first == second)
+    #expect(first != retry)
+}
+
+@Test
 func galleryPlansUseOnlyStaticPackagedPreviewsWithoutBackdropMaterial() throws {
     #expect(HabitatThemeDescriptor.builtIn.count == 24)
     for theme in HabitatThemeDescriptor.builtIn {

@@ -32,12 +32,22 @@ struct PetThumbnailRequestKey: Hashable, Sendable {
     }
 }
 
-private struct PetThumbnailLoadIdentity: Hashable {
-    let request: PetThumbnailRequestKey?
+struct PetThumbnailLoadIdentity: Hashable {
+    let packageURL: URL?
+    let spritesheetURL: URL?
+    let pixelWidth: Int?
+    let pixelHeight: Int?
+    let columns: Int?
+    let rows: Int?
     let retryGeneration: Int
 
     init(pet: PetLibraryEntry?, retryGeneration: Int) {
-        request = pet.map(PetThumbnailRequestKey.init(pet:))
+        packageURL = pet?.packageURL
+        spritesheetURL = pet?.spritesheetURL
+        pixelWidth = pet?.atlas?.pixelWidth
+        pixelHeight = pet?.atlas?.pixelHeight
+        columns = pet?.atlas?.columns
+        rows = pet?.atlas?.rows
         self.retryGeneration = retryGeneration
     }
 }
@@ -674,7 +684,7 @@ private struct PetThumbnail: View {
                     .accessibilityLabel(L10n.text("Unable to load pet artwork"))
             }
         }
-        .task(id: PetThumbnailRequestKey(pet: pet)) {
+        .task(id: PetThumbnailLoadIdentity(pet: pet, retryGeneration: 0)) {
             phase = .loading
             let image = await PetThumbnailStore.shared.image(for: pet)
             guard !Task.isCancelled else { return }
