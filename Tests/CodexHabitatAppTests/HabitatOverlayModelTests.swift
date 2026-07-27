@@ -105,6 +105,76 @@ func petSpriteAnimationResumesAfterTheViewReattachesToItsWindow() throws {
 }
 
 @Test @MainActor
+func focusedPetSpriteRebuildsItsDriverForEveryPlaybackIdentityInput() throws {
+    let atlas = PetAtlasMetadata(pixelWidth: 32, pixelHeight: 36, columns: 8, rows: 9)
+    let firstRenderer = try petSpriteRenderer(atlas: atlas, red: 1, green: 0)
+    let secondRenderer = try petSpriteRenderer(atlas: atlas, red: 0, green: 1)
+    let firstClock = OverlayTestClock()
+    let secondClock = OverlayTestClock()
+    let view = PetSpriteNSView()
+
+    view.configure(
+        activity: .working,
+        renderer: firstRenderer,
+        interpolation: .nearest,
+        clock: firstClock,
+        availableRows: Set(0..<9),
+        reduceMotion: false
+    )
+    #expect(view.animationDriverBuildCount == 1)
+
+    view.configure(
+        activity: .attention,
+        renderer: firstRenderer,
+        interpolation: .linear,
+        clock: firstClock,
+        availableRows: Set(0..<9),
+        reduceMotion: false
+    )
+    #expect(view.animationDriverBuildCount == 1)
+
+    view.configure(
+        activity: .attention,
+        renderer: secondRenderer,
+        interpolation: .linear,
+        clock: firstClock,
+        availableRows: Set(0..<9),
+        reduceMotion: false
+    )
+    #expect(view.animationDriverBuildCount == 2)
+
+    view.configure(
+        activity: .attention,
+        renderer: secondRenderer,
+        interpolation: .linear,
+        clock: firstClock,
+        availableRows: [0],
+        reduceMotion: false
+    )
+    #expect(view.animationDriverBuildCount == 3)
+
+    view.configure(
+        activity: .attention,
+        renderer: secondRenderer,
+        interpolation: .linear,
+        clock: secondClock,
+        availableRows: [0],
+        reduceMotion: false
+    )
+    #expect(view.animationDriverBuildCount == 4)
+
+    view.configure(
+        activity: .attention,
+        renderer: secondRenderer,
+        interpolation: .linear,
+        clock: secondClock,
+        availableRows: [0],
+        reduceMotion: true
+    )
+    #expect(view.animationDriverBuildCount == 5)
+}
+
+@Test @MainActor
 func countdownControlsRunPauseAndReset() {
     let clock = OverlayTimerClock()
     let model = WidgetRailModel(
@@ -136,6 +206,25 @@ private final class OverlayTestClock: AnimationClock, @unchecked Sendable {
 
     func nowMilliseconds() -> UInt64 { milliseconds }
     func set(_ value: UInt64) { milliseconds = value }
+}
+
+private func petSpriteRenderer(
+    atlas: PetAtlasMetadata,
+    red: CGFloat,
+    green: CGFloat
+) throws -> SpriteSheetRenderer {
+    let context = try #require(CGContext(
+        data: nil,
+        width: atlas.pixelWidth,
+        height: atlas.pixelHeight,
+        bitsPerComponent: 8,
+        bytesPerRow: atlas.pixelWidth * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ))
+    context.setFillColor(CGColor(red: red, green: green, blue: 0, alpha: 1))
+    context.fill(CGRect(origin: .zero, size: CGSize(width: atlas.pixelWidth, height: atlas.pixelHeight)))
+    return SpriteSheetRenderer(image: context.makeImage(), atlas: atlas)
 }
 
 @MainActor

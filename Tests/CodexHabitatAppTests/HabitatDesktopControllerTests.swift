@@ -91,6 +91,33 @@ func rapidExpansionChangesCannotReplayAStaleResize() async throws {
     #expect(controller.dragRegionFrame == CGRect(origin: .zero, size: HabitatOverlayLayout.petSize))
 }
 
+@Test @MainActor
+func draggingDuringExpansionCancelsRemainingFramesAndKeepsTheCurrentRightEdge() async throws {
+    let controller = HabitatDesktopController(
+        expansionAnimationDuration: 0.20,
+        expansionFrameInterval: 0.005
+    )
+    var settings = HabitatSettings.default
+    settings.onboardingCompleted = true
+    controller.apply(settings: settings, pets: [], isVisible: true)
+
+    controller.setWidgetRailExpanded(false)
+    for _ in 0..<100 where controller.panelSize.width == HabitatOverlayLayout.expandedSize.width {
+        try await Task.sleep(for: .milliseconds(2))
+    }
+    let interruptedSize = controller.panelSize
+    let interruptedRightEdge = controller.panelFrame.maxX
+    #expect(interruptedSize.width < HabitatOverlayLayout.expandedSize.width)
+    #expect(interruptedSize.width > HabitatOverlayLayout.collapsedSize.width)
+
+    controller.handlePrimaryDragStart()
+    try await Task.sleep(for: .milliseconds(240))
+
+    #expect(controller.panelSize == interruptedSize)
+    #expect(controller.panelFrame.maxX == interruptedRightEdge)
+    #expect(controller.dragRegionFrame.maxX == interruptedSize.width)
+}
+
 @Test
 func widgetRailTransitionAvoidsMovementWhenReduceMotionIsEnabled() {
     #expect(HabitatWidgetRailTransitionStyle.resolve(reduceMotion: true) == .opacity)

@@ -257,6 +257,9 @@ final class HabitatDesktopController: ObservableObject {
             overlay?.onPrimaryPressChange = { [weak presentation] pressed in
                 presentation?.isPetPressed = pressed
             }
+            overlay?.onPrimaryDragStart = { [weak self] in
+                self?.handlePrimaryDragStart()
+            }
             overlay?.onPlacementChange = { [weak self] placement in
                 self?.boundModel?.setOverlayPosition(
                     displayID: placement.displayID,
@@ -343,6 +346,12 @@ final class HabitatDesktopController: ObservableObject {
         guard presentation.isWidgetRailExpanded != expanded else { return }
         presentation.isWidgetRailExpanded = expanded
         animatePanelExpansion(to: expanded)
+    }
+
+    func handlePrimaryDragStart() {
+        cancelExpansionAnimation()
+        guard let overlay, let scale = renderedScale else { return }
+        presentation.containerWidth = overlay.panel.frame.width / scale
     }
 
     func retryPetRendererLoad() {
@@ -432,7 +441,8 @@ final class HabitatDesktopController: ObservableObject {
         overlay.resize(
             to: Self.scaledSize(containerSize, scale: scale),
             preservingRightEdge: true,
-            rightEdgeAnchor: rightEdgeAnchor
+            rightEdgeAnchor: rightEdgeAnchor,
+            pointerPolicy: .preserve
         )
         let effectiveWidth = overlay.panel.frame.width / scale
         let effectivePetFrame = CGRect(

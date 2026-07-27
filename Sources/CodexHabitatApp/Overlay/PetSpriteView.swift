@@ -82,15 +82,53 @@ struct PetSpriteView: NSViewRepresentable {
     }
 }
 
+private struct PetSpritePlaybackIdentity: Equatable {
+    private enum ClockIdentity: Equatable {
+        case reference(ObjectIdentifier)
+        case valueType(ObjectIdentifier)
+
+        init(_ clock: any AnimationClock) {
+            if Mirror(reflecting: clock).displayStyle == .class {
+                self = .reference(ObjectIdentifier(clock as AnyObject))
+            } else {
+                self = .valueType(ObjectIdentifier(type(of: clock)))
+            }
+        }
+    }
+
+    let rendererFrame: ObjectIdentifier?
+    let atlas: PetAtlasMetadata
+    let availableRows: Set<Int>
+    private let clock: ClockIdentity
+    let reduceMotion: Bool
+
+    init(
+        renderer: SpriteSheetRenderer,
+        availableRows: Set<Int>,
+        clock: any AnimationClock,
+        reduceMotion: Bool
+    ) {
+        rendererFrame = (0..<renderer.atlas.rows).lazy.compactMap {
+            renderer.frame(row: $0, column: 0)
+        }.first.map(ObjectIdentifier.init)
+        atlas = renderer.atlas
+        self.availableRows = availableRows
+        self.clock = ClockIdentity(clock)
+        self.reduceMotion = reduceMotion
+    }
+}
+
 @MainActor
 final class PetSpriteNSView: NSView {
     private var driver: PetAnimationDriver?
+    private var playbackIdentity: PetSpritePlaybackIdentity?
     private var renderer: SpriteSheetRenderer?
     private var refreshTimer: Timer?
     private var refreshInterval: TimeInterval?
     private var interpolation = CALayerContentsFilter.linear
     private var lastRenderedImage: CGImage?
     private var occlusionObserver: (any NSObjectProtocol)?
+    private(set) var animationDriverBuildCount = 0
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -148,7 +186,13 @@ final class PetSpriteNSView: NSView {
         layer?.magnificationFilter = interpolation
         layer?.minificationFilter = interpolation
 
-        if let driver, driver.reduceMotion == reduceMotion {
+        let nextIdentity = PetSpritePlaybackIdentity(
+            renderer: renderer,
+            availableRows: availableRows,
+            clock: clock,
+            reduceMotion: reduceMotion
+        )
+        if let driver, playbackIdentity == nextIdentity {
             driver.update(activity: activity)
         } else {
             driver = PetAnimationDriver(
@@ -157,6 +201,8 @@ final class PetSpriteNSView: NSView {
                 availableRows: availableRows,
                 reduceMotion: reduceMotion
             )
+            playbackIdentity = nextIdentity
+            animationDriverBuildCount += 1
         }
         updateTimerIfNeeded()
         renderCurrentFrame()

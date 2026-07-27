@@ -1,6 +1,11 @@
 import AppKit
 import SwiftUI
 
+public enum OverlayResizePointerPolicy: Sendable {
+    case cancel
+    case preserve
+}
+
 @MainActor
 public final class OverlayController: NSObject {
     public let panel: HabitatPanel
@@ -12,6 +17,9 @@ public final class OverlayController: NSObject {
     }
     public var onPrimaryPressChange: ((Bool) -> Void)? {
         didSet { dragRegion.onPressChange = onPrimaryPressChange }
+    }
+    public var onPrimaryDragStart: (() -> Void)? {
+        didSet { dragRegion.onDragStart = onPrimaryDragStart }
     }
 
     public var isMovementEnabled: Bool {
@@ -110,9 +118,12 @@ public final class OverlayController: NSObject {
     public func resize(
         to requestedSize: CGSize,
         preservingRightEdge: Bool = true,
-        rightEdgeAnchor: CGFloat? = nil
+        rightEdgeAnchor: CGFloat? = nil,
+        pointerPolicy: OverlayResizePointerPolicy = .cancel
     ) {
-        dragRegion.cancelPointerInteraction()
+        if pointerPolicy == .cancel {
+            dragRegion.cancelPointerInteraction()
+        }
         let nextSize = Self.boundedSize(requestedSize)
         guard nextSize != panelSize else { return }
 
@@ -301,8 +312,10 @@ final class OverlayDragRegionView: NSView {
     var onFinish: ((CGPoint) -> Void)?
     var onClick: (() -> Void)?
     var onPressChange: ((Bool) -> Void)?
+    var onDragStart: (() -> Void)?
 
     private var interaction = PetPointerInteraction(dragThreshold: 6)
+    private var isDraggingPrimaryPointer = false
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard let event = NSApp.currentEvent else { return super.hitTest(point) }
@@ -340,11 +353,13 @@ final class OverlayDragRegionView: NSView {
     }
 
     func cancelPointerInteraction() {
+        isDraggingPrimaryPointer = false
         consume(interaction.cancel())
     }
 
     func handlePointerDown(at location: CGPoint, windowOrigin: CGPoint) {
         guard isInteractionEnabled else { return }
+        isDraggingPrimaryPointer = false
         consume(interaction.pointerDown(
             at: location,
             windowOrigin: windowOrigin,
@@ -379,10 +394,16 @@ final class OverlayDragRegionView: NSView {
         }
         switch update.command {
         case .toggle:
+            isDraggingPrimaryPointer = false
             onClick?()
         case let .move(origin):
+            if !isDraggingPrimaryPointer {
+                isDraggingPrimaryPointer = true
+                onDragStart?()
+            }
             onMove?(origin)
         case let .finishMove(origin):
+            isDraggingPrimaryPointer = false
             onFinish?(origin)
         case nil:
             break
