@@ -673,12 +673,16 @@ struct ThemeStudioView: View {
                 Label(L10n.text("Export"), systemImage: "square.and.arrow.up")
             }
             .disabled(!model.canPersistDraft || model.isSelectingImage || model.state == .saving)
+            .help(model.persistenceRequirementMessage ?? L10n.text("Export Theme"))
+            .accessibilityHint(model.persistenceRequirementMessage ?? L10n.text("Export Theme"))
             .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: saveLocally) {
                 Label(L10n.text("Save Locally"), systemImage: "square.and.arrow.down")
             }
             .buttonStyle(.borderedProminent)
             .disabled(!model.canPersistDraft || model.isSelectingImage || model.state == .saving)
+            .help(model.persistenceRequirementMessage ?? L10n.text("Save Locally"))
+            .accessibilityHint(model.persistenceRequirementMessage ?? L10n.text("Save Locally"))
             .frame(minHeight: HabitatDesignMetrics.prominentControlHeight)
             .accessibilityIdentifier("theme-studio.save")
         }
@@ -697,7 +701,13 @@ struct ThemeStudioView: View {
         } else {
             switch model.state {
             case .editing:
-                if model.isDirty {
+                if let message = model.persistenceRequirementMessage {
+                    Label(message, systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if model.isDirty {
                     Label(L10n.text("Unsaved changes"), systemImage: "circle.fill")
                         .foregroundStyle(.secondary)
                 }

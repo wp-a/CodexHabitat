@@ -98,14 +98,20 @@ func themeStudioOnlyEnablesPersistenceForACompleteValidDraft() async throws {
     )
 
     #expect(!model.canPersistDraft)
+    #expect(model.persistenceRequirementMessage == L10n.text("Enter a theme name."))
     model.name = "Complete Theme"
     #expect(!model.canPersistDraft)
+    #expect(model.persistenceRequirementMessage == L10n.text("Choose a local background image."))
 
     try await model.selectImage(root.appending(path: "local-background.jpg"))
     #expect(model.canPersistDraft)
+    #expect(model.persistenceRequirementMessage == nil)
 
     model.author = String(repeating: "A", count: 101)
     #expect(!model.canPersistDraft)
+    #expect(model.persistenceRequirementMessage == L10n.text(
+        "Authors must be 100 characters or fewer and contain no control characters."
+    ))
     #expect(!model.validateDraftForPersistence())
     #expect(model.authorValidationMessage != nil)
     guard case .validationFailure = model.state else {

@@ -228,6 +228,32 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             && draft.palette != nil
     }
 
+    var persistenceRequirementMessage: String? {
+        guard !canPersistDraft else { return nil }
+        let trimmedName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAuthor = draft.author.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedName.isEmpty {
+            return L10n.text("Enter a theme name.")
+        }
+        if trimmedName.count > 100 || Self.containsControlCharacters(trimmedName) {
+            return L10n.text(
+                "Theme names must be 100 characters or fewer and contain no control characters."
+            )
+        }
+        if trimmedAuthor.count > 100 || Self.containsControlCharacters(trimmedAuthor) {
+            return L10n.text(
+                "Authors must be 100 characters or fewer and contain no control characters."
+            )
+        }
+        if draft.sourceImageURL == nil {
+            return L10n.text("Choose a local background image.")
+        }
+        if draft.palette == nil {
+            return L10n.text("Analyzing image")
+        }
+        return nil
+    }
+
     var previewAppearance: HabitatThemeAppearance {
         HabitatThemeAppearance(
             category: category,
