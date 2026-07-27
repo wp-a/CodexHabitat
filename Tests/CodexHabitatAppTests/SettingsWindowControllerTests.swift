@@ -123,7 +123,7 @@ func testAndVisualQALaunchesNeverResumeALiveWatcher() {
 }
 
 @Test
-func mainBundleConfigurationDeclaresAStandardVisibleBuildFifteenApp() throws {
+func mainBundleConfigurationDeclaresAStandardVisibleBuildSixteenApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -134,7 +134,7 @@ func mainBundleConfigurationDeclaresAStandardVisibleBuildFifteenApp() throws {
     )
 
     #expect(plist["LSUIElement"] == nil)
-    #expect(plist["CFBundleVersion"] as? String == "15")
+    #expect(plist["CFBundleVersion"] as? String == "16")
 }
 
 @Test
