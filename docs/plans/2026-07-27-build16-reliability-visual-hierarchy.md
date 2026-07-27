@@ -232,9 +232,9 @@ stable suite, then perform:
 
 ```bash
 swift test
-./scripts/build-app.sh --configuration release --adhoc
+./scripts/build-app.sh --adhoc
 ./scripts/verify-release.sh
-./scripts/build-dmg.sh
+./scripts/package-dmg.sh
 ```
 
 Mount the generated DMG read-only, confirm the app bundle, helper, resources,

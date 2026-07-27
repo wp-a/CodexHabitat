@@ -1,11 +1,34 @@
 import Darwin
 import Foundation
+import HabitatCore
+
+enum ThemeBridgeVersion {
+    static func resolve(executableURL: URL) -> String {
+        let helpers = executableURL.deletingLastPathComponent()
+        let contents = helpers.deletingLastPathComponent()
+        guard helpers.lastPathComponent == "Helpers",
+              contents.lastPathComponent == "Contents",
+              let data = try? Data(contentsOf: contents.appending(path: "Info.plist")),
+              let plist = try? PropertyListSerialization.propertyList(
+                from: data,
+                format: nil
+              ) as? [String: Any],
+              let version = plist["CFBundleShortVersionString"] as? String,
+              !version.isEmpty
+        else {
+            return HabitatCore.version
+        }
+        return version
+    }
+}
 
 @main
 enum CodexHabitatThemeBridge {
     static func main() async {
         if CommandLine.arguments.dropFirst() == ["--version"] {
-            print("Codex Habitat Theme Bridge 0.1.0-dev")
+            let executableURL = Bundle.main.executableURL
+                ?? URL(fileURLWithPath: CommandLine.arguments[0])
+            print("Codex Habitat Theme Bridge \(ThemeBridgeVersion.resolve(executableURL: executableURL))")
             return
         }
         let arguments = Array(CommandLine.arguments.dropFirst())

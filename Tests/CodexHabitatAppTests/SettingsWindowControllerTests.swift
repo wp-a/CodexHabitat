@@ -212,6 +212,21 @@ func releaseVerificationPinsTheExpectedMonotonicBuildNumber() throws {
     ))
 }
 
+@Test
+func releaseVerificationRequiresTheHelperAndApplicationVersionsToMatch() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let verifier = try String(
+        contentsOf: repositoryRoot.appending(path: "scripts/verify-release.sh"),
+        encoding: .utf8
+    )
+
+    #expect(verifier.contains("Codex Habitat Theme Bridge $version"))
+    #expect(verifier.contains("helper version does not match app version"))
+}
+
 @Test @MainActor
 func reopeningTheRunningApplicationRequestsTheSettingsWindow() {
     var reopenCount = 0
