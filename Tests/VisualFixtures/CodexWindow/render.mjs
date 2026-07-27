@@ -1443,6 +1443,7 @@ async function assertSemanticTextColors(page, routeName) {
     };
     const text = resolveThemeColor("--habitat-text");
     const muted = resolveThemeColor("--habitat-readable-muted");
+    const homeActionText = resolveThemeColor("--habitat-home-action-text");
     const checks = [
       ["nav a:not([aria-current])", text],
       [".fixture-recents h2", muted],
@@ -1451,7 +1452,10 @@ async function assertSemanticTextColors(page, routeName) {
     ];
     if (activeRoute === "home") {
       checks.push([".fixture-home p", muted]);
-      checks.push(['[class~="group/home-suggestions"] :where(button, [role="button"])', text]);
+      checks.push([
+        '[class~="group/home-suggestions"] :where(button, [role="button"])',
+        homeActionText,
+      ]);
     } else {
       checks.push(
         [".fixture-message h2", text],
