@@ -9,12 +9,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   EXPECTED_FIXTURE_SCENE_COUNT,
   EXPECTED_SURFACE_ANNOTATIONS,
-  EXPECTED_THEME_COUNT,
   FIXTURE_CONTRAST_TARGETS,
   FIXTURE_LABEL,
   FIXTURE_ROUTES,
   FIXTURE_VIEWPORTS,
   LATEST_PROFILE_SELECTORS,
+  REQUIRED_INTERACTION_SCENARIOS,
+  assertCompleteFixtureCoverage,
   assertSceneDifferences,
   classifyFixtureRequest,
   fixtureSourceFingerprint,
@@ -190,6 +191,13 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 routeName,
               );
               const sceneEvidence = await measureSceneVisualEvidence(page, screenshotBuffer);
+              const artworkCrop = await measureArtworkCrop(
+                page,
+                payload.profile.selectors,
+                routeName,
+                art.width,
+                art.height,
+              );
               const artworkPixelDelta = sceneEvidence.actualArtworkPixelDelta;
               if (routeName === "home") {
                 assert(
@@ -207,8 +215,11 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 );
               }
               const pixels = await analyzeScreenshot(page, screenshotBuffer);
-              const interactionStates = routeName === "home" && viewport.id === "wide"
-                ? await measureInteractionStates(page, payload.profile.selectors)
+              const interactionStates = REQUIRED_INTERACTION_SCENARIOS.some(
+                ({ route, viewport: requiredViewport }) =>
+                  route === routeName && requiredViewport === viewport.id,
+              )
+                ? await measureInteractionStates(page, payload.profile.selectors, routeName)
                 : null;
               let screenshotPath = null;
               if (resolvedOutputDirectory) {
@@ -245,6 +256,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 artworkPixelDelta,
                 sceneArtworkZones: sceneEvidence.artworkZones,
                 sceneTransmissionZones: sceneEvidence.transmissionZones,
+                artworkCrop,
                 interactionStates,
                 screenshotPath,
                 screenshotFingerprint: sha256(screenshotBuffer),
@@ -272,13 +284,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
     scenes.length === EXPECTED_FIXTURE_SCENE_COUNT,
     `expected ${EXPECTED_FIXTURE_SCENE_COUNT} scenes, found ${scenes.length}`,
   );
-  const interactionScenes = scenes.filter(({ interactionStates }) => interactionStates !== null);
-  assert(
-    interactionScenes.length === EXPECTED_THEME_COUNT
-      && new Set(interactionScenes.map(({ themeID }) => themeID)).size === EXPECTED_THEME_COUNT
-      && interactionScenes.every(({ route, viewport }) => route === "home" && viewport === "wide"),
-    `expected one wide home interaction matrix per theme, found ${interactionScenes.length}`,
-  );
+  assertCompleteFixtureCoverage(scenes);
   assertSceneDifferences(scenes);
   const metadata = JSON.parse(playwrightMetadata);
   const metrics = {
@@ -878,7 +884,60 @@ async function measureShellLayout(page, selectors, routeName) {
   }, { profileSelectors: selectors, activeRoute: routeName });
 }
 
-async function measureInteractionStates(page, selectors) {
+async function measureArtworkCrop(page, selectors, routeName, artWidth, artHeight) {
+  return page.evaluate(({
+    appShellSelector,
+    activeRoute,
+    sourceWidth,
+    sourceHeight,
+  }) => {
+    const appShell = document.querySelector(appShellSelector ?? "body");
+    if (!(appShell instanceof HTMLElement)) throw new Error("artwork crop surface is missing");
+    const rootStyle = getComputedStyle(document.documentElement);
+    const positionProperty = activeRoute === "home"
+      ? "--habitat-home-art-position"
+      : "--habitat-task-art-position";
+    const scaleProperty = activeRoute === "home"
+      ? "--habitat-home-art-scale"
+      : "--habitat-task-art-scale";
+    const position = rootStyle.getPropertyValue(positionProperty).trim();
+    const match = position.match(
+      /^(-?[0-9]+(?:\.[0-9]+)?)%\s+(-?[0-9]+(?:\.[0-9]+)?)%$/,
+    );
+    if (!match) throw new Error(`artwork crop position is ${position}`);
+    const positionXPercent = Number.parseFloat(match[1]);
+    const positionYPercent = Number.parseFloat(match[2]);
+    const scale = Number.parseFloat(rootStyle.getPropertyValue(scaleProperty));
+    if (!Number.isFinite(scale)) throw new Error("artwork crop scale is invalid");
+
+    const coverScale = Math.max(innerWidth / sourceWidth, innerHeight / sourceHeight);
+    const renderedWidth = sourceWidth * coverScale * scale;
+    const renderedHeight = sourceHeight * coverScale * scale;
+    const pseudoStyle = getComputedStyle(appShell, "::before");
+    return {
+      positionXPercent,
+      positionYPercent,
+      scale,
+      effectiveBackgroundPosition: pseudoStyle.backgroundPosition,
+      effectiveTransformOrigin: pseudoStyle.transformOrigin,
+      cropsSource:
+        renderedWidth > innerWidth + 1
+        || renderedHeight > innerHeight + 1,
+    };
+  }, {
+    appShellSelector: selectors.appShell,
+    activeRoute: routeName,
+    sourceWidth: artWidth,
+    sourceHeight: artHeight,
+  });
+}
+
+async function measureInteractionStates(page, selectors, routeName) {
+  if (routeName === "task") return measureTaskInteractionStates(page, selectors);
+  return measureHomeInteractionStates(page, selectors);
+}
+
+async function measureHomeInteractionStates(page, selectors) {
   const homeAction = page.locator(
     `${selectors.homeSuggestions} :where(button, [role="button"])`,
   ).first();
@@ -972,11 +1031,11 @@ async function measureInteractionStates(page, selectors) {
     const homeFocus = await interactionSnapshot(homeAction);
     assert(homeFocus.matchesFocusVisible, "keyboard focus did not match :focus-visible");
 
-    await composerInput.focus();
-    await settleRenderedFrame(page);
+    await focusWithKeyboard(page, composerInput);
     const composerFocus = await interactionSnapshot(composer);
     const composerInputFocus = await interactionSnapshot(composerInput);
     assert(composerFocus.matchesFocusWithin, "composer did not match :focus-within");
+    assert(composerInputFocus.matchesFocusVisible, "composer input did not match :focus-visible");
 
     requireStableRect(homeIdle.rect, homeHover.rect, "home hover");
     requireStableRect(homeIdle.rect, homeActive.rect, "home active");
@@ -1100,6 +1159,196 @@ async function measureInteractionStates(page, selectors) {
       mediaMatches: reducedMedia,
       idle: reducedIdle,
       homeHover: reducedHover,
+      composerFocusWithin: reducedComposerFocus,
+      runningAnimations,
+    },
+  };
+}
+
+async function measureTaskInteractionStates(page, selectors) {
+  const sidebarAction = page.locator(
+    `${selectors.sidebar} [data-fixture-sidebar-row]:not([aria-current])`,
+  ).first();
+  const selectedNavigation = page.locator(selectors.selectedNavigation).first();
+  const composer = page.locator(selectors.composer).first();
+  const composerInput = composer.locator("textarea, input").first();
+  for (const [name, locator] of [
+    ["sidebar action", sidebarAction],
+    ["selected navigation", selectedNavigation],
+    ["composer", composer],
+    ["composer input", composerInput],
+  ]) {
+    assert(await locator.count() === 1, `${name} task interaction target is missing`);
+  }
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await resetInteractionState(page);
+  const normalMedia = await page.evaluate(() => ({
+    finePointer: matchMedia("(hover: hover) and (pointer: fine)").matches,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }));
+  assert(normalMedia.finePointer, "task fixture does not expose fine-pointer hover");
+  assert(!normalMedia.reducedMotion, "normal task fixture still prefers reduced motion");
+
+  const normalTransitions = {
+    sidebar: await interactionSnapshot(sidebarAction),
+    composer: await interactionSnapshot(composer),
+  };
+  for (const [name, snapshot] of Object.entries(normalTransitions)) {
+    assert(
+      durationListHasMotion(snapshot.transitionDuration),
+      `${name} normal task interaction transition is disabled`,
+    );
+  }
+
+  const freeze = await page.addStyleTag({
+    content: `
+      [data-offline-theme-fixture="true"] * {
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+      }
+    `,
+  });
+  let normal;
+  try {
+    await resetInteractionState(page);
+    const sidebarIdle = await interactionSnapshot(sidebarAction);
+    const selected = await interactionSnapshot(selectedNavigation);
+    const composerIdle = await interactionSnapshot(composer);
+
+    await sidebarAction.hover();
+    await settleRenderedFrame(page);
+    const sidebarHover = await interactionSnapshot(sidebarAction);
+    assert(sidebarHover.matchesHover, "task sidebar hover selector did not match");
+
+    let sidebarActive;
+    try {
+      await page.mouse.down();
+      await settleRenderedFrame(page);
+      sidebarActive = await interactionSnapshot(sidebarAction);
+      assert(sidebarActive.matchesActive, "task sidebar active selector did not match");
+    } finally {
+      await page.mouse.up();
+    }
+
+    await resetInteractionState(page);
+    await focusWithKeyboard(page, composerInput);
+    const composerFocus = await interactionSnapshot(composer);
+    const composerInputFocus = await interactionSnapshot(composerInput);
+    assert(composerFocus.matchesFocusWithin, "task composer did not match :focus-within");
+    assert(composerInputFocus.matchesFocusVisible, "task composer input did not match :focus-visible");
+
+    requireStableRect(sidebarIdle.rect, sidebarHover.rect, "task sidebar hover");
+    requireStableRect(sidebarIdle.rect, sidebarActive.rect, "task sidebar active");
+    requireStableRect(composerIdle.rect, composerFocus.rect, "task composer focus-within");
+    for (const [name, snapshot] of Object.entries({
+      sidebarIdle,
+      sidebarHover,
+      sidebarActive,
+      selected,
+      composerIdle,
+      composerFocus,
+    })) {
+      assert(isIdentityTransform(snapshot.transform), `${name} applies transform ${snapshot.transform}`);
+    }
+
+    assert(
+      visualStyleChanged(sidebarIdle, sidebarHover, ["backgroundColor", "boxShadow"]),
+      "task sidebar hover has no visual feedback",
+    );
+    assert(
+      visualStyleChanged(sidebarHover, sidebarActive, ["backgroundColor", "boxShadow"]),
+      "task sidebar active has no additional visual feedback",
+    );
+    assert(sidebarActive.opacity === sidebarIdle.opacity, "task sidebar active dims content opacity");
+    assert(
+      Number.parseInt(selected.fontWeight, 10) >= 600 && selected.boxShadow !== "none",
+      "task selected navigation lacks structural emphasis",
+    );
+    assert(
+      composerFocus.borderColor !== composerIdle.borderColor
+        && composerFocus.boxShadow !== composerIdle.boxShadow,
+      "task composer focus-within lacks border and shadow feedback",
+    );
+    assert(
+      composerInputFocus.outlineStyle === "none"
+        || Number.parseFloat(composerInputFocus.outlineWidth) === 0,
+      "task composer input owns a duplicate focus outline",
+    );
+
+    normal = {
+      media: normalMedia,
+      transitions: normalTransitions,
+      home: null,
+      sidebar: { idle: sidebarIdle, hover: sidebarHover, active: sidebarActive, selected },
+      composer: { idle: composerIdle, focusWithin: composerFocus, inputFocus: composerInputFocus },
+    };
+  } finally {
+    await freeze.evaluate((node) => node.remove());
+  }
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await resetInteractionState(page);
+  const reducedMedia = await page.evaluate(() =>
+    matchMedia("(prefers-reduced-motion: reduce)").matches);
+  assert(reducedMedia, "reduced-motion task media did not match");
+  const reducedIdle = {
+    home: null,
+    sidebar: await interactionSnapshot(sidebarAction),
+    composer: await interactionSnapshot(composer),
+  };
+  for (const [name, snapshot] of Object.entries(reducedIdle).filter(([, value]) => value)) {
+    assert(durationListIsZero(snapshot.transitionDuration), `${name} reduced task transition is not zero`);
+    assert(durationListIsZero(snapshot.transitionDelay), `${name} reduced task transition delay is not zero`);
+    assert(
+      snapshot.animationName === "none" || durationListIsZero(snapshot.animationDuration),
+      `${name} reduced task animation remains active`,
+    );
+  }
+
+  await sidebarAction.hover();
+  await settleRenderedFrame(page);
+  const reducedSidebarHover = await interactionSnapshot(sidebarAction);
+  assert(reducedSidebarHover.matchesHover, "reduced task sidebar hover selector did not match");
+  assert(
+    visualStyleChanged(
+      reducedIdle.sidebar,
+      reducedSidebarHover,
+      ["backgroundColor", "boxShadow"],
+    ),
+    "reduced motion removes task sidebar hover feedback",
+  );
+
+  await resetInteractionState(page);
+  await focusWithKeyboard(page, composerInput);
+  const reducedComposerFocus = await interactionSnapshot(composer);
+  assert(reducedComposerFocus.matchesFocusWithin, "reduced task composer focus-within did not match");
+  assert(
+    reducedComposerFocus.borderColor !== reducedIdle.composer.borderColor
+      && reducedComposerFocus.boxShadow !== reducedIdle.composer.boxShadow,
+    "reduced motion removes task composer focus feedback",
+  );
+  const runningAnimations = await page.evaluate(({ sidebarSelector, composerSelector }) => {
+    const targets = [document.querySelector(sidebarSelector), document.querySelector(composerSelector)]
+      .filter((node) => node instanceof HTMLElement);
+    return targets.flatMap((node) => node.getAnimations({ subtree: true }))
+      .filter((animation) => animation.playState === "running").length;
+  }, { sidebarSelector: selectors.sidebar, composerSelector: selectors.composer });
+  assert(
+    runningAnimations === 0,
+    `reduced motion keeps ${runningAnimations} task animations running`,
+  );
+
+  await resetInteractionState(page);
+  return {
+    normal,
+    reduced: {
+      mediaMatches: reducedMedia,
+      idle: reducedIdle,
+      homeHover: null,
+      sidebarHover: reducedSidebarHover,
       composerFocusWithin: reducedComposerFocus,
       runningAnimations,
     },

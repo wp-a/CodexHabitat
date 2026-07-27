@@ -117,6 +117,53 @@ test("routes and viewports are deterministic and release-independent", () => {
   );
 });
 
+test("Build 16 requires stronger contrast and complete interaction and family crop coverage", () => {
+  assert.deepEqual(fixtureContract.CONTRAST_THRESHOLDS, {
+    normalText: 5,
+    largeText: 3,
+    control: 4.5,
+  });
+  assert.deepEqual(fixtureContract.REQUIRED_INTERACTION_SCENARIOS, [
+    { route: "home", viewport: "wide" },
+    { route: "home", viewport: "compact" },
+    { route: "task", viewport: "wide" },
+  ]);
+
+  const complete = representativeCoverageMetrics();
+  assert.doesNotThrow(() => fixtureContract.assertCompleteFixtureCoverage(complete));
+
+  const missingCompactHome = complete.filter(
+    ({ themeID, route, viewport }) =>
+      !(themeID === "theme-1" && route === "home" && viewport === "compact"),
+  );
+  assert.throws(
+    () => fixtureContract.assertCompleteFixtureCoverage(missingCompactHome),
+    /theme-1\/home\/compact interaction coverage is missing/,
+  );
+
+  const missingTaskComposer = structuredClone(complete);
+  missingTaskComposer.find(
+    ({ themeID, route, viewport }) =>
+      themeID === "theme-2" && route === "task" && viewport === "wide",
+  ).interactionStates = null;
+  assert.throws(
+    () => fixtureContract.assertCompleteFixtureCoverage(missingTaskComposer),
+    /theme-2\/task\/wide interaction states are missing/,
+  );
+
+  const uncroppedFamily = structuredClone(complete);
+  for (const metric of uncroppedFamily.filter(
+    ({ styleFamily, route, viewport }) =>
+      styleFamily === "pixelWorld" && route === "home" && viewport === "compact",
+  )) {
+    metric.artworkCrop.cropsSource = false;
+  }
+  assert.throws(
+    () => fixtureContract.assertCompleteFixtureCoverage(uncroppedFamily),
+    /pixelWorld compact home crop is missing/,
+  );
+});
+
 test("the exporter payload is strict, profile-owned, and expands to exactly 144 scenes", () => {
   const payload = representativePayload();
 
@@ -183,8 +230,8 @@ test("scene material checks enforce one computed background layer on real DOM pa
   assert.doesNotThrow(() => assertSceneMaterialHierarchy(healthy));
 
   for (const [field, value, expected] of [
-    ["minimumTextContrast", 4.49, /minimum text contrast/],
-    ["minimumControlContrast", 2.99, /minimum control contrast/],
+    ["minimumTextContrast", 4.99, /minimum text contrast/],
+    ["minimumControlContrast", 4.49, /minimum control contrast/],
     ["homeContentBackgroundAlpha", 0.2, /home content background alpha/],
     ["homeSuggestionsBackgroundAlpha", 0.2, /home suggestions background alpha/],
     ["homeActionBackgroundAlpha", 0.7, /home action background alpha/],
@@ -204,9 +251,9 @@ test("scene material checks enforce one computed background layer on real DOM pa
   );
 
   for (const [kind, ratio, expected] of [
-    ["normalText", 4.49, /normalText contrast/],
+    ["normalText", 4.99, /normalText contrast/],
     ["largeText", 2.99, /largeText contrast/],
-    ["control", 2.99, /control contrast/],
+    ["control", 4.49, /control contrast/],
   ]) {
     const lowContrast = structuredClone(healthy);
     const sample = lowContrast
@@ -290,6 +337,22 @@ test("scene material checks enforce one computed background layer on real DOM pa
       metric.sceneTransmissionZones[1] = structuredClone(metric.sceneTransmissionZones[0]);
     }, /scene transmission zones/],
     [(metric) => { metric.interactionStates.normal.sidebar.active = null; }, /sidebar active is missing/],
+    [(metric) => {
+      metric.interactionStates.normal.home.hover.backgroundColor =
+        metric.interactionStates.normal.home.idle.backgroundColor;
+    }, /home hover has no feedback/],
+    [(metric) => {
+      metric.interactionStates.normal.sidebar.selected.boxShadow = "none";
+    }, /selected navigation lacks structure/],
+    [(metric) => {
+      metric.interactionStates.normal.home.focusVisible.matchesFocusVisible = false;
+    }, /keyboard focus outline is invalid/],
+    [(metric) => {
+      metric.interactionStates.normal.composer.focusWithin.matchesFocusWithin = false;
+    }, /composer focus-within lacks feedback/],
+    [(metric) => {
+      metric.interactionStates.normal.composer.inputFocus.matchesFocusVisible = false;
+    }, /composer input is not focus-visible/],
     [(metric) => { metric.interactionStates.normal.home.hover.rect.x = 0.26; }, /home hover changes x/],
     [(metric) => {
       metric.interactionStates.reduced.idle.home.transitionDuration = "140ms";
@@ -299,6 +362,15 @@ test("scene material checks enforce one computed background layer on real DOM pa
     mutate(invalid[0]);
     assert.throws(() => assertSceneMaterialHierarchy(invalid), expected);
   }
+
+  const taskInputWithoutKeyboardFocus = structuredClone(healthy);
+  taskInputWithoutKeyboardFocus.find(
+    ({ route }) => route === "task",
+  ).interactionStates.normal.composer.inputFocus.matchesFocusVisible = false;
+  assert.throws(
+    () => assertSceneMaterialHierarchy(taskInputWithoutKeyboardFocus),
+    /composer input is not focus-visible/,
+  );
 });
 
 test("pixel summaries preserve the weakest node and strongest local artwork leak", () => {
@@ -404,7 +476,7 @@ function representativeMetrics() {
     perceptualHash,
     nonblankRatio: 0.8,
     minimumTextContrast: 5,
-    minimumControlContrast: 3.5,
+    minimumControlContrast: 4.5,
     contrastSamples: representativeContrastSamples(index % 2 === 0 ? "home" : "task"),
     taskReadingArtworkLeak: index % 2 === 0 ? null : 0.04,
     taskReadingTileCount: index % 2 === 0 ? null : 12,
@@ -471,7 +543,9 @@ function representativeMetrics() {
       maximumPixelDelta: 96,
       meanPixelDelta: 12,
     })),
-    interactionStates: index % 2 === 0 ? representativeInteractionStates() : null,
+    interactionStates: index % 2 === 0
+      ? representativeInteractionStates()
+      : representativeTaskInteractionStates(),
     homeMaterialChain: index % 2 === 0 ? [
       { surface: "home-action", backgroundAlpha: 0.82 },
       { surface: "home-suggestions", backgroundAlpha: 0 },
@@ -588,13 +662,26 @@ function representativeInteractionStates() {
   };
 }
 
+function representativeTaskInteractionStates() {
+  const states = structuredClone(representativeInteractionStates());
+  delete states.normal.transitions.home;
+  states.normal.home = null;
+  states.reduced.idle.home = null;
+  states.reduced.homeHover = null;
+  states.reduced.sidebarHover = {
+    ...states.normal.sidebar.hover,
+    transitionDuration: "0s",
+  };
+  return states;
+}
+
 function representativeContrastSamples(route) {
   const common = [
     ["sidebar-primary", "normalText", 5],
     ["sidebar-selected", "normalText", 5],
     ["sidebar-secondary", "normalText", 5],
     ["composer-placeholder", "normalText", 5],
-    ["composer-submit", "control", 3.5],
+    ["composer-submit", "control", 4.5],
   ];
   const routeSpecific = route === "home"
     ? [
@@ -619,6 +706,48 @@ function representativeContrastSamples(route) {
     evidenceCount: 1,
     rectCount: 1,
   }));
+}
+
+function representativeCoverageMetrics() {
+  const families = [
+    "arcade",
+    "retroMessenger",
+    "greenChat",
+    "classicDesktop",
+    "gameCinematic",
+    "cozyWorld",
+    "animeEnergy",
+    "fantasyAdventure",
+    "pixelWorld",
+  ];
+  const scenarios = [
+    ["home", "wide"],
+    ["home", "narrow"],
+    ["home", "compact"],
+    ["task", "wide"],
+    ["task", "narrow"],
+    ["task", "compact"],
+  ];
+  return Array.from({ length: 24 }, (_, index) => ({
+    themeID: `theme-${index + 1}`,
+    styleFamily: families[index % families.length],
+  })).flatMap((theme) => scenarios.map(([route, viewport]) => ({
+    ...theme,
+    route,
+    viewport,
+    interactionStates: (
+      (route === "home" && (viewport === "wide" || viewport === "compact"))
+      || (route === "task" && viewport === "wide")
+    ) ? {} : null,
+    artworkCrop: {
+      positionXPercent: 50,
+      positionYPercent: 50,
+      scale: 1.08,
+      effectiveBackgroundPosition: "50% 50%",
+      effectiveTransformOrigin: "50% 50%",
+      cropsSource: viewport === "compact",
+    },
+  })));
 }
 
 function countOccurrences(source, token) {

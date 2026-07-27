@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EXPECTED_FIXTURE_SCENE_COUNT } from "./fixture-contract.mjs";
+import {
+  EXPECTED_FIXTURE_SCENE_COUNT,
+  EXPECTED_THEME_COUNT,
+  REQUIRED_INTERACTION_SCENARIOS,
+  REQUIRED_STYLE_FAMILIES,
+  assertCompleteFixtureCoverage,
+} from "./fixture-contract.mjs";
 import { runOfflineFixture } from "./render.mjs";
 
 test("the renderer fails closed when no Swift exporter payload is provided", async () => {
@@ -19,6 +25,27 @@ test(
     assert.equal(result.scenes.length, EXPECTED_FIXTURE_SCENE_COUNT);
     assert.equal(result.metrics.scenes.length, EXPECTED_FIXTURE_SCENE_COUNT);
     assert.equal(result.metrics.externalRequests.length, 0);
+    assert.doesNotThrow(() => assertCompleteFixtureCoverage(result.scenes));
+    assert.equal(
+      result.scenes.filter(({ interactionStates }) => interactionStates !== null).length,
+      EXPECTED_THEME_COUNT * REQUIRED_INTERACTION_SCENARIOS.length,
+    );
+    assert.deepEqual(
+      [...new Set(result.scenes.map(({ styleFamily }) => styleFamily))].sort(),
+      [...REQUIRED_STYLE_FAMILIES].sort(),
+    );
+    assert.ok(
+      result.scenes
+        .filter(({ route, viewport }) => route === "home" && viewport === "compact")
+        .every(({ artworkCrop }) => artworkCrop.cropsSource),
+    );
+    assert.ok(
+      result.scenes
+        .filter(({ route, viewport }) => route === "task" && viewport === "wide")
+        .every(({ interactionStates }) =>
+          interactionStates.normal.home === null
+          && interactionStates.normal.composer.inputFocus.matchesFocusVisible),
+    );
     assert.deepEqual(
       {
         viewport: result.metrics.focusYProbe.viewport,
