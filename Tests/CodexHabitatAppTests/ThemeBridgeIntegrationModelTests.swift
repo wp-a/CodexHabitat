@@ -31,6 +31,47 @@ struct ThemeBridgeIntegrationModelTests {
     }
 
     @Test
+    func concurrentRefreshRequestsShareOneVerifyAndStatusSequence() async {
+        let probe = RefreshInvocationProbe()
+        let runner = CoalescingThemeBridgeRunner(probe: probe)
+        let model = ThemeBridgeIntegrationModel(runner: runner)
+
+        async let first: Void = model.refresh()
+        async let second: Void = model.refresh()
+        _ = await (first, second)
+
+        #expect(await probe.invocations == [["verify"], ["status"]])
+        #expect(model.state == .ready)
+    }
+
+    @Test
+    func staleRefreshGenerationCannotReplaceTheCurrentGeneration() {
+        var generation = ThemeBridgeRefreshGeneration()
+
+        let stale = generation.begin()
+        let current = generation.begin()
+
+        #expect(!generation.accepts(stale))
+        #expect(generation.accepts(current))
+    }
+
+    @Test
+    func helperCommandTerminatesAtItsConfiguredTimeout() async {
+        let runner = ThemeBridgeHelperRunner(
+            executableURL: URL(fileURLWithPath: "/bin/sleep"),
+            commandTimeout: .milliseconds(30)
+        )
+        let clock = ContinuousClock()
+        let started = clock.now
+
+        await #expect(throws: ThemeBridgeCommandError.timedOut) {
+            try await runner.run(arguments: ["2"])
+        }
+
+        #expect(clock.now - started < .milliseconds(500))
+    }
+
+    @Test
     func activeSessionCanApplyAnotherThemeAndMoveTheWatcher() async {
         let runner = StubThemeBridgeRunner(results: [
             ThemeBridgeCommandResult(exitCode: 0, output: "applied"),
@@ -289,4 +330,34 @@ private final class StubThemeBridgeRunner: ThemeBridgeCommandExecuting, @uncheck
     func confirmWatching() async -> Bool {
         watchRunning
     }
+}
+
+private actor RefreshInvocationProbe {
+    private(set) var invocations: [[String]] = []
+
+    func run(arguments: [String]) async -> ThemeBridgeCommandResult {
+        invocations.append(arguments)
+        try? await Task.sleep(for: .milliseconds(20))
+        return ThemeBridgeCommandResult(
+            exitCode: 0,
+            output: arguments == ["status"] ? "inactive" : "verified"
+        )
+    }
+}
+
+private final class CoalescingThemeBridgeRunner: ThemeBridgeCommandExecuting, @unchecked Sendable {
+    private let probe: RefreshInvocationProbe
+
+    init(probe: RefreshInvocationProbe) {
+        self.probe = probe
+    }
+
+    func run(arguments: [String]) async throws -> ThemeBridgeCommandResult {
+        await probe.run(arguments: arguments)
+    }
+
+    func startWatching(themeID _: String) throws {}
+    func stopWatching() {}
+    func isWatching() -> Bool { false }
+    func confirmWatching() async -> Bool { false }
 }

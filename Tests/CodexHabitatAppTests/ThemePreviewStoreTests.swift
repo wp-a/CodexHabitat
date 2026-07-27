@@ -36,6 +36,40 @@ func missingThemePreviewResultsAreCached() async {
 }
 
 @Test
+func differentThemePreviewsDecodeConcurrently() async {
+    let probe = ConcurrentThemePreviewProbe()
+    let store = ThemePreviewStore { _ in
+        probe.begin()
+        Thread.sleep(forTimeInterval: 0.04)
+        probe.end()
+        return nil
+    }
+
+    async let first = store.image(at: URL(fileURLWithPath: "/tmp/theme-preview-first.png"))
+    async let second = store.image(at: URL(fileURLWithPath: "/tmp/theme-preview-second.png"))
+    _ = await (first, second)
+
+    #expect(probe.maximumConcurrentLoads == 2)
+}
+
+@Test
+func concurrentRequestsForTheSameThemePreviewShareOneDecode() async {
+    let counter = ThemePreviewLoadCounter()
+    let store = ThemePreviewStore { _ in
+        counter.increment()
+        Thread.sleep(forTimeInterval: 0.04)
+        return nil
+    }
+    let previewURL = URL(fileURLWithPath: "/tmp/theme-preview-shared.png")
+
+    async let first = store.image(at: previewURL)
+    async let second = store.image(at: previewURL)
+    _ = await (first, second)
+
+    #expect(counter.value == 1)
+}
+
+@Test
 func failedThemePreviewCanBeExplicitlyInvalidatedAndRetried() async throws {
     let image = try themePreviewTestImage()
     let counter = ThemePreviewLoadCounter()
@@ -88,6 +122,16 @@ func replacingAThemePreviewChangesTheViewRequestIdentity() throws {
     let second = ThemePreviewRequestKey(url: previewURL)
 
     #expect(first != second)
+}
+
+@Test
+func themePreviewPixelSizeChangesTheRequestIdentity() {
+    let previewURL = URL(fileURLWithPath: "/tmp/theme-preview-size.png")
+
+    let card = ThemePreviewRequestKey(url: previewURL, maximumPixelSize: 480)
+    let inspector = ThemePreviewRequestKey(url: previewURL, maximumPixelSize: 720)
+
+    #expect(card != inspector)
 }
 
 @Test
@@ -163,6 +207,27 @@ private final class ThemePreviewLoadCounter: @unchecked Sendable {
 
     func increment() {
         lock.withLock { count += 1 }
+    }
+}
+
+private final class ConcurrentThemePreviewProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var activeLoads = 0
+    private var maximum = 0
+
+    var maximumConcurrentLoads: Int {
+        lock.withLock { maximum }
+    }
+
+    func begin() {
+        lock.withLock {
+            activeLoads += 1
+            maximum = max(maximum, activeLoads)
+        }
+    }
+
+    func end() {
+        lock.withLock { activeLoads -= 1 }
     }
 }
 

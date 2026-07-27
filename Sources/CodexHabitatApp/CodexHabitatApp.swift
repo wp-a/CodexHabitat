@@ -36,10 +36,36 @@ enum HabitatLaunchPresentation {
     }
 }
 
+struct HabitatBridgeLaunchPolicy: Equatable {
+    let allowsStatusRefresh: Bool
+    let allowsWatcherResume: Bool
+
+    init(arguments: [String], environment: [String: String]) {
+        let isRunningTests = environment["XCTestConfigurationFilePath"] != nil
+        let isVisualQA = arguments.contains("--visual-qa")
+        allowsStatusRefresh = !isRunningTests
+        allowsWatcherResume = !isRunningTests && !isVisualQA
+    }
+}
+
+@MainActor
+enum HabitatLaunchSequence {
+    static func start(
+        presentSettings: () -> Void,
+        bridgeWork: @escaping @MainActor @Sendable () async -> Void
+    ) -> Task<Void, Never> {
+        presentSettings()
+        return Task {
+            await bridgeWork()
+        }
+    }
+}
+
 @MainActor
 final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
     private let reopenAction: () -> Void
     private var launchContext = HabitatLaunchContext(event: nil)
+    private var bridgeLaunchTask: Task<Void, Never>?
 
     override init() {
         reopenAction = {
@@ -79,15 +105,6 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
             HabitatAppEnvironment.runtimeController.start(
                 desktopController: HabitatAppEnvironment.desktopController
             )
-            let bridge = ThemeBridgeIntegrationModel.shared
-            await bridge.refresh()
-            if model.settings.themeBridgeEnabled {
-                await bridge.resumeWatching(
-                    themeID: model.settings.selectedThemeID,
-                    approvedThemeIDs: model.codexBridgeThemeIDs
-                )
-                model.setThemeBridgeEnabled(bridge.state == .active)
-            }
             let shouldShowSettings = HabitatLaunchPresentation.shouldShowSettings(
                 launchedAsLoginItem: self.launchContext.launchedAsLoginItem,
                 requiresOnboarding: model.requiresOnboarding,
@@ -99,18 +116,47 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
             ), CommandLine.arguments.indices.contains(sectionFlag + 1),
                let section = SettingsSection(
                 rawValue: CommandLine.arguments[sectionFlag + 1]
-               ) {
+                ) {
                 model.selectedSettingsSection = section
             }
-            try? await Task.sleep(for: .milliseconds(180))
-            HabitatAppEnvironment.settingsWindowController.show(
-                model: model,
-                desktopController: HabitatAppEnvironment.desktopController
+            let bridge = ThemeBridgeIntegrationModel.shared
+            let bridgePolicy = HabitatBridgeLaunchPolicy(
+                arguments: CommandLine.arguments,
+                environment: ProcessInfo.processInfo.environment
+            )
+            self.bridgeLaunchTask?.cancel()
+            self.bridgeLaunchTask = HabitatLaunchSequence.start(
+                presentSettings: {
+                    guard shouldShowSettings else { return }
+                    HabitatAppEnvironment.settingsWindowController.show(
+                        model: model,
+                        desktopController: HabitatAppEnvironment.desktopController
+                    )
+                },
+                bridgeWork: {
+                    guard bridgePolicy.allowsStatusRefresh else { return }
+                    await bridge.refresh()
+                    guard !Task.isCancelled,
+                          bridgePolicy.allowsWatcherResume,
+                          model.settings.themeBridgeEnabled
+                    else {
+                        return
+                    }
+                    await bridge.resumeWatching(
+                        themeID: model.settings.selectedThemeID,
+                        approvedThemeIDs: model.codexBridgeThemeIDs
+                    )
+                    guard !Task.isCancelled else { return }
+                    model.setThemeBridgeEnabled(bridge.state == .active)
+                }
             )
         }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        bridgeLaunchTask?.cancel()
+        bridgeLaunchTask = nil
+        ThemeBridgeIntegrationModel.shared.cancelRefresh()
         Task { @MainActor in
             await HabitatAppEnvironment.runtimeController.stop()
             await ThemeBridgeIntegrationModel.shared.restoreForApplicationTermination()

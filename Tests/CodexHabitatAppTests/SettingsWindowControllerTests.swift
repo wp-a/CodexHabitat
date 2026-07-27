@@ -78,6 +78,50 @@ func userLaunchOpensSettingsWhileLoginLaunchStaysQuiet() {
     ))
 }
 
+@Test @MainActor
+func launchPresentsSettingsBeforeBridgeStatusCompletes() async {
+    let recorder = LaunchSequenceRecorder()
+    let gate = LaunchSequenceGate()
+
+    let bridgeTask = HabitatLaunchSequence.start(
+        presentSettings: {
+            recorder.record("settings")
+        },
+        bridgeWork: {
+            await gate.wait()
+            recorder.record("bridge")
+        }
+    )
+
+    #expect(recorder.events == ["settings"])
+    await gate.resume()
+    await bridgeTask.value
+    #expect(recorder.events == ["settings", "bridge"])
+}
+
+@Test
+func testAndVisualQALaunchesNeverResumeALiveWatcher() {
+    let normal = HabitatBridgeLaunchPolicy(
+        arguments: ["CodexHabitatApp"],
+        environment: [:]
+    )
+    let test = HabitatBridgeLaunchPolicy(
+        arguments: ["CodexHabitatApp"],
+        environment: ["XCTestConfigurationFilePath": "/tmp/tests.xctestconfiguration"]
+    )
+    let visualQA = HabitatBridgeLaunchPolicy(
+        arguments: ["CodexHabitatApp", "--visual-qa"],
+        environment: [:]
+    )
+
+    #expect(normal.allowsStatusRefresh)
+    #expect(normal.allowsWatcherResume)
+    #expect(!test.allowsStatusRefresh)
+    #expect(!test.allowsWatcherResume)
+    #expect(visualQA.allowsStatusRefresh)
+    #expect(!visualQA.allowsWatcherResume)
+}
+
 @Test
 func mainBundleConfigurationDeclaresAStandardVisibleBuildFifteenApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
@@ -262,4 +306,31 @@ func visualQASettingsWindowHonorsABoundedWideContentSize() {
     #expect(contentWidth >= 760)
     #expect(contentWidth <= 1_040)
     controller.window?.close()
+}
+
+@MainActor
+private final class LaunchSequenceRecorder {
+    private(set) var events: [String] = []
+
+    func record(_ event: String) {
+        events.append(event)
+    }
+}
+
+private actor LaunchSequenceGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var isOpen = false
+
+    func wait() async {
+        guard !isOpen else { return }
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func resume() {
+        isOpen = true
+        continuation?.resume()
+        continuation = nil
+    }
 }

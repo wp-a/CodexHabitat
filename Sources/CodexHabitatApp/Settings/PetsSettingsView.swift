@@ -2,6 +2,46 @@ import HabitatCore
 import PetRuntime
 import SwiftUI
 
+struct PetThumbnailRequestKey: Hashable, Sendable {
+    let packageURL: URL
+    let spritesheetURL: URL?
+    let fileSize: Int?
+    let modificationDate: Date?
+    let pixelWidth: Int?
+    let pixelHeight: Int?
+    let columns: Int?
+    let rows: Int?
+
+    init(pet: PetLibraryEntry) {
+        packageURL = pet.packageURL
+        spritesheetURL = pet.spritesheetURL
+        if let spritesheetURL = pet.spritesheetURL {
+            let attributes = try? FileManager.default.attributesOfItem(
+                atPath: spritesheetURL.path
+            )
+            fileSize = (attributes?[.size] as? NSNumber)?.intValue
+            modificationDate = attributes?[.modificationDate] as? Date
+        } else {
+            fileSize = nil
+            modificationDate = nil
+        }
+        pixelWidth = pet.atlas?.pixelWidth
+        pixelHeight = pet.atlas?.pixelHeight
+        columns = pet.atlas?.columns
+        rows = pet.atlas?.rows
+    }
+}
+
+private struct PetThumbnailLoadIdentity: Hashable {
+    let request: PetThumbnailRequestKey?
+    let retryGeneration: Int
+
+    init(pet: PetLibraryEntry?, retryGeneration: Int) {
+        request = pet.map(PetThumbnailRequestKey.init(pet:))
+        self.retryGeneration = retryGeneration
+    }
+}
+
 actor PetThumbnailStore {
     typealias Loader = @Sendable (PetLibraryEntry) -> CGImage?
 
@@ -22,51 +62,20 @@ actor PetThumbnailStore {
         case missing
     }
 
-    private struct Key: Hashable, Sendable {
-        let packageURL: URL
-        let spritesheetURL: URL?
-        let fileSize: Int?
-        let modificationDate: Date?
-        let pixelWidth: Int?
-        let pixelHeight: Int?
-        let columns: Int?
-        let rows: Int?
-
-        init(pet: PetLibraryEntry) {
-            packageURL = pet.packageURL
-            spritesheetURL = pet.spritesheetURL
-            if let spritesheetURL = pet.spritesheetURL,
-               let values = try? spritesheetURL.resourceValues(
-                   forKeys: [.fileSizeKey, .contentModificationDateKey]
-               )
-            {
-                fileSize = values.fileSize
-                modificationDate = values.contentModificationDate
-            } else {
-                fileSize = nil
-                modificationDate = nil
-            }
-            pixelWidth = pet.atlas?.pixelWidth
-            pixelHeight = pet.atlas?.pixelHeight
-            columns = pet.atlas?.columns
-            rows = pet.atlas?.rows
-        }
-    }
-
     private let loader: Loader
-    private var cache: [Key: CachedResult] = [:]
+    private var cache: [PetThumbnailRequestKey: CachedResult] = [:]
     private struct InFlight {
         let token: UUID
         let task: Task<CGImage?, Never>
     }
-    private var inFlight: [Key: InFlight] = [:]
+    private var inFlight: [PetThumbnailRequestKey: InFlight] = [:]
 
     init(loader: @escaping Loader) {
         self.loader = loader
     }
 
     func image(for pet: PetLibraryEntry) async -> CGImage? {
-        let key = Key(pet: pet)
+        let key = PetThumbnailRequestKey(pet: pet)
         if let cached = cache[key] {
             switch cached {
             case let .image(image):
@@ -497,8 +506,8 @@ private struct PetPreviewPane: View {
         }
     }
 
-    private var requestID: String {
-        "\(pet?.manifest?.id ?? "none"):\(retryGeneration)"
+    private var requestID: PetThumbnailLoadIdentity {
+        PetThumbnailLoadIdentity(pet: pet, retryGeneration: retryGeneration)
     }
 }
 
@@ -659,7 +668,7 @@ private struct PetThumbnail: View {
                     .accessibilityLabel(L10n.text("Unable to load pet artwork"))
             }
         }
-        .task(id: pet.packageURL) {
+        .task(id: PetThumbnailRequestKey(pet: pet)) {
             phase = .loading
             let image = await PetThumbnailStore.shared.image(for: pet)
             guard !Task.isCancelled else { return }

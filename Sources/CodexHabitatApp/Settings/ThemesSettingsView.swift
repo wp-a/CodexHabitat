@@ -5,11 +5,17 @@ import SwiftUI
 
 struct ThemePreviewRequestKey: Equatable, Hashable, Sendable {
     let url: URL
+    let maximumPixelSize: Int
     let fileSize: Int?
     let modificationDate: Date?
 
     init(url: URL) {
+        self.init(url: url, maximumPixelSize: 480)
+    }
+
+    init(url: URL, maximumPixelSize: Int) {
         self.url = url
+        self.maximumPixelSize = maximumPixelSize
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         fileSize = (attributes?[.size] as? NSNumber)?.intValue
         modificationDate = attributes?[.modificationDate] as? Date
@@ -17,16 +23,16 @@ struct ThemePreviewRequestKey: Equatable, Hashable, Sendable {
 }
 
 actor ThemePreviewStore {
-    typealias Loader = @Sendable (URL) -> CGImage?
+    typealias Loader = @Sendable (ThemePreviewRequestKey) -> CGImage?
 
-    static let shared = ThemePreviewStore { url in
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+    static let shared = ThemePreviewStore { request in
+        guard let source = CGImageSourceCreateWithURL(request.url as CFURL, nil) else {
             return nil
         }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: 480,
+            kCGImageSourceThumbnailMaxPixelSize: request.maximumPixelSize,
             kCGImageSourceShouldCacheImmediately: true,
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
@@ -39,14 +45,19 @@ actor ThemePreviewStore {
 
     private let loader: Loader
     private var cache: [ThemePreviewRequestKey: CachedResult] = [:]
+    private struct InFlight {
+        let token: UUID
+        let task: Task<CGImage?, Never>
+    }
+    private var inFlight: [ThemePreviewRequestKey: InFlight] = [:]
 
     init(loader: @escaping Loader) {
         self.loader = loader
     }
 
-    func image(at url: URL?) -> CGImage? {
+    func image(at url: URL?, maximumPixelSize: Int = 480) async -> CGImage? {
         guard let url else { return nil }
-        let key = ThemePreviewRequestKey(url: url)
+        let key = ThemePreviewRequestKey(url: url, maximumPixelSize: maximumPixelSize)
         if let cached = cache[key] {
             switch cached {
             case let .image(image):
@@ -55,12 +66,33 @@ actor ThemePreviewStore {
                 return nil
             }
         }
+        if let existing = inFlight[key] {
+            return await existing.task.value
+        }
 
-        let staleKeys = cache.keys.filter { $0.url == url }
+        let staleKeys = cache.keys.filter {
+            $0.url == url && $0.maximumPixelSize == maximumPixelSize
+        }
         for staleKey in staleKeys {
             cache.removeValue(forKey: staleKey)
         }
-        guard let image = loader(url) else {
+        let staleInFlightKeys = inFlight.keys.filter {
+            $0.url == url && $0.maximumPixelSize == maximumPixelSize
+        }
+        for staleKey in staleInFlightKeys {
+            inFlight.removeValue(forKey: staleKey)?.task.cancel()
+        }
+
+        let loader = self.loader
+        let token = UUID()
+        let task = Task.detached(priority: .userInitiated) {
+            loader(key)
+        }
+        inFlight[key] = InFlight(token: token, task: task)
+        let loadedImage = await task.value
+        guard inFlight[key]?.token == token else { return loadedImage }
+        inFlight[key] = nil
+        guard let image = loadedImage else {
             cache[key] = .missing
             return nil
         }
@@ -72,6 +104,10 @@ actor ThemePreviewStore {
         let matchingKeys = cache.keys.filter { $0.url == url }
         for key in matchingKeys {
             cache.removeValue(forKey: key)
+        }
+        let matchingInFlightKeys = inFlight.keys.filter { $0.url == url }
+        for key in matchingInFlightKeys {
+            inFlight.removeValue(forKey: key)?.task.cancel()
         }
     }
 }

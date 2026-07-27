@@ -87,6 +87,38 @@ func invalidatingAMissingThumbnailAllowsRetry() async throws {
 }
 
 @Test
+func replacingAPetSpritesheetChangesTheViewRequestIdentity() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatPetThumbnailIdentity-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let spritesheetURL = root.appending(path: "spritesheet.png")
+    try Data([0]).write(to: spritesheetURL)
+    let pet = thumbnailTestPet(id: root.lastPathComponent, root: root)
+    let first = PetThumbnailRequestKey(pet: pet)
+
+    try Data([0, 1]).write(to: spritesheetURL)
+    let second = PetThumbnailRequestKey(pet: pet)
+
+    #expect(first != second)
+}
+
+@Test
+func changingPetAtlasChangesTheViewRequestIdentity() {
+    let root = URL(fileURLWithPath: "/tmp/pet-thumbnail-atlas", isDirectory: true)
+    let first = PetThumbnailRequestKey(pet: thumbnailTestPet(id: "atlas", root: root))
+    let second = PetThumbnailRequestKey(
+        pet: thumbnailTestPet(
+            id: "atlas",
+            root: root,
+            atlas: PetAtlasMetadata(pixelWidth: 16, pixelHeight: 9, columns: 16, rows: 9)
+        )
+    )
+
+    #expect(first != second)
+}
+
+@Test
 func petPreviewSelectionChangesImmediatelyWhileKeepingThePreviousImage() throws {
     let previousImage = try thumbnailTestImage()
     var state = PetPreviewPresentationState()
@@ -193,13 +225,22 @@ private final class ConcurrentThumbnailProbe: @unchecked Sendable {
     }
 }
 
-private func thumbnailTestPet(id: String = "test-thumbnail-pet") -> PetLibraryEntry {
-    let root = URL(fileURLWithPath: "/tmp/\(id)", isDirectory: true)
+private func thumbnailTestPet(
+    id: String = "test-thumbnail-pet",
+    root: URL? = nil,
+    atlas: PetAtlasMetadata = PetAtlasMetadata(
+        pixelWidth: 8,
+        pixelHeight: 9,
+        columns: 8,
+        rows: 9
+    )
+) -> PetLibraryEntry {
+    let root = root ?? URL(fileURLWithPath: "/tmp/\(id)", isDirectory: true)
     return PetLibraryEntry(
         packageURL: root,
         manifest: nil,
         spritesheetURL: root.appending(path: "spritesheet.png"),
-        atlas: PetAtlasMetadata(pixelWidth: 8, pixelHeight: 9, columns: 8, rows: 9),
+        atlas: atlas,
         status: .valid
     )
 }

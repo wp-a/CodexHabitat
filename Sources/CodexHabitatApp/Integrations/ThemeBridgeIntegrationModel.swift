@@ -6,12 +6,54 @@ struct ThemeBridgeCommandResult: Equatable, Sendable {
     let output: String
 }
 
+enum ThemeBridgeCommandError: Error, Equatable {
+    case timedOut
+}
+
 protocol ThemeBridgeCommandExecuting: Sendable {
     func run(arguments: [String]) async throws -> ThemeBridgeCommandResult
+    func run(
+        arguments: [String],
+        timeout: Duration
+    ) async throws -> ThemeBridgeCommandResult
     func startWatching(themeID: String) throws
     func stopWatching()
     func isWatching() -> Bool
     func confirmWatching() async -> Bool
+}
+
+extension ThemeBridgeCommandExecuting {
+    func run(
+        arguments: [String],
+        timeout _: Duration
+    ) async throws -> ThemeBridgeCommandResult {
+        try await run(arguments: arguments)
+    }
+}
+
+struct ThemeBridgeRefreshGeneration {
+    private var value = 0
+
+    mutating func begin() -> Int {
+        value &+= 1
+        return value
+    }
+
+    mutating func invalidate() {
+        value &+= 1
+    }
+
+    func accepts(_ candidate: Int) -> Bool {
+        candidate == value
+    }
+}
+
+private enum ThemeBridgeRefreshResult: Sendable {
+    case unavailable
+    case failed
+    case active
+    case ready
+    case cancelled
 }
 
 enum ThemeBridgeIntegrationState: Equatable {
@@ -87,7 +129,15 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
     private let diagnosticStore: DiagnosticStore?
     private let appVersion: String?
     private var watchHealthTask: Task<Void, Never>?
+    private var refreshGeneration = ThemeBridgeRefreshGeneration()
+    private var refreshInFlight: (
+        id: UUID,
+        generation: Int,
+        activeThemeID: String?,
+        task: Task<ThemeBridgeRefreshResult, Never>
+    )?
     private static let builtInThemeIDs = Set(BuiltInThemeCatalog.all.map(\.id))
+    private static let refreshCommandTimeout = Duration.seconds(2)
 
     var statusText: String {
         switch state {
@@ -156,37 +206,62 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
 
     func refresh() async {
         guard let runner else {
+            cancelRefresh()
             state = .unavailable
             activeThemeID = nil
             return
         }
-        let confirmedActiveThemeID = activeThemeID
-        state = .checking
-        failure = nil
-        do {
-            let verification = try await runner.run(arguments: ["verify"])
-            guard verification.exitCode == 0 else {
-                state = .unavailable
-                activeThemeID = nil
-                return
+
+        let refresh: (
+            id: UUID,
+            generation: Int,
+            activeThemeID: String?,
+            task: Task<ThemeBridgeRefreshResult, Never>
+        )
+        if let refreshInFlight {
+            refresh = refreshInFlight
+        } else {
+            let generation = refreshGeneration.begin()
+            let id = UUID()
+            let confirmedActiveThemeID = activeThemeID
+            state = .checking
+            failure = nil
+            let task = Task {
+                await Self.readRefreshResult(using: runner)
             }
-            let status = try await runner.run(arguments: ["status"])
-            guard status.exitCode == 0 else {
-                state = .failed
-                activeThemeID = nil
-                return
-            }
-            if status.output.hasPrefix("active:") {
-                state = .active
-                activeThemeID = confirmedActiveThemeID
-            } else {
-                state = .ready
-                activeThemeID = nil
-            }
-        } catch {
+            refresh = (id, generation, confirmedActiveThemeID, task)
+            refreshInFlight = refresh
+        }
+
+        let result = await refresh.task.value
+        guard refreshGeneration.accepts(refresh.generation),
+              refreshInFlight?.id == refresh.id
+        else {
+            return
+        }
+        refreshInFlight = nil
+        switch result {
+        case .unavailable:
             state = .unavailable
             activeThemeID = nil
+        case .failed:
+            state = .failed
+            activeThemeID = nil
+        case .active:
+            state = .active
+            activeThemeID = refresh.activeThemeID
+        case .ready:
+            state = .ready
+            activeThemeID = nil
+        case .cancelled:
+            break
         }
+    }
+
+    func cancelRefresh() {
+        refreshGeneration.invalidate()
+        refreshInFlight?.task.cancel()
+        refreshInFlight = nil
     }
 
     func enable(themeID: String, approvedThemeIDs: Set<String> = []) async {
@@ -196,6 +271,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             await fail(.processRejected)
             return
         }
+        cancelRefresh()
         state = .applying
         failure = nil
         do {
@@ -233,6 +309,7 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             activeThemeID = nil
             return
         }
+        cancelRefresh()
         stopWatching()
         state = .restoring
         activeThemeID = nil
@@ -325,14 +402,43 @@ final class ThemeBridgeIntegrationModel: ObservableObject {
             appVersion: appVersion
         ))
     }
+
+    nonisolated private static func readRefreshResult(
+        using runner: any ThemeBridgeCommandExecuting
+    ) async -> ThemeBridgeRefreshResult {
+        do {
+            let verification = try await runner.run(
+                arguments: ["verify"],
+                timeout: refreshCommandTimeout
+            )
+            guard !Task.isCancelled else { return .cancelled }
+            guard verification.exitCode == 0 else { return .unavailable }
+            let status = try await runner.run(
+                arguments: ["status"],
+                timeout: refreshCommandTimeout
+            )
+            guard !Task.isCancelled else { return .cancelled }
+            guard status.exitCode == 0 else { return .failed }
+            return status.output.hasPrefix("active:") ? .active : .ready
+        } catch is CancellationError {
+            return .cancelled
+        } catch {
+            return .unavailable
+        }
+    }
 }
 
-private final class ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting, @unchecked Sendable {
+final class ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting, @unchecked Sendable {
     let executableURL: URL
+    private let commandTimeout: Duration
     private var watchProcess: Process?
 
-    init(executableURL: URL) {
+    init(
+        executableURL: URL,
+        commandTimeout: Duration = .seconds(30)
+    ) {
         self.executableURL = executableURL
+        self.commandTimeout = max(commandTimeout, .milliseconds(1))
     }
 
     static func locate(
@@ -368,24 +474,31 @@ private final class ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting, @unche
     }
 
     func run(arguments: [String]) async throws -> ThemeBridgeCommandResult {
-        let executableURL = executableURL
-        return try await Task.detached {
-            let process = Process()
-            let pipe = Pipe()
-            process.executableURL = executableURL
-            process.arguments = arguments
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
-            try process.run()
-            let output = pipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            let bounded = output.prefix(64 * 1024)
-            return ThemeBridgeCommandResult(
-                exitCode: process.terminationStatus,
-                output: String(decoding: bounded, as: UTF8.self)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-        }.value
+        try await run(arguments: arguments, timeout: commandTimeout)
+    }
+
+    func run(
+        arguments: [String],
+        timeout: Duration
+    ) async throws -> ThemeBridgeCommandResult {
+        let invocation = ThemeBridgeProcessInvocation(
+            executableURL: executableURL,
+            arguments: arguments
+        )
+        return try await withThrowingTaskGroup(of: ThemeBridgeCommandResult.self) { group in
+            group.addTask {
+                try await invocation.run()
+            }
+            group.addTask {
+                try await Task.sleep(for: max(timeout, .milliseconds(1)))
+                throw ThemeBridgeCommandError.timedOut
+            }
+            defer { group.cancelAll() }
+            guard let result = try await group.next() else {
+                throw CancellationError()
+            }
+            return result
+        }
     }
 
     func startWatching(themeID: String) throws {
@@ -423,5 +536,58 @@ private final class ThemeBridgeHelperRunner: ThemeBridgeCommandExecuting, @unche
             return false
         }
         return isWatching()
+    }
+}
+
+private final class ThemeBridgeProcessInvocation: @unchecked Sendable {
+    private let process = Process()
+    private let output = Pipe()
+    private let lock = NSLock()
+    private var cancellationRequested = false
+
+    init(executableURL: URL, arguments: [String]) {
+        process.executableURL = executableURL
+        process.arguments = arguments
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+    }
+
+    func run() async throws -> ThemeBridgeCommandResult {
+        try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await withCheckedThrowingContinuation { continuation in
+                process.terminationHandler = { [output] process in
+                    let data = output.fileHandleForReading.readDataToEndOfFile()
+                    let bounded = data.prefix(64 * 1024)
+                    continuation.resume(returning: ThemeBridgeCommandResult(
+                        exitCode: process.terminationStatus,
+                        output: String(decoding: bounded, as: UTF8.self)
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                    ))
+                }
+                do {
+                    try process.run()
+                    let shouldTerminate = lock.withLock { cancellationRequested }
+                    if shouldTerminate || Task.isCancelled {
+                        cancel()
+                    }
+                } catch {
+                    process.terminationHandler = nil
+                    continuation.resume(throwing: error)
+                }
+            }
+        } onCancel: {
+            cancel()
+        }
+    }
+
+    private func cancel() {
+        let shouldTerminate = lock.withLock {
+            cancellationRequested = true
+            return process.isRunning
+        }
+        if shouldTerminate {
+            process.terminate()
+        }
     }
 }
