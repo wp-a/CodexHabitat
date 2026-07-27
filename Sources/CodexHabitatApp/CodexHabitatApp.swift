@@ -48,6 +48,16 @@ struct HabitatBridgeLaunchPolicy: Equatable {
     }
 }
 
+struct HabitatBridgeTerminationPolicy: Equatable {
+    let allowsAppearanceRestore: Bool
+
+    init(arguments: [String], environment: [String: String]) {
+        let isRunningTests = environment["XCTestConfigurationFilePath"] != nil
+        let isVisualQA = arguments.contains("--visual-qa")
+        allowsAppearanceRestore = !isRunningTests && !isVisualQA
+    }
+}
+
 @MainActor
 enum HabitatLaunchSequence {
     static func start(
@@ -157,9 +167,15 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
         bridgeLaunchTask?.cancel()
         bridgeLaunchTask = nil
         ThemeBridgeIntegrationModel.shared.cancelRefresh()
+        let bridgeTerminationPolicy = HabitatBridgeTerminationPolicy(
+            arguments: CommandLine.arguments,
+            environment: ProcessInfo.processInfo.environment
+        )
         Task { @MainActor in
             await HabitatAppEnvironment.runtimeController.stop()
-            await ThemeBridgeIntegrationModel.shared.restoreForApplicationTermination()
+            if bridgeTerminationPolicy.allowsAppearanceRestore {
+                await ThemeBridgeIntegrationModel.shared.restoreForApplicationTermination()
+            }
             HabitatAppEnvironment.model.setThemeBridgeEnabled(false)
             await HabitatAppEnvironment.model.flushSettings()
             sender.reply(toApplicationShouldTerminate: true)

@@ -123,6 +123,26 @@ func testAndVisualQALaunchesNeverResumeALiveWatcher() {
 }
 
 @Test
+func testAndVisualQAExitsNeverRestoreCodexAppearance() {
+    let normal = HabitatBridgeTerminationPolicy(
+        arguments: ["CodexHabitatApp"],
+        environment: [:]
+    )
+    let test = HabitatBridgeTerminationPolicy(
+        arguments: ["CodexHabitatApp"],
+        environment: ["XCTestConfigurationFilePath": "/tmp/tests.xctestconfiguration"]
+    )
+    let visualQA = HabitatBridgeTerminationPolicy(
+        arguments: ["CodexHabitatApp", "--visual-qa"],
+        environment: [:]
+    )
+
+    #expect(normal.allowsAppearanceRestore)
+    #expect(!test.allowsAppearanceRestore)
+    #expect(!visualQA.allowsAppearanceRestore)
+}
+
+@Test
 func mainBundleConfigurationDeclaresAStandardVisibleBuildSixteenApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
