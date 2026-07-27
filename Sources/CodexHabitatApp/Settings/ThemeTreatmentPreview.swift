@@ -11,85 +11,10 @@ enum ThemeTreatmentPreviewSceneMetrics {
     static let bannerArtworkFraction = 0.52
     static let frameMatteThickness = 6.0
     static let homeContentFraction = 0.56
-}
-
-struct ThemeTreatmentPreviewRecipe: Equatable, Sendable {
-    let sidebarFraction: Double
-    let outerRadius: Double
-    let borderWidth: Double
-    let headerEdgeWidth: Double
-    let stageEdgeWidth: Double
-    let composerRadius: Double
-    let composerBorderWidth: Double
-    let composerShadowRadius: Double
-    let selectedEdgeWidth: Double
-    let railCount: Int
-
-    init(styleFamily: HabitatThemeStyleFamily) {
-        switch styleFamily {
-        case .arcade:
-            self.init(0.22, 2, 1.5, 2, 2, 4, 2, 5, 3, 5)
-        case .retroMessenger:
-            self.init(0.29, 5, 1, 1, 1, 6, 1, 3, 3, 4)
-        case .greenChat:
-            self.init(0.29, 5, 4, 4, 4, 5, 1, 4, 4, 5)
-        case .classicDesktop:
-            self.init(0.27, 0, 2, 2, 1, 0, 2, 0, 2, 4)
-        case .gameCinematic:
-            self.init(0.24, 4, 2, 2, 2, 3, 1, 7, 3, 4)
-        case .cozyWorld:
-            self.init(0.24, 8, 1, 1, 1, 8, 1, 5, 3, 3)
-        case .animeEnergy:
-            self.init(0.24, 2, 3, 3, 3, 2, 3, 4, 4, 5)
-        case .fantasyAdventure:
-            self.init(0.24, 7, 2, 3, 1, 7, 2, 3, 3, 4)
-        case .pixelWorld:
-            self.init(0.22, 0, 3, 3, 3, 0, 2, 0, 3, 5)
-        }
-    }
-
-    var signature: String {
-        [
-            Self.number(sidebarFraction),
-            Self.number(outerRadius),
-            Self.number(borderWidth),
-            Self.number(headerEdgeWidth),
-            Self.number(stageEdgeWidth),
-            Self.number(composerRadius),
-            Self.number(composerBorderWidth),
-            Self.number(composerShadowRadius),
-            Self.number(selectedEdgeWidth),
-            String(railCount),
-        ].joined(separator: "|")
-    }
-
-    private init(
-        _ sidebarFraction: Double,
-        _ outerRadius: Double,
-        _ borderWidth: Double,
-        _ headerEdgeWidth: Double,
-        _ stageEdgeWidth: Double,
-        _ composerRadius: Double,
-        _ composerBorderWidth: Double,
-        _ composerShadowRadius: Double,
-        _ selectedEdgeWidth: Double,
-        _ railCount: Int
-    ) {
-        self.sidebarFraction = sidebarFraction
-        self.outerRadius = outerRadius
-        self.borderWidth = borderWidth
-        self.headerEdgeWidth = headerEdgeWidth
-        self.stageEdgeWidth = stageEdgeWidth
-        self.composerRadius = composerRadius
-        self.composerBorderWidth = composerBorderWidth
-        self.composerShadowRadius = composerShadowRadius
-        self.selectedEdgeWidth = selectedEdgeWidth
-        self.railCount = railCount
-    }
-
-    private static func number(_ value: Double) -> String {
-        String(format: "%.3f", value)
-    }
+    static let sidebarFraction = 0.24
+    static let outerRadius = 6.0
+    static let outerBorderWidth = 1.0
+    static let railCount = 4
 }
 
 struct ThemeTreatmentPreviewModel: Equatable, Sendable {
@@ -199,6 +124,10 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
 
     var chromeSoftness: Double {
         min(max(blurRadius, 0), 24) / 24
+    }
+
+    var surfaceRecipe: HabitatThemeSurfaceRecipe {
+        styleFamily.surfaceRecipe
     }
 
     var homeArtFocus: HabitatThemeFocalPoint { homeArtworkCrop.focus }
@@ -392,11 +321,11 @@ struct ThemeTreatmentPreview: View {
                 .overlay(alignment: .trailing) {
                     Rectangle()
                         .fill(Color(habitatHex: model.accentHex).opacity(0.52))
-                        .frame(width: recipe.borderWidth)
+                        .frame(width: ThemeTreatmentPreviewSceneMetrics.outerBorderWidth)
                 }
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: densitySpacing) {
-                        ForEach(0..<recipe.railCount, id: \.self) { index in
+                        ForEach(0..<ThemeTreatmentPreviewSceneMetrics.railCount, id: \.self) { index in
                             railMark(
                                 width: sidebarWidth * railWidth(at: index),
                                 emphasized: index == 0
@@ -411,9 +340,7 @@ struct ThemeTreatmentPreview: View {
                 chromeSurface(opacity: headerOpacity)
                     .frame(height: headerHeight)
                     .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(Color(habitatHex: model.accentHex).opacity(0.54))
-                            .frame(height: recipe.headerEdgeWidth)
+                        headerTreatment
                     }
                     .overlay(alignment: .leading) {
                         HStack(spacing: 4) {
@@ -442,11 +369,11 @@ struct ThemeTreatmentPreview: View {
                     RoundedRectangle(cornerRadius: recipe.composerRadius)
                         .stroke(
                             Color(habitatHex: model.accentHex).opacity(0.46),
-                            lineWidth: recipe.composerBorderWidth
+                            lineWidth: recipe.composerEdgeWidth
                         )
                 }
                 .shadow(
-                    color: Color(habitatHex: model.accentHex).opacity(0.16),
+                    color: Color(habitatHex: model.surfaceHex).opacity(0.22),
                     radius: recipe.composerShadowRadius
                 )
                 .overlay(alignment: .leading) {
@@ -465,9 +392,9 @@ struct ThemeTreatmentPreview: View {
                     width: size.width * ThemeTreatmentPreviewSceneMetrics.homeContentFraction,
                     height: size.height * (model.homeMode == .quiet ? 0.56 : 0.46)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: innerRadius))
-                .overlay(alignment: .leading) {
-                    stageEdge
+                .clipShape(RoundedRectangle(cornerRadius: recipe.readingRadius))
+                .overlay {
+                    readingSurfaceBorder
                 }
                 .overlay(alignment: .topLeading) {
                     contentMarks(
@@ -477,9 +404,9 @@ struct ThemeTreatmentPreview: View {
                 }
         } else {
             chromeSurface(opacity: model.taskContentOpacity)
-                .clipShape(RoundedRectangle(cornerRadius: innerRadius))
-                .overlay(alignment: .leading) {
-                    stageEdge
+                .clipShape(RoundedRectangle(cornerRadius: recipe.readingRadius))
+                .overlay {
+                    readingSurfaceBorder
                 }
                 .overlay(alignment: .topLeading) {
                     contentMarks(width: size.width)
@@ -491,7 +418,14 @@ struct ThemeTreatmentPreview: View {
         VStack(alignment: .leading, spacing: densitySpacing) {
             contentLine(width: width * 0.52, emphasized: true)
             contentLine(width: width * 0.78)
-            contentLine(width: width * 0.64)
+            if route == .home {
+                HStack(spacing: 4) {
+                    actionMark(width: width * 0.20, emphasized: true)
+                    actionMark(width: width * 0.24, emphasized: false)
+                }
+            } else {
+                contentLine(width: width * 0.64)
+            }
         }
         .padding(mainInset)
     }
@@ -565,18 +499,76 @@ struct ThemeTreatmentPreview: View {
         }
     }
 
-    private var stageEdge: some View {
-        Rectangle()
-            .fill(Color(habitatHex: model.accentHex).opacity(0.42))
-            .frame(width: recipe.stageEdgeWidth)
+    private var readingSurfaceBorder: some View {
+        RoundedRectangle(cornerRadius: recipe.readingRadius)
+            .stroke(
+                Color(habitatHex: model.accentHex).opacity(0.34),
+                style: strokeStyle(
+                    for: recipe.readingLineStyle,
+                    width: recipe.readingEdgeWidth
+                )
+            )
+    }
+
+    private var headerTreatment: some View {
+        ZStack(alignment: .bottom) {
+            Color(habitatHex: model.accentHex)
+                .opacity(0.08)
+                .frame(height: max(recipe.headerInsetDepth, recipe.headerEdgeWidth))
+            Rectangle()
+                .stroke(
+                    Color(habitatHex: model.accentHex).opacity(0.54),
+                    style: strokeStyle(
+                        for: recipe.headerLineStyle,
+                        width: recipe.headerEdgeWidth
+                    )
+                )
+                .frame(height: max(1, recipe.headerEdgeWidth))
+        }
+    }
+
+    private func actionMark(width: Double, emphasized: Bool) -> some View {
+        RoundedRectangle(cornerRadius: recipe.actionRadius)
+            .fill(
+                Color(habitatHex: model.panelAltHex).opacity(
+                    Double(recipe.hoverEmphasisPercent) / 100 * 0.42
+                )
+            )
+            .frame(width: width, height: 7)
+            .overlay {
+                RoundedRectangle(cornerRadius: recipe.actionRadius)
+                    .stroke(
+                        Color(habitatHex: model.accentHex).opacity(0.46),
+                        style: strokeStyle(
+                            for: recipe.actionLineStyle,
+                            width: recipe.actionEdgeWidth
+                        )
+                    )
+            }
+            .overlay {
+                if emphasized {
+                    RoundedRectangle(cornerRadius: recipe.actionRadius)
+                        .stroke(
+                            Color(habitatHex: model.accentHex).opacity(
+                                Double(recipe.focusEmphasisPercent) / 100
+                            ),
+                            style: focusStrokeStyle(for: recipe.focusStyle)
+                        )
+                        .padding(-1)
+                }
+            }
     }
 
     private func railMark(width: Double, emphasized: Bool = false) -> some View {
-        RoundedRectangle(cornerRadius: 1.5)
+        RoundedRectangle(cornerRadius: min(2, recipe.selectedRadius))
             .fill(emphasized
                 ? Color(habitatHex: model.accentHex).opacity(0.86)
                 : Color(habitatHex: model.textHex).opacity(0.30))
             .frame(width: width, height: emphasized ? 4 : 3)
+            .shadow(
+                color: Color(habitatHex: model.accentHex).opacity(emphasized ? 0.16 : 0),
+                radius: emphasized ? recipe.selectedShadowRadius : 0
+            )
             .overlay(alignment: .leading) {
                 if emphasized {
                     Rectangle()
@@ -598,6 +590,33 @@ struct ThemeTreatmentPreview: View {
         [0.50, 0.66, 0.56, 0.72, 0.61][index % 5]
     }
 
+    private func strokeStyle(
+        for lineStyle: HabitatThemeSurfaceLineStyle,
+        width: Double
+    ) -> StrokeStyle {
+        switch lineStyle {
+        case .dashed:
+            StrokeStyle(lineWidth: width, dash: [3, 2])
+        case .double:
+            StrokeStyle(lineWidth: max(2, width), dash: [8, 2])
+        case .solid, .raised:
+            StrokeStyle(lineWidth: width)
+        }
+    }
+
+    private func focusStrokeStyle(
+        for focusStyle: HabitatThemeSurfaceFocusStyle
+    ) -> StrokeStyle {
+        switch focusStyle {
+        case .standard, .solid:
+            StrokeStyle(lineWidth: 1)
+        case .dotted:
+            StrokeStyle(lineWidth: 1, dash: [1, 2])
+        case .double:
+            StrokeStyle(lineWidth: 2, dash: [6, 2])
+        }
+    }
+
     private var artStrength: Double {
         switch route {
         case .home:
@@ -608,7 +627,7 @@ struct ThemeTreatmentPreview: View {
     }
 
     private var sidebarFraction: Double {
-        recipe.sidebarFraction
+        ThemeTreatmentPreviewSceneMetrics.sidebarFraction
     }
 
     private var artworkCrop: HabitatThemeArtworkCrop {
@@ -641,7 +660,7 @@ struct ThemeTreatmentPreview: View {
     }
 
     private var outerRadius: Double {
-        recipe.outerRadius
+        ThemeTreatmentPreviewSceneMetrics.outerRadius
     }
 
     private var innerRadius: Double {
@@ -649,18 +668,18 @@ struct ThemeTreatmentPreview: View {
     }
 
     private var borderWidth: Double {
-        recipe.borderWidth
+        ThemeTreatmentPreviewSceneMetrics.outerBorderWidth
     }
 
-    private var recipe: ThemeTreatmentPreviewRecipe {
-        ThemeTreatmentPreviewRecipe(styleFamily: model.styleFamily)
+    private var recipe: HabitatThemeSurfaceRecipe {
+        model.surfaceRecipe
     }
 
     private var borderColor: Color {
-        switch model.styleFamily {
-        case .arcade:
+        switch recipe.materialStyle {
+        case .arcadeSignal:
             Color(habitatHex: model.accentHex).opacity(0.88)
-        case .classicDesktop:
+        case .desktopRaised:
             Color(habitatHex: model.textHex).opacity(0.54)
         default:
             Color(habitatHex: model.accentHex).opacity(0.38)

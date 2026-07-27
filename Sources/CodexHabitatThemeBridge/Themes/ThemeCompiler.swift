@@ -415,11 +415,11 @@ struct ThemeCompiler {
             """
             \(root) \(profile.selectors.sidebar) :where(a, button, [role="button"]) {
               color: var(--habitat-text);
-              text-shadow: 0 0 2px var(--habitat-surface), 0 1px 4px color-mix(in srgb, var(--habitat-surface) 92%, transparent), 0 0 14px color-mix(in srgb, var(--habitat-surface) 72%, transparent);
+              text-shadow: 0 1px 3px color-mix(in srgb, var(--habitat-surface) 86%, transparent);
             }
             \(root) \(profile.selectors.sidebar) :where(h1, h2, h3, h4, h5, h6) {
               color: var(--habitat-readable-muted);
-              text-shadow: 0 0 2px var(--habitat-surface), 0 1px 4px color-mix(in srgb, var(--habitat-surface) 92%, transparent), 0 0 14px color-mix(in srgb, var(--habitat-surface) 72%, transparent);
+              text-shadow: 0 1px 3px color-mix(in srgb, var(--habitat-surface) 86%, transparent);
             }
             \(root)[data-codex-habitat-route="task"] \(profile.selectors.threadScroll) :where(h1, h2, h3, h4, h5, h6, strong) {
               color: var(--habitat-text);
@@ -440,7 +440,7 @@ struct ThemeCompiler {
               color: var(--habitat-readable-muted);
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) :where(h1, h2, h3, p) {
-              text-shadow: 0 0 2px var(--habitat-surface), 0 1px 4px color-mix(in srgb, var(--habitat-surface) 92%, transparent), 0 0 14px color-mix(in srgb, var(--habitat-surface) 72%, transparent);
+              text-shadow: 0 1px 3px color-mix(in srgb, var(--habitat-surface) 86%, transparent);
             }
             """)
         }
@@ -813,62 +813,12 @@ struct ThemeCompiler {
         profile: CompatibilityProfile
     ) -> String {
         let root = "html[data-codex-habitat-theme=\"1\"]"
-        let declarations: (sidebar: String, composer: String, popover: String) = switch family {
-        case .arcade:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 4px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 12%, transparent);",
-                "border-radius: 4px; border-width: 1px;"
-            )
-        case .retroMessenger:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);",
-                "border-radius: 6px; border-width: 1px;"
-            )
-        case .greenChat:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 5px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 12%, transparent);",
-                "border-radius: 5px; border-width: 1px;"
-            )
-        case .classicDesktop:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-panel-alt) 16%, transparent);",
-                "border-radius: 0; border-width: 1px;"
-            )
-        case .gameCinematic:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 6px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 12%, transparent);",
-                "border-radius: 3px; border-width: 1px;"
-            )
-        case .cozyWorld:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 8px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);",
-                "border-radius: 8px; border-width: 1px;"
-            )
-        case .animeEnergy:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 2px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 14%, transparent);",
-                "border-radius: 2px; border-width: 1px;"
-            )
-        case .fantasyAdventure:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 12%, transparent);",
-                "border-radius: 7px; border-width: 1px;"
-            )
-        case .pixelWorld:
-            (
-                "",
-                "border: 1px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-text) 14%, transparent); image-rendering: pixelated;",
-                "border-radius: 0; border-width: 1px;"
-            )
-        }
+        let recipe = family.surfaceRecipe
+        let declarations = (
+            sidebar: "",
+            composer: styleComposer(for: recipe),
+            reading: styleReadingSurface(for: recipe)
+        )
         let shell = profile.selectors.appShell ?? "body"
         let stageSurfaces = [profile.selectors.mainSurface]
         let transcriptSurfaces = [
@@ -907,7 +857,7 @@ struct ThemeCompiler {
         """
         let selectedSurfaceRule = selectedSurfaces.isEmpty ? "" : """
         \(scopedSelectors(selectedSurfaces, root: root)) {
-          \(styleSelected(for: family))
+          \(styleSelected(for: recipe))
           font-weight: 600;
         }
         """
@@ -924,7 +874,7 @@ struct ThemeCompiler {
             \(root) \(action) {
               color: var(--habitat-text);
               background-color: color-mix(in srgb, var(--habitat-panel-alt) 82%, transparent);
-              \(styleHomeAction(for: family))
+              \(styleHomeAction(for: recipe))
             }
             """
         } ?? ""
@@ -940,7 +890,7 @@ struct ThemeCompiler {
         let homeHoverRule = homeActionSelector.map { action in
             """
             \(root) \(action):hover {
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 90%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-panel-alt) \(recipe.hoverEmphasisPercent)%, transparent);
               border-color: color-mix(in srgb, var(--habitat-accent) 62%, var(--habitat-highlight));
             }
             """
@@ -966,6 +916,7 @@ struct ThemeCompiler {
         ].compactMap { $0 }
         return """
         /* habitat-style-family: \(family.rawValue) */
+        /* habitat-surface-recipe: \(recipe.signature) */
 
         /* habitat-surface: shell */
         \(root) \(shell) {
@@ -977,19 +928,19 @@ struct ThemeCompiler {
         \(root) \(profile.selectors.sidebar) { \(declarations.sidebar) }
 
         /* habitat-surface: header */
-        \(root) \(profile.selectors.header) { \(styleHeader(for: family)) }
+        \(root) \(profile.selectors.header) { \(styleHeader(for: recipe)) }
 
         /* habitat-surface: stage */
-        \(scopedSelectors(stageSurfaces, root: root)) { \(styleStage(for: family)) }
+        \(scopedSelectors(stageSurfaces, root: root)) { \(styleStage()) }
 
         /* habitat-surface: transcript */
         \(scopedSelectors(transcriptSurfaces, root: root)) {
-          \(styleStage(for: family))
+          \(styleStage())
           scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
         }
 
         /* habitat-surface: content */
-        \(scopedSelectors(contentSurfaces, root: root)) { \(declarations.popover) }
+        \(scopedSelectors(contentSurfaces, root: root)) { \(declarations.reading) }
 
         \(homeActionRule)
         \(homeActionTransitionRule)
@@ -1040,10 +991,10 @@ struct ThemeCompiler {
 
         /* habitat-semantic-state: focus */
         \(root) :focus-visible {
-          outline-style: \(styleFocus(for: family));
+          outline-style: \(styleFocus(for: recipe));
           outline-width: 2px;
           outline-offset: 2px;
-          outline-color: color-mix(in srgb, var(--habitat-accent) 78%, var(--habitat-highlight));
+          outline-color: color-mix(in srgb, var(--habitat-accent) \(recipe.focusEmphasisPercent)%, var(--habitat-highlight));
         }
         \(root) \(profile.selectors.composer) :focus-visible {
           outline: none;
@@ -1052,7 +1003,7 @@ struct ThemeCompiler {
         /* habitat-semantic-state: selected */
         \(root) [aria-selected="true"],
         \(root) [aria-current],
-        \(root) [aria-pressed="true"] { \(styleSelected(for: family)) }
+        \(root) [aria-pressed="true"] { \(styleSelected(for: recipe)) }
 
         /* habitat-semantic-state: warning */
         \(root) :invalid:not([aria-invalid="true"]) {
@@ -1074,91 +1025,117 @@ struct ThemeCompiler {
         """
     }
 
-    private static func styleHeader(for family: HabitatThemeStyleFamily) -> String {
-        switch family {
-        case .arcade:
-            "border-bottom-width: 2px; box-shadow: inset 0 -3px 0 var(--habitat-secondary);"
-        case .retroMessenger:
-            "border-bottom-width: 1px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 58%, transparent), inset 0 30px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
-        case .greenChat:
-            "border-bottom-width: 4px; border-bottom-color: var(--habitat-secondary); box-shadow: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);"
-        case .classicDesktop:
-            "border-bottom: 2px outset var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white;"
-        case .gameCinematic:
-            "border-bottom-width: 2px; border-bottom-color: var(--habitat-attention); box-shadow: inset 0 -8px 18px color-mix(in srgb, black 18%, transparent);"
-        case .cozyWorld:
-            "border-bottom-width: 1px; box-shadow: inset 0 -4px 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
-        case .animeEnergy:
-            "border-bottom-width: 3px; border-bottom-color: var(--habitat-highlight); box-shadow: inset 0 -7px 0 color-mix(in srgb, var(--habitat-accent) 16%, transparent);"
-        case .fantasyAdventure:
-            "border-bottom: 3px double color-mix(in srgb, var(--habitat-highlight) 62%, var(--habitat-accent)); box-shadow: inset 0 -5px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
-        case .pixelWorld:
-            "border-bottom-width: 3px; border-bottom-style: solid; box-shadow: inset 0 -3px 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;"
+    private static func styleHeader(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        let edge = "border-bottom-width: \(cssNumber(recipe.headerEdgeWidth))px; border-bottom-style: \(lineStyle(recipe.headerLineStyle));"
+        let depth = cssNumber(recipe.headerInsetDepth)
+        return switch recipe.materialStyle {
+        case .arcadeSignal:
+            "\(edge) box-shadow: inset 0 -\(depth)px 0 var(--habitat-secondary);"
+        case .messengerGlass:
+            "\(edge) box-shadow: inset 0 1px 0 color-mix(in srgb, white 58%, transparent), inset 0 \(depth)px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
+        case .chatUtility:
+            "\(edge) border-bottom-color: var(--habitat-secondary); box-shadow: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);"
+        case .desktopRaised:
+            "\(edge) border-bottom-color: var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white;"
+        case .cinematicShade:
+            "\(edge) border-bottom-color: var(--habitat-attention); box-shadow: inset 0 -\(depth)px 18px color-mix(in srgb, black 18%, transparent);"
+        case .cozySoft:
+            "\(edge) box-shadow: inset 0 -\(depth)px 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+        case .energyStripe:
+            "\(edge) border-bottom-color: var(--habitat-highlight); box-shadow: inset 0 -\(depth)px 0 color-mix(in srgb, var(--habitat-accent) 16%, transparent);"
+        case .fantasyOrnate:
+            "\(edge) border-bottom-color: color-mix(in srgb, var(--habitat-highlight) 62%, var(--habitat-accent)); box-shadow: inset 0 -\(depth)px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+        case .pixelHard:
+            "\(edge) box-shadow: inset 0 -\(depth)px 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;"
         }
     }
 
-    private static func styleStage(for family: HabitatThemeStyleFamily) -> String {
-        _ = family
-        return ""
+    private static func styleStage() -> String { "" }
+
+    private static func styleReadingSurface(
+        for recipe: HabitatThemeSurfaceRecipe
+    ) -> String {
+        let shared = "border-radius: \(cssNumber(recipe.readingRadius))px; border-width: \(cssNumber(recipe.readingEdgeWidth))px; border-style: \(lineStyle(recipe.readingLineStyle)); border-color: color-mix(in srgb, var(--habitat-accent) 24%, transparent);"
+        return recipe.materialStyle == .pixelHard
+            ? "\(shared) image-rendering: pixelated;"
+            : shared
     }
 
-    private static func styleSelected(for family: HabitatThemeStyleFamily) -> String {
-        switch family {
-        case .arcade:
-            "box-shadow: inset 3px 0 0 var(--habitat-highlight), inset 0 0 0 1px var(--habitat-secondary);"
-        case .retroMessenger:
-            "box-shadow: inset 3px 0 0 var(--habitat-accent), inset 0 1px 0 color-mix(in srgb, white 70%, transparent); border-radius: 5px;"
-        case .greenChat:
-            "box-shadow: inset 4px 0 0 var(--habitat-secondary); border-radius: 4px;"
-        case .classicDesktop:
-            "border-radius: 0; box-shadow: inset 0 0 0 2px var(--habitat-panel-alt);"
-        case .gameCinematic:
-            "box-shadow: inset 3px 0 0 var(--habitat-attention), 0 6px 18px color-mix(in srgb, black 18%, transparent); border-radius: 3px;"
-        case .cozyWorld:
-            "box-shadow: inset 3px 0 0 var(--habitat-accent); border-radius: 8px;"
-        case .animeEnergy:
-            "box-shadow: inset 4px 0 0 var(--habitat-highlight), 5px 5px 0 color-mix(in srgb, var(--habitat-secondary) 16%, transparent); border-radius: 2px;"
-        case .fantasyAdventure:
-            "box-shadow: inset 3px 0 0 var(--habitat-highlight), inset 0 0 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent); border-radius: 7px;"
-        case .pixelWorld:
-            "box-shadow: inset 3px 0 0 var(--habitat-highlight), 3px 3px 0 color-mix(in srgb, black 38%, transparent); border-radius: 0;"
+    private static func styleComposer(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        let radius = cssNumber(recipe.composerRadius)
+        let edge = cssNumber(recipe.composerEdgeWidth)
+        let shadow = recipe.composerShadowRadius > 0
+            ? ", 0 2px \(cssNumber(recipe.composerShadowRadius))px color-mix(in srgb, var(--habitat-surface) 10%, transparent)"
+            : ""
+        let rendering = recipe.materialStyle == .pixelHard ? " image-rendering: pixelated;" : ""
+        return "border: \(edge)px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: \(radius)px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) \(recipe.innerHighlightPercent)%, transparent)\(shadow);\(rendering)"
+    }
+
+    private static func styleSelected(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        let edgeColor = switch recipe.materialStyle {
+        case .chatUtility: "var(--habitat-secondary)"
+        case .cinematicShade: "var(--habitat-attention)"
+        case .messengerGlass, .cozySoft: "var(--habitat-accent)"
+        default: "var(--habitat-highlight)"
+        }
+        let secondaryShadow = switch recipe.materialStyle {
+        case .arcadeSignal:
+            ", inset 0 0 0 1px var(--habitat-secondary)"
+        case .messengerGlass:
+            ", inset 0 1px 0 color-mix(in srgb, white 70%, transparent)"
+        case .cinematicShade:
+            ", 0 2px \(cssNumber(recipe.selectedShadowRadius))px color-mix(in srgb, black 18%, transparent)"
+        case .energyStripe:
+            ", \(cssNumber(recipe.selectedShadowRadius))px \(cssNumber(recipe.selectedShadowRadius))px 0 color-mix(in srgb, var(--habitat-secondary) 16%, transparent)"
+        case .fantasyOrnate:
+            ", inset 0 0 \(cssNumber(recipe.selectedShadowRadius))px color-mix(in srgb, var(--habitat-secondary) 12%, transparent)"
+        case .pixelHard:
+            ", \(cssNumber(recipe.selectedShadowRadius))px \(cssNumber(recipe.selectedShadowRadius))px 0 color-mix(in srgb, black 38%, transparent)"
+        case .chatUtility, .desktopRaised, .cozySoft:
+            ""
+        }
+        return "box-shadow: inset \(cssNumber(recipe.selectedEdgeWidth))px 0 0 \(edgeColor)\(secondaryShadow); border-radius: \(cssNumber(recipe.selectedRadius))px;"
+    }
+
+    private static func styleHomeAction(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        let shared = "border: \(cssNumber(recipe.actionEdgeWidth))px solid color-mix(in srgb, var(--habitat-accent) 24%, transparent); border-style: \(lineStyle(recipe.actionLineStyle)); border-radius: \(cssNumber(recipe.actionRadius))px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) \(recipe.innerHighlightPercent)%, transparent);"
+        return switch recipe.materialStyle {
+        case .arcadeSignal:
+            "\(shared) border-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
+        case .messengerGlass:
+            "\(shared) border-top-color: color-mix(in srgb, white 24%, var(--habitat-accent));"
+        case .chatUtility:
+            "\(shared) border-inline-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
+        case .desktopRaised:
+            shared
+        case .cinematicShade:
+            "\(shared) border-color: color-mix(in srgb, var(--habitat-highlight) 28%, var(--habitat-accent));"
+        case .cozySoft:
+            "\(shared) border-color: color-mix(in srgb, white 18%, var(--habitat-accent));"
+        case .energyStripe:
+            shared
+        case .fantasyOrnate:
+            "\(shared) border-bottom-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
+        case .pixelHard:
+            "\(shared) image-rendering: pixelated;"
         }
     }
 
-    private static func styleHomeAction(for family: HabitatThemeStyleFamily) -> String {
-        let shared = "border: 1px solid color-mix(in srgb, var(--habitat-accent) 24%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
-        return switch family {
-        case .arcade:
-            "\(shared) border-radius: 4px; border-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
-        case .retroMessenger:
-            "\(shared) border-radius: 6px; border-top-color: color-mix(in srgb, white 24%, var(--habitat-accent));"
-        case .greenChat:
-            "\(shared) border-radius: 5px; border-inline-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
-        case .classicDesktop:
-            "\(shared) border-radius: 0; border-style: outset;"
-        case .gameCinematic:
-            "\(shared) border-radius: 6px; border-color: color-mix(in srgb, var(--habitat-highlight) 28%, var(--habitat-accent));"
-        case .cozyWorld:
-            "\(shared) border-radius: 8px; border-color: color-mix(in srgb, white 18%, var(--habitat-accent));"
-        case .animeEnergy:
-            "\(shared) border-radius: 2px; border-style: dashed;"
-        case .fantasyAdventure:
-            "\(shared) border-radius: 7px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
-        case .pixelWorld:
-            "\(shared) border-radius: 0; image-rendering: pixelated;"
+    private static func styleFocus(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        switch recipe.focusStyle {
+        case .standard: "auto"
+        case .solid: "solid"
+        case .dotted: "dotted"
+        case .double: "double"
         }
     }
 
-    private static func styleFocus(for family: HabitatThemeStyleFamily) -> String {
-        switch family {
-        case .arcade, .gameCinematic, .animeEnergy, .pixelWorld:
-            "solid"
-        case .retroMessenger, .greenChat, .cozyWorld:
-            "auto"
-        case .classicDesktop:
-            "dotted"
-        case .fantasyAdventure:
-            "double"
+    private static func lineStyle(_ style: HabitatThemeSurfaceLineStyle) -> String {
+        switch style {
+        case .solid: "solid"
+        case .dashed: "dashed"
+        case .double: "double"
+        case .raised: "outset"
         }
     }
 

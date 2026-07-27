@@ -245,6 +245,67 @@ func everyHostOwnedStyleFamilyCompilesToADistinctTreatment() throws {
 }
 
 @Test
+func compilerConsumesTheSharedNonGeometricSurfaceRecipe() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let suggestions = try #require(profile.selectors.homeSuggestions)
+    let selectedNavigation = try #require(profile.selectors.selectedNavigation)
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+
+    for family in HabitatThemeStyleFamily.allCases {
+        let recipe = family.surfaceRecipe
+        let treatment = ThemeCompiler.styleTreatment(for: family, profile: profile)
+        let header = try cssRuleBody(
+            selector: "\(root) \(profile.selectors.header)",
+            in: treatment
+        )
+        let action = try cssRuleBody(
+            selector: "\(root) \(suggestions) :where(button, [role=\"button\"])",
+            in: treatment
+        )
+        let composer = try cssRuleBody(
+            selector: "\(root) \(profile.selectors.composer)",
+            in: treatment
+        )
+        let selected = try cssRuleBody(
+            selector: "\(root) \(selectedNavigation)",
+            in: treatment
+        )
+        let focus = try cssRuleBody(selector: "\(root) :focus-visible", in: treatment)
+
+        #expect(treatment.contains("habitat-surface-recipe: \(recipe.signature)"))
+        #expect(header.contains("border-bottom-width: \(cssNumber(recipe.headerEdgeWidth))px"))
+        #expect(header.contains("border-bottom-style: \(cssLineStyle(recipe.headerLineStyle))"))
+        #expect(action.contains("border-radius: \(cssNumber(recipe.actionRadius))px"))
+        #expect(action.contains("border: \(cssNumber(recipe.actionEdgeWidth))px solid"))
+        #expect(action.contains("border-style: \(cssLineStyle(recipe.actionLineStyle))"))
+        #expect(treatment.contains("border-radius: \(cssNumber(recipe.readingRadius))px; border-width: \(cssNumber(recipe.readingEdgeWidth))px; border-style: \(cssLineStyle(recipe.readingLineStyle));"))
+        #expect(composer.contains("border-radius: \(cssNumber(recipe.composerRadius))px"))
+        #expect(composer.contains("border: \(cssNumber(recipe.composerEdgeWidth))px solid"))
+        #expect(selected.contains("inset \(cssNumber(recipe.selectedEdgeWidth))px 0 0"))
+        #expect(selected.contains("border-radius: \(cssNumber(recipe.selectedRadius))px"))
+        #expect(focus.contains("outline-style: \(cssFocusStyle(recipe.focusStyle))"))
+        #expect(focus.contains("var(--habitat-accent) \(recipe.focusEmphasisPercent)%"))
+    }
+}
+
+@Test
+func readableTextUsesOneShortShadowLayer() throws {
+    let treatment = ThemeCompiler.surfaceTreatment(profile: try currentCompleteSurfaceProfile())
+    let expression = try NSRegularExpression(pattern: #"text-shadow:\s*([^;]+)"#)
+    let range = NSRange(treatment.startIndex..<treatment.endIndex, in: treatment)
+    let shadows = expression.matches(in: treatment, range: range).compactMap { match -> String? in
+        guard let shadowRange = Range(match.range(at: 1), in: treatment) else { return nil }
+        return String(treatment[shadowRange])
+    }
+
+    #expect(!shadows.isEmpty)
+    for shadow in shadows {
+        #expect(topLevelCommaCount(in: shadow) == 0, "text shadow must have exactly one layer")
+        #expect((try cssPixelLengths(in: shadow).max() ?? 0) <= 4, "text shadow must remain short")
+    }
+}
+
+@Test
 func compiledSceneSpansTheWholeWindow() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
@@ -1111,6 +1172,51 @@ private func normalizedStyleRecipe(_ recipe: String) -> String {
             options: .regularExpression
         )
         .trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+private func cssNumber(_ value: Double) -> String {
+    value.rounded() == value ? String(Int(value)) : String(value)
+}
+
+private func cssLineStyle(_ style: HabitatThemeSurfaceLineStyle) -> String {
+    switch style {
+    case .solid: "solid"
+    case .dashed: "dashed"
+    case .double: "double"
+    case .raised: "outset"
+    }
+}
+
+private func cssFocusStyle(_ style: HabitatThemeSurfaceFocusStyle) -> String {
+    switch style {
+    case .standard: "auto"
+    case .solid: "solid"
+    case .dotted: "dotted"
+    case .double: "double"
+    }
+}
+
+private func topLevelCommaCount(in value: String) -> Int {
+    var depth = 0
+    var count = 0
+    for character in value {
+        switch character {
+        case "(": depth += 1
+        case ")": depth = max(0, depth - 1)
+        case "," where depth == 0: count += 1
+        default: break
+        }
+    }
+    return count
+}
+
+private func cssPixelLengths(in value: String) throws -> [Double] {
+    let expression = try NSRegularExpression(pattern: #"([0-9]+(?:\.[0-9]+)?)px"#)
+    let range = NSRange(value.startIndex..<value.endIndex, in: value)
+    return expression.matches(in: value, range: range).compactMap { match in
+        guard let valueRange = Range(match.range(at: 1), in: value) else { return nil }
+        return Double(value[valueRange])
+    }
 }
 
 private func cssRuleBody(selector: String, in css: String) throws -> String {

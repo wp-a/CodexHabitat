@@ -191,14 +191,23 @@ func previewModelUsesTheSharedArtworkCropPlan() {
 
 @Test
 func previewRecipesAreDistinctAcrossHostOwnedStyleFamilies() {
-    let recipes = HabitatThemeStyleFamily.allCases.map(ThemeTreatmentPreviewRecipe.init(styleFamily:))
+    let recipes = HabitatThemeStyleFamily.allCases.map(\.surfaceRecipe)
 
     #expect(recipes.count == 9)
     #expect(Set(recipes.map(\.signature)).count == recipes.count)
-    #expect(ThemeTreatmentPreviewRecipe(styleFamily: .classicDesktop).composerRadius == 0)
-    #expect(ThemeTreatmentPreviewRecipe(styleFamily: .retroMessenger).headerEdgeWidth == 1)
-    #expect(ThemeTreatmentPreviewRecipe(styleFamily: .greenChat).headerEdgeWidth == 4)
-    #expect(ThemeTreatmentPreviewRecipe(styleFamily: .animeEnergy).headerEdgeWidth == 3)
+    #expect(HabitatThemeStyleFamily.classicDesktop.surfaceRecipe.composerRadius == 0)
+    #expect(HabitatThemeStyleFamily.retroMessenger.surfaceRecipe.headerEdgeWidth == 1)
+    #expect(HabitatThemeStyleFamily.greenChat.surfaceRecipe.headerEdgeWidth == 4)
+    #expect(HabitatThemeStyleFamily.animeEnergy.surfaceRecipe.headerEdgeWidth == 3)
+}
+
+@Test
+func previewModelUsesTheSharedSurfaceRecipe() {
+    for theme in HabitatThemeDescriptor.builtIn {
+        let model = ThemeTreatmentPreviewModel(theme: theme)
+
+        #expect(model.surfaceRecipe == theme.appearance.styleFamily.surfaceRecipe)
+    }
 }
 
 @Test
@@ -246,8 +255,50 @@ func previewRouteMasksAndSelectedRecipeMetricMatchTheCompilerContract() throws {
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.frameMatteThickness"))
     #expect(source.contains("ThemeTreatmentPreviewSceneMetrics.homeContentFraction"))
     #expect(source.contains("artworkCrop.drawRect"))
+    #expect(source.contains("model.surfaceRecipe"))
+    #expect(!source.contains("struct ThemeTreatmentPreviewRecipe"))
+    #expect(!source.contains("recipe.sidebarFraction"))
+    #expect(!source.contains("recipe.stageEdgeWidth"))
+    #expect(!source.contains("recipe.railCount"))
     #expect(!source.contains("model.homeContentWidth"))
     #expect(!source.contains("* 0.26"))
+}
+
+@Test
+func previewRendersEverySharedSurfaceRecipeDimension() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeTreatmentPreview.swift"
+        ),
+        encoding: .utf8
+    )
+
+    for field in [
+        "recipe.materialStyle",
+        "recipe.headerEdgeWidth",
+        "recipe.headerLineStyle",
+        "recipe.headerInsetDepth",
+        "recipe.actionRadius",
+        "recipe.actionEdgeWidth",
+        "recipe.actionLineStyle",
+        "recipe.readingRadius",
+        "recipe.readingEdgeWidth",
+        "recipe.readingLineStyle",
+        "recipe.composerRadius",
+        "recipe.composerEdgeWidth",
+        "recipe.composerShadowRadius",
+        "recipe.selectedEdgeWidth",
+        "recipe.focusStyle",
+        "recipe.hoverEmphasisPercent",
+        "recipe.focusEmphasisPercent",
+    ] {
+        #expect(source.contains(field), "preview ignores \(field)")
+    }
+    #expect(source.contains("model.density"))
 }
 
 private func previewSceneAppearance(
