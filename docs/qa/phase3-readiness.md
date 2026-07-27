@@ -1,13 +1,15 @@
 # Phase 3 Readiness
 
-Last updated: 2026-07-21 on macOS 26.4, arm64, Xcode 26.6.
+Last updated: 2026-07-27 on macOS 26.4, arm64, Xcode 26.6.
 
-Build 14 is ready for user-owned local installation and manual live-CDP
+Build 15 is ready for user-owned local installation and manual live-CDP
 acceptance. It is not yet a notarized public release.
 
 ## Verified
 
-- `swift test`: 405 tests in 5 suites passed with zero failures.
+- `swift test --skip 'tempRender(SettingsSurfaces|CurrentUISurfaces)'`: 486
+  committed tests in 6 suites passed with zero failures. The two skipped local
+  snapshot-render helpers are untracked QA artifacts, not release tests.
 - Offline Codex fixture: 144 checks passed across 24 themes, home/task routes,
   and wide/narrow/compact viewports; 24 interaction matrices covered hover,
   active, focus-visible, composer focus-within, and reduced motion with zero
@@ -25,14 +27,14 @@ acceptance. It is not yet a notarized public release.
 - The physical pet panel measured 136 x 144 collapsed and 324 x 144 expanded,
   retained the same right edge, and left no expanded transparent interaction
   window when collapsed.
-- Ad-hoc `Codex Habitat 0.1.0` Build 14 passed `verify-release`, arm64 main/helper
+- Ad-hoc `Codex Habitat 0.1.0` Build 15 passed `verify-release`, arm64 main/helper
   inspection, strict/deep signature checks, 24-resource verification, and DMG
   checksum validation. The DMG mounted with read-only media and volume flags,
   contained the `/Applications` symlink, and detached cleanly.
 - DMG SHA-256:
-  `276df0d01eae12163a750698aed55011797558632fe08c579e3227ef5e4b9ce1`.
-- Build 14 native screenshot evidence is archived in
-  [`screenshots/2026-07-21/`](screenshots/2026-07-21/README.md).
+  `d18fb78cf85019e5520b841ed8077cd230b9d09fbc2b24b8cedb0a56ee130863`.
+- Build 15 native localization and layout evidence is archived in
+  [`screenshots/2026-07-27-build15/`](screenshots/2026-07-27-build15/README.md).
 - The exact `26.715.52143` compatibility profile passed read-only identity,
   profile, compiler, coordinator, and health-gate tests. Unknown gaps and later
   Codex versions fail closed before restart or injection.
