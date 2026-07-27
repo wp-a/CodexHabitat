@@ -20,7 +20,7 @@ struct PrivacySettingsView: View {
 
             SettingsGroup("First run") {
                 Button(action: model.restartOnboarding) {
-                    Label("Run setup again", systemImage: "arrow.triangle.2.circlepath")
+                    Label(L10n.text("Run setup again"), systemImage: "arrow.triangle.2.circlepath")
                 }
                 .accessibilityIdentifier("privacy.restart-onboarding")
             }

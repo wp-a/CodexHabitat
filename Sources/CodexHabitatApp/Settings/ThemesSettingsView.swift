@@ -166,38 +166,38 @@ struct ThemesSettingsView: View {
         }
         .alert(
             bridge.state == .active
-                ? "Switch Codex to the selected theme?"
-                : "Restart Codex with the selected theme?",
+                ? L10n.text("Switch Codex to the selected theme?")
+                : L10n.text("Restart Codex with the selected theme?"),
             isPresented: $confirmsCodexApply
         ) {
-            Button("Cancel", role: .cancel) {
+            Button(L10n.text("Cancel"), role: .cancel) {
                 libraryState.clearPendingApply()
             }
-            Button(bridge.state == .active ? "Switch Theme" : "Restart and Apply") {
+            Button(bridge.state == .active ? L10n.text("Switch Theme") : L10n.text("Restart and Apply")) {
                 applyPendingTheme()
             }
             .disabled(!bridge.canApply)
         } message: {
             Text(bridge.state == .active
-                ? "The current bridge theme will be replaced without restarting Codex."
-                : "Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance.")
+                ? L10n.text("The current bridge theme will be replaced without restarting Codex.")
+                : L10n.text("Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance."))
         }
         .confirmationDialog(
-            "Remove this Habitat pack?",
+            L10n.text("Remove this Habitat pack?"),
             isPresented: Binding(
                 get: { packageIDToRemove != nil },
                 set: { if !$0 { packageIDToRemove = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Remove Pack", role: .destructive) {
+            Button(L10n.text("Remove Pack"), role: .destructive) {
                 guard let packageIDToRemove else { return }
                 self.packageIDToRemove = nil
                 Task { await model.uninstallResourcePackage(id: packageIDToRemove) }
             }
-            Button("Cancel", role: .cancel) { packageIDToRemove = nil }
+            Button(L10n.text("Cancel"), role: .cancel) { packageIDToRemove = nil }
         } message: {
-            Text("Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed.")
+            Text(L10n.text("Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed."))
         }
     }
 
@@ -254,7 +254,7 @@ struct ThemesSettingsView: View {
     }
 
     private var scopePicker: some View {
-        Picker("Theme collection", selection: $libraryState.scope) {
+        Picker(L10n.text("Theme collection"), selection: $libraryState.scope) {
             ForEach(ThemeLibraryScope.allCases) { scope in
                 Text(L10n.text(scope.title)).tag(scope)
             }
@@ -380,7 +380,7 @@ struct ThemesSettingsView: View {
                 }
             }
 
-            Picker("Preview route", selection: $libraryState.previewRoute) {
+            Picker(L10n.text("Preview route"), selection: $libraryState.previewRoute) {
                 Text(L10n.text("Home")).tag(ThemeTreatmentPreviewRoute.home)
                 Text(L10n.text("Task")).tag(ThemeTreatmentPreviewRoute.task)
             }

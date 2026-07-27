@@ -14,12 +14,12 @@ struct IntegrationsSettingsView: View {
             subtitle: "Local Codex connections and optional appearance bridge"
         ) {
             SettingsGroup("Codex") {
-                LabeledContent("Control plane") {
-                    Label("Auto-detect", systemImage: "antenna.radiowaves.left.and.right")
+                LabeledContent(L10n.text("Control plane")) {
+                    Label(L10n.text("Auto-detect"), systemImage: "antenna.radiowaves.left.and.right")
                         .foregroundStyle(.secondary)
                 }
-                LabeledContent("Access mode") {
-                    Label("Read only", systemImage: "lock.fill")
+                LabeledContent(L10n.text("Access mode")) {
+                    Label(L10n.text("Read only"), systemImage: "lock.fill")
                         .foregroundStyle(.green)
                 }
             }
@@ -27,16 +27,16 @@ struct IntegrationsSettingsView: View {
             Divider()
 
             SettingsGroup("Codex native theme") {
-                Picker("Variant", selection: $codexVariant) {
-                    Text("Light").tag(CodexThemeVariant.light)
-                    Text("Dark").tag(CodexThemeVariant.dark)
+                Picker(L10n.text("Variant"), selection: $codexVariant) {
+                    Text(L10n.text("Light")).tag(CodexThemeVariant.light)
+                    Text(L10n.text("Dark")).tag(CodexThemeVariant.dark)
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("integrations.native-theme.variant")
 
                 HStack(spacing: 10) {
                     Button(action: copyNativeTheme) {
-                        Label("Copy Codex Theme", systemImage: "doc.on.clipboard")
+                        Label(L10n.text("Copy Codex Theme"), systemImage: "doc.on.clipboard")
                     }
                     .accessibilityIdentifier("integrations.native-theme.copy")
                     if let nativeThemeCopyStatus {
@@ -50,7 +50,7 @@ struct IntegrationsSettingsView: View {
             Divider()
 
             SettingsGroup("Deep appearance bridge") {
-                LabeledContent("Helper") {
+                LabeledContent(L10n.text("Helper")) {
                     HStack(spacing: 7) {
                         if bridge.isBusy {
                             ProgressView().controlSize(.small)
@@ -67,7 +67,7 @@ struct IntegrationsSettingsView: View {
                 Button {
                     confirmsRestart = true
                 } label: {
-                    Label("Apply Selected Theme to Codex", systemImage: "paintbrush")
+                    Label(L10n.text("Apply Selected Theme to Codex"), systemImage: "paintbrush")
                 }
                 .disabled(!bridge.canApply || !model.selectedThemeSupportsCodexBridge)
                 .accessibilityIdentifier("integrations.theme-bridge.apply")
@@ -79,7 +79,7 @@ struct IntegrationsSettingsView: View {
                             model.setThemeBridgeEnabled(bridge.state == .active)
                         }
                     } label: {
-                        Label("Restore Official Appearance", systemImage: "arrow.counterclockwise")
+                        Label(L10n.text("Restore Official Appearance"), systemImage: "arrow.counterclockwise")
                     }
                     .disabled(bridge.isBusy)
                     .accessibilityIdentifier("integrations.theme-bridge.restore")
@@ -87,7 +87,7 @@ struct IntegrationsSettingsView: View {
 
                 if !model.selectedThemeSupportsCodexBridge {
                     Label(
-                        "Choose a bridge-compatible theme before applying it to Codex",
+                        L10n.text("Choose a bridge-compatible theme before applying it to Codex"),
                         systemImage: "lock.shield"
                     )
                     .font(.caption)
@@ -106,12 +106,12 @@ struct IntegrationsSettingsView: View {
         }
         .alert(
             bridge.state == .active
-                ? "Switch Codex to the selected theme?"
-                : "Restart Codex with the selected theme?",
+                ? L10n.text("Switch Codex to the selected theme?")
+                : L10n.text("Restart Codex with the selected theme?"),
             isPresented: $confirmsRestart
         ) {
-            Button("Cancel", role: .cancel) {}
-            Button(bridge.state == .active ? "Switch Theme" : "Restart and Apply") {
+            Button(L10n.text("Cancel"), role: .cancel) {}
+            Button(bridge.state == .active ? L10n.text("Switch Theme") : L10n.text("Restart and Apply")) {
                 Task {
                     await bridge.enable(
                         themeID: model.settings.selectedThemeID,
@@ -122,8 +122,8 @@ struct IntegrationsSettingsView: View {
             }
         } message: {
             Text(bridge.state == .active
-                ? "The current bridge theme will be replaced without restarting Codex."
-                : "Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance.")
+                ? L10n.text("The current bridge theme will be replaced without restarting Codex.")
+                : L10n.text("Codex will close and reopen on a local debugging port. Unsaved composer text may be lost. Restore closes the port and returns the official appearance."))
         }
     }
 

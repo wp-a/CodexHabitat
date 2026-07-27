@@ -204,7 +204,7 @@ struct PetsSettingsView: View {
 
     private var toolbar: some View {
         HStack(spacing: HabitatDesignMetrics.spaceM) {
-            Picker("Pet source", selection: $source) {
+            Picker(L10n.text("Pet source"), selection: $source) {
                 ForEach(Source.allCases) { source in
                     Text(L10n.text(source.rawValue)).tag(source)
                 }
@@ -223,16 +223,16 @@ struct PetsSettingsView: View {
                 Image(systemName: "square.and.arrow.down")
             }
             .buttonStyle(.borderless)
-            .help("Import Habitat pack")
-            .accessibilityLabel("Import Habitat pack")
+            .help(L10n.text("Import Habitat pack"))
+            .accessibilityLabel(L10n.text("Import Habitat pack"))
             .accessibilityIdentifier("pets.import-pack")
 
             Button(action: model.refreshResources) {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .help("Refresh pets")
-            .accessibilityLabel("Refresh pets")
+            .help(L10n.text("Refresh pets"))
+            .accessibilityLabel(L10n.text("Refresh pets"))
             .accessibilityIdentifier("pets.refresh")
         }
         .padding(.horizontal, HabitatDesignMetrics.spaceXL)
@@ -319,7 +319,7 @@ struct PetsSettingsView: View {
                 Button {
                     showsCompactInspector = true
                 } label: {
-                    Label("Edit Behavior", systemImage: "slider.horizontal.3")
+                    Label(L10n.text("Edit Behavior"), systemImage: "slider.horizontal.3")
                 }
                 .accessibilityIdentifier("pets.behavior.open")
             }
@@ -335,20 +335,20 @@ struct PetsSettingsView: View {
 
     private var emptyLibrary: some View {
         VStack(spacing: HabitatDesignMetrics.spaceM) {
-            Label("No Valid Pets", systemImage: "pawprint")
+            Label(L10n.text("No Valid Pets"), systemImage: "pawprint")
                 .font(.title3.weight(.semibold))
             Text(L10n.text("Habitat will keep running while the local pet library is empty."))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             HStack(spacing: HabitatDesignMetrics.spaceS) {
                 Button(action: importPack) {
-                    Label("Import Pack", systemImage: "square.and.arrow.down")
+                    Label(L10n.text("Import Pack"), systemImage: "square.and.arrow.down")
                 }
                 .buttonStyle(.borderedProminent)
                 Button {
                     source = .petdex
                 } label: {
-                    Label("Browse Petdex", systemImage: "square.grid.2x2")
+                    Label(L10n.text("Browse Petdex"), systemImage: "square.grid.2x2")
                 }
                 .buttonStyle(.bordered)
             }
@@ -412,9 +412,9 @@ private struct PetResourceRow: View {
         }
         .buttonStyle(.plain)
         .habitatSelectedStyle(isSelected, radius: HabitatDesignMetrics.cardRadius)
-        .accessibilityLabel(pet.manifest?.displayName ?? "Pet")
+        .accessibilityLabel(pet.manifest?.displayName ?? L10n.text("Pet"))
         .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
-        .accessibilityHint("Select pet")
+        .accessibilityHint(L10n.text("Select pet"))
         .accessibilityIdentifier("pets.choice.\(pet.manifest?.id ?? "unknown")")
     }
 }
@@ -477,7 +477,7 @@ private struct PetPreviewPane: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Retry") {
+                    Button(L10n.text("Retry")) {
                         Task {
                             await onRetry(pet)
                             retryGeneration += 1
@@ -532,27 +532,27 @@ private struct PetBehaviorInspector: View {
                 }
 
                 Picker(
-                    "Motion",
+                    L10n.text("Motion"),
                     selection: Binding(
                         get: { model.settings.reduceMotion },
                         set: { model.setReduceMotion($0) }
                     )
                 ) {
-                    Text("System").tag(ReduceMotionPreference.system)
-                    Text("Reduced").tag(ReduceMotionPreference.reduce)
-                    Text("Full").tag(ReduceMotionPreference.full)
+                    Text(L10n.text("System")).tag(ReduceMotionPreference.system)
+                    Text(L10n.text("Reduced")).tag(ReduceMotionPreference.reduce)
+                    Text(L10n.text("Full")).tag(ReduceMotionPreference.full)
                 }
                 .pickerStyle(.segmented)
 
                 Toggle(
-                    "Click through the overlay",
+                    L10n.text("Click through the overlay"),
                     isOn: Binding(
                         get: { model.settings.clickThrough },
                         set: { model.setClickThrough($0) }
                     )
                 )
                 Toggle(
-                    "Lock overlay position",
+                    L10n.text("Lock overlay position"),
                     isOn: Binding(
                         get: { model.settings.positionLocked },
                         set: { model.setPositionLocked($0) }
@@ -618,7 +618,7 @@ struct PetChoiceCard: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(pet.manifest?.displayName ?? "Pet")
+        .accessibilityLabel(pet.manifest?.displayName ?? L10n.text("Pet"))
         .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
         .accessibilityIdentifier("pets.choice.\(pet.manifest?.id ?? "unknown")")
     }
@@ -656,7 +656,7 @@ private struct PetThumbnail: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
-                    .accessibilityLabel("Unable to load pet artwork")
+                    .accessibilityLabel(L10n.text("Unable to load pet artwork"))
             }
         }
         .task(id: pet.packageURL) {

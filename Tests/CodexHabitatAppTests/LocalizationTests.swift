@@ -122,3 +122,95 @@ func localizationCatalogsHaveMatchingKeysAndFormatPlaceholders() throws {
         )
     }
 }
+
+@Test
+func userFacingSwiftUILiteralsUseExplicitLocalization() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = repositoryRoot.appendingPathComponent("Sources/CodexHabitatApp")
+    let sourceFiles = try swiftSourceFiles(in: sourceRoot)
+    let patterns = [
+        #"\b(?:Text|Label|Button|Toggle|Picker|TextField|SecureField|Section|LabeledContent|ContentUnavailableView)\(\s*\"(?!\\\()[^\"]*[A-Za-z][^\"]*\""#,
+        #"\.(?:alert|confirmationDialog|help|accessibilityLabel|accessibilityHint|accessibilityValue|navigationTitle)\(\s*\"[^\"]*[A-Za-z][^\"]*\""#,
+    ]
+    let expressions = try patterns.map { pattern in
+        try NSRegularExpression(pattern: pattern)
+    }
+    var violations: [String] = []
+
+    for sourceFile in sourceFiles {
+        let source = try String(contentsOf: sourceFile, encoding: .utf8)
+        let fullRange = NSRange(source.startIndex..<source.endIndex, in: source)
+        for expression in expressions {
+            for match in expression.matches(in: source, range: fullRange) {
+                guard let range = Range(match.range, in: source) else { continue }
+                let line = source[..<range.lowerBound].reduce(into: 1) { count, character in
+                    if character == "\n" { count += 1 }
+                }
+                violations.append("\(sourceFile.lastPathComponent):\(line): \(source[range])")
+            }
+        }
+    }
+
+    #expect(
+        violations.isEmpty,
+        "User-facing SwiftUI strings must use L10n explicitly:\n\(violations.sorted().joined(separator: "\n"))"
+    )
+}
+
+@Test
+func explicitLocalizationKeysExistInBothCatalogs() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = repositoryRoot.appendingPathComponent("Sources/CodexHabitatApp")
+    let sourceFiles = try swiftSourceFiles(in: sourceRoot)
+    let expression = try NSRegularExpression(
+        pattern: #"\bL10n\.(?:text|format)\(\s*\"([^\"]+)\""#
+    )
+    var referencedKeys = Set<String>()
+
+    for sourceFile in sourceFiles {
+        let source = try String(contentsOf: sourceFile, encoding: .utf8)
+        let fullRange = NSRange(source.startIndex..<source.endIndex, in: source)
+        for match in expression.matches(in: source, range: fullRange) {
+            guard match.numberOfRanges == 2,
+                  let range = Range(match.range(at: 1), in: source) else { continue }
+            let sourceLiteral = String(source[range])
+            referencedKeys.insert(
+                sourceLiteral.replacingOccurrences(of: #"\n"#, with: "\n")
+            )
+        }
+    }
+
+    let english = try HabitatLocalization.catalog(language: "en")
+    let chinese = try HabitatLocalization.catalog(language: "zh-Hans")
+    let missingEnglish = referencedKeys.subtracting(english.keys).sorted()
+    let missingChinese = referencedKeys.subtracting(chinese.keys).sorted()
+
+    #expect(missingEnglish.isEmpty, "Missing English localization keys: \(missingEnglish)")
+    #expect(missingChinese.isEmpty, "Missing Simplified Chinese localization keys: \(missingChinese)")
+}
+
+private func swiftSourceFiles(in root: URL) throws -> [URL] {
+    let keys: [URLResourceKey] = [.isRegularFileKey]
+    guard let enumerator = FileManager.default.enumerator(
+        at: root,
+        includingPropertiesForKeys: keys,
+        options: [.skipsHiddenFiles]
+    ) else {
+        throw CocoaError(.fileNoSuchFile)
+    }
+
+    return try enumerator.compactMap { item in
+        guard let url = item as? URL,
+              url.pathExtension == "swift",
+              try url.resourceValues(forKeys: Set(keys)).isRegularFile == true else {
+            return nil
+        }
+        return url
+    }
+}

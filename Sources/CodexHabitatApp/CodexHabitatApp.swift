@@ -195,7 +195,7 @@ private struct HabitatMenuBarView: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.cyan)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Codex Habitat")
+                    Text(L10n.text("Codex Habitat"))
                         .font(.headline)
                     Text(L10n.text(model.selectedTheme.name))
                         .font(.caption)

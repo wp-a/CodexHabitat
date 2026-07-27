@@ -27,7 +27,7 @@ struct OnboardingView: View {
                 .background(.cyan.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Codex Habitat")
+                Text(L10n.text("Codex Habitat"))
                     .font(.system(size: 22, weight: .semibold))
                 Text(L10n.text(stepTitle))
                     .font(.subheadline)
@@ -100,16 +100,16 @@ struct OnboardingView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .buttonStyle(.borderless)
-                    .help("Refresh pets")
-                    .accessibilityLabel("Refresh pets")
+                    .help(L10n.text("Refresh pets"))
+                    .accessibilityLabel(L10n.text("Refresh pets"))
                     .accessibilityIdentifier("onboarding.pets.refresh")
                 }
 
                 if model.validPets.isEmpty {
                     ContentUnavailableView(
-                        "No Valid Pets Found",
+                        L10n.text("No Valid Pets Found"),
                         systemImage: "pawprint",
-                        description: Text("You can finish setup and add a local pet later.")
+                        description: Text(L10n.text("You can finish setup and add a local pet later."))
                     )
                     .frame(maxWidth: .infinity, minHeight: 220)
                 } else {
@@ -166,7 +166,7 @@ struct OnboardingView: View {
 
     private var footer: some View {
         HStack {
-            Label("Local setup · no account", systemImage: "lock.fill")
+            Label(L10n.text("Local setup · no account"), systemImage: "lock.fill")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -174,7 +174,7 @@ struct OnboardingView: View {
 
             if model.onboardingStep != .habitat {
                 Button(action: model.moveBackOnboarding) {
-                    Label("Back", systemImage: "chevron.left")
+                    Label(L10n.text("Back"), systemImage: "chevron.left")
                 }
                 .accessibilityIdentifier("onboarding.back")
             }

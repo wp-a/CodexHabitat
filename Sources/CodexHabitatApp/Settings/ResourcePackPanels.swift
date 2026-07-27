@@ -87,19 +87,19 @@ struct ResourceOperationStatusView: View {
 extension View {
     func resourceReplacementConfirmation(model: HabitatAppModel) -> some View {
         confirmationDialog(
-            "Replace the installed package?",
+            L10n.text("Replace the installed package?"),
             isPresented: Binding(
                 get: { model.pendingReplacementArchiveURL != nil },
                 set: { if !$0 { model.cancelPendingResourceReplacement() } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Replace Package", role: .destructive) {
+            Button(L10n.text("Replace Package"), role: .destructive) {
                 Task { await model.replacePendingResourcePackage() }
             }
-            Button("Cancel", role: .cancel, action: model.cancelPendingResourceReplacement)
+            Button(L10n.text("Cancel"), role: .cancel, action: model.cancelPendingResourceReplacement)
         } message: {
-            Text("The imported package has the same ID and version. Replacing it updates only Habitat's local copy and does not modify Codex.")
+            Text(L10n.text("The imported package has the same ID and version. Replacing it updates only Habitat's local copy and does not modify Codex."))
         }
     }
 }

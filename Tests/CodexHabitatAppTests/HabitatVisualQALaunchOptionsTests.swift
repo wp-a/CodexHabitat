@@ -12,6 +12,7 @@ func visualQALaunchOptionsRequireAnExplicitGate() {
     ])
 
     #expect(options == .disabled)
+    #expect(!options.isEnabled)
 }
 
 @Test
@@ -22,12 +23,15 @@ func visualQALaunchOptionsParseOnlyBoundedViewState() {
         "--visual-qa-theme-studio",
         "--visual-qa-overlay-collapsed",
         "--visual-qa-settings-width", "1040",
+        "--visual-qa-appearance", "light",
     ])
 
     #expect(options.themeFilter == .nostalgia)
+    #expect(options.isEnabled)
     #expect(options.opensThemeStudio)
     #expect(options.collapsesOverlay)
     #expect(options.settingsWidth == 1040)
+    #expect(options.appearance == .light)
 
     let invalid = HabitatVisualQALaunchOptions(arguments: [
         "CodexHabitatApp", "--visual-qa",
@@ -38,4 +42,19 @@ func visualQALaunchOptionsParseOnlyBoundedViewState() {
     #expect(!invalid.opensThemeStudio)
     #expect(!invalid.collapsesOverlay)
     #expect(invalid.settingsWidth == 1_200)
+    #expect(invalid.appearance == .system)
+}
+
+@Test
+func visualQAGateRemainsEnabledWhenRequestedValuesMatchDisabledDefaults() {
+    let options = HabitatVisualQALaunchOptions(arguments: [
+        "CodexHabitatApp", "--visual-qa",
+        "--visual-qa-settings-width", "760",
+    ])
+
+    #expect(options.isEnabled)
+    #expect(options.themeFilter == .all)
+    #expect(!options.opensThemeStudio)
+    #expect(!options.collapsesOverlay)
+    #expect(options.settingsWidth == 760)
 }

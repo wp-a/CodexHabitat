@@ -40,8 +40,17 @@ struct SettingsRootView: View {
             accentHex: model.selectedTheme.accentHex,
             secondaryHex: model.selectedTheme.secondaryHex
         )
+        .preferredColorScheme(visualQAColorScheme)
         .task {
             await model.load()
+        }
+    }
+
+    private var visualQAColorScheme: ColorScheme? {
+        switch visualQAOptions.appearance {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 

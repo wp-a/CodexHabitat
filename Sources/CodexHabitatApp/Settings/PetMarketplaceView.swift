@@ -178,8 +178,8 @@ struct PetMarketplaceView: View {
             ),
             presenting: model.pendingInstallation
         ) { _ in
-            Button("Cancel", role: .cancel, action: model.cancelInstallation)
-            Button("Install") {
+            Button(L10n.text("Cancel"), role: .cancel, action: model.cancelInstallation)
+            Button(L10n.text("Install")) {
                 Task { await model.confirmInstallation() }
             }
         } message: { pet in
@@ -194,11 +194,11 @@ struct PetMarketplaceView: View {
 
     private var disabledState: some View {
         ContentUnavailableView {
-            Label("Browse Petdex", systemImage: "square.grid.2x2")
+            Label(L10n.text("Browse Petdex"), systemImage: "square.grid.2x2")
         } description: {
-            Text("Catalog access is optional. Habitat sends no account, thread, prompt, or usage data.")
+            Text(L10n.text("Catalog access is optional. Habitat sends no account, thread, prompt, or usage data."))
         } actions: {
-            Button("Enable Browsing") {
+            Button(L10n.text("Enable Browsing")) {
                 Task { await model.enableBrowsing() }
             }
             .buttonStyle(.borderedProminent)
@@ -214,10 +214,10 @@ struct PetMarketplaceView: View {
             Text(L10n.text(description))
         } actions: {
             HStack {
-                Button("Try Again") {
+                Button(L10n.text("Try Again")) {
                     Task { await model.reload() }
                 }
-                Button("Stop Browsing", action: model.disableBrowsing)
+                Button(L10n.text("Stop Browsing"), action: model.disableBrowsing)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 280)
@@ -226,7 +226,7 @@ struct PetMarketplaceView: View {
     private var catalog: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                TextField("Search pets, creators, or licenses", text: $model.searchText)
+                TextField(L10n.text("Search pets, creators, or licenses"), text: $model.searchText)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("pets.marketplace.search")
                 Text("\(model.filteredPets.count)")
@@ -239,14 +239,14 @@ struct PetMarketplaceView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
-                .help("Refresh Petdex")
-                .accessibilityLabel("Refresh Petdex")
+                .help(L10n.text("Refresh Petdex"))
+                .accessibilityLabel(L10n.text("Refresh Petdex"))
                 Button(action: model.disableBrowsing) {
                     Image(systemName: "network.slash")
                 }
                 .buttonStyle(.borderless)
-                .help("Stop browsing")
-                .accessibilityLabel("Stop browsing")
+                .help(L10n.text("Stop browsing"))
+                .accessibilityLabel(L10n.text("Stop browsing"))
             }
 
             installationStatus
@@ -278,10 +278,10 @@ struct PetMarketplaceView: View {
             Label(L10n.format("%@ installed", id), systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .unverified:
-            Label("This entry is missing a license, content ID, or SHA-256 checksum.", systemImage: "lock.shield")
+            Label(L10n.text("This entry is missing a license, content ID, or SHA-256 checksum."), systemImage: "lock.shield")
                 .foregroundStyle(.orange)
         case .failed:
-            Label("The package failed verification or installation.", systemImage: "xmark.octagon")
+            Label(L10n.text("The package failed verification or installation."), systemImage: "xmark.octagon")
                 .foregroundStyle(.red)
         case .idle:
             EmptyView()
@@ -328,7 +328,7 @@ private struct MarketplacePetCard: View {
                 Link(destination: pet.sourceURL) {
                     Image(systemName: "arrow.up.right.square")
                 }
-                .help("Open source")
+                .help(L10n.text("Open source"))
                 .accessibilityLabel(L10n.format("Open source for %@", pet.displayName))
                 Spacer()
                 if pet.isInstallable {
@@ -340,13 +340,13 @@ private struct MarketplacePetCard: View {
                         }
                     }
                     .disabled(isInstalling)
-                    .help("Review and install")
+                    .help(L10n.text("Review and install"))
                     .accessibilityLabel(L10n.format("Install %@", pet.displayName))
                 } else {
                     Image(systemName: "lock.shield")
                         .foregroundStyle(.secondary)
-                        .help("Browse only: verification metadata is missing")
-                        .accessibilityLabel("Installation unavailable")
+                        .help(L10n.text("Browse only: verification metadata is missing"))
+                        .accessibilityLabel(L10n.text("Installation unavailable"))
                 }
             }
             .buttonStyle(.borderless)

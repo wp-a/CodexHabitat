@@ -328,6 +328,11 @@
 "Anime Energy" = "动漫能量";
 "Fantasy Adventure" = "奇幻冒险";
 "Pixel World" = "像素世界";
+"Author: %@\nLicense: %@\nSource: %@" = "作者：%@\n许可证：%@\n来源：%@";
+"Choose" = "选择";
+"Choose Theme Background" = "选择主题背景";
+"Export Habitat Theme" = "导出 Habitat 主题";
+"pet" = "宠物";
 "No custom themes" = "暂无自定义主题";
 "No matching themes" = "没有匹配的主题";
 "Create Theme" = "创建主题";

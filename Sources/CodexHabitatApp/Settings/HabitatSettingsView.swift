@@ -19,15 +19,15 @@ struct HabitatSettingsView: View {
                     scaleControl
 
                     Picker(
-                        "Motion",
+                        L10n.text("Motion"),
                         selection: Binding(
                             get: { model.settings.reduceMotion },
                             set: { model.setReduceMotion($0) }
                         )
                     ) {
-                        Text("System").tag(ReduceMotionPreference.system)
-                        Text("Reduced").tag(ReduceMotionPreference.reduce)
-                        Text("Full").tag(ReduceMotionPreference.full)
+                        Text(L10n.text("System")).tag(ReduceMotionPreference.system)
+                        Text(L10n.text("Reduced")).tag(ReduceMotionPreference.reduce)
+                        Text(L10n.text("Full")).tag(ReduceMotionPreference.full)
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("habitat.motion")
@@ -170,7 +170,7 @@ struct HabitatSettingsView: View {
 
     private var scaleControl: some View {
         HStack(spacing: 12) {
-            Label("Scale", systemImage: "arrow.up.left.and.arrow.down.right")
+            Label(L10n.text("Scale"), systemImage: "arrow.up.left.and.arrow.down.right")
                 .frame(width: 110, alignment: .leading)
             Slider(
                 value: Binding(
@@ -188,8 +188,8 @@ struct HabitatSettingsView: View {
                 Image(systemName: "arrow.counterclockwise")
             }
             .buttonStyle(.borderless)
-            .help("Reset scale")
-            .accessibilityLabel("Reset scale")
+            .help(L10n.text("Reset scale"))
+            .accessibilityLabel(L10n.text("Reset scale"))
             .accessibilityIdentifier("habitat.scale.reset")
         }
     }
@@ -197,7 +197,7 @@ struct HabitatSettingsView: View {
     private var interactionSettings: some View {
         SettingsGroup("Interaction") {
             Toggle(
-                "Click through the overlay",
+                L10n.text("Click through the overlay"),
                 isOn: Binding(
                     get: { model.settings.clickThrough },
                     set: { model.setClickThrough($0) }
@@ -206,7 +206,7 @@ struct HabitatSettingsView: View {
             .accessibilityIdentifier("habitat.click-through")
 
             Toggle(
-                "Lock overlay position",
+                L10n.text("Lock overlay position"),
                 isOn: Binding(
                     get: { model.settings.positionLocked },
                     set: { model.setPositionLocked($0) }
@@ -216,7 +216,7 @@ struct HabitatSettingsView: View {
             .accessibilityIdentifier("habitat.position-locked")
 
             Toggle(
-                "Open Codex Habitat at login",
+                L10n.text("Open Codex Habitat at login"),
                 isOn: Binding(
                     get: { model.settings.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
@@ -226,15 +226,15 @@ struct HabitatSettingsView: View {
 
             if model.launchAtLoginStatus == .requiresApproval {
                 HStack(spacing: 12) {
-                    Label("Approval required in Login Items", systemImage: "person.badge.key.fill")
+                    Label(L10n.text("Approval required in Login Items"), systemImage: "person.badge.key.fill")
                         .font(.caption)
                         .foregroundStyle(.orange)
                     Spacer()
-                    Button("Open Settings", action: model.openLoginItemSettings)
+                    Button(L10n.text("Open Settings"), action: model.openLoginItemSettings)
                         .controlSize(.small)
                 }
             } else if model.launchAtLoginStatus == .unavailable {
-                Label("Login item unavailable for this app location", systemImage: "exclamationmark.triangle")
+                Label(L10n.text("Login item unavailable for this app location"), systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

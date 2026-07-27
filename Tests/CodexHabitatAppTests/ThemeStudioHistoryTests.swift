@@ -257,7 +257,7 @@ func themeStudioSourceKeepsTheWideCanvasInspectorContract() throws {
             separatedBy: ".disabled(model.isSelectingImage || model.state == .saving)"
         ).count - 1 >= 4
     )
-    #expect(source.contains("Text(\"Analyzing image\")"))
+    #expect(source.contains("Text(L10n.text(\"Analyzing image\"))"))
 }
 
 @Test

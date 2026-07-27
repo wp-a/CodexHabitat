@@ -36,47 +36,47 @@ struct ThemeStudioView: View {
         .background(HabitatSurface(role: .content))
         .interactiveDismissDisabled(model.isDirty || model.state == .saving || model.isSelectingImage)
         .confirmationDialog(
-            "Discard this theme draft?",
+            L10n.text("Discard this theme draft?"),
             isPresented: $model.showsDiscardConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Discard Draft", role: .destructive) {
+            Button(L10n.text("Discard Draft"), role: .destructive) {
                 model.discardDraft()
                 dismiss()
             }
             .disabled(model.state == .saving)
-            Button("Keep Editing", role: .cancel) {}
+            Button(L10n.text("Keep Editing"), role: .cancel) {}
         } message: {
-            Text("Unsaved theme changes will be lost.")
+            Text(L10n.text("Unsaved theme changes will be lost."))
         }
         .confirmationDialog(
-            "Confirm image rights",
+            L10n.text("Confirm image rights"),
             isPresented: $showsRightsConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Export Theme") {
+            Button(L10n.text("Export Theme")) {
                 rightsAccepted = true
                 exportPendingTheme()
             }
-            Button("Cancel", role: .cancel) { pendingExportURL = nil }
+            Button(L10n.text("Cancel"), role: .cancel) { pendingExportURL = nil }
         } message: {
-            Text("Export does not grant image rights. You confirm you may use and share this image.")
+            Text(L10n.text("Export does not grant image rights. You confirm you may use and share this image."))
         }
         .confirmationDialog(
-            "Replace existing theme?",
+            L10n.text("Replace existing theme?"),
             isPresented: Binding(
                 get: { pendingReplacementThemeID != nil },
                 set: { if !$0 { pendingReplacementThemeID = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Replace Theme", role: .destructive, action: replaceExistingTheme)
-            Button("Cancel", role: .cancel) {
+            Button(L10n.text("Replace Theme"), role: .destructive, action: replaceExistingTheme)
+            Button(L10n.text("Cancel"), role: .cancel) {
                 pendingReplacementThemeID = nil
                 model.cancelReplacement()
             }
         } message: {
-            Text("A local theme with this name already exists. Replace it with this draft?")
+            Text(L10n.text("A local theme with this name already exists. Replace it with this draft?"))
         }
         .onChange(of: model.state) { _, state in
             guard case let .replacementRequired(id) = state else { return }
@@ -92,9 +92,9 @@ struct ThemeStudioView: View {
             Image(systemName: "paintbrush.pointed.fill")
                 .foregroundStyle(accentColor)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Theme Studio")
+                Text(L10n.text("Theme Studio"))
                     .font(.headline)
-                Text("Local Habitat theme")
+                Text(L10n.text("Local Habitat theme"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -106,22 +106,22 @@ struct ThemeStudioView: View {
                 Image(systemName: "arrow.uturn.backward")
             }
             .disabled(!model.canUndo || model.isSelectingImage || model.state == .saving)
-            .help("Undo")
-            .accessibilityLabel("Undo")
+            .help(L10n.text("Undo"))
+            .accessibilityLabel(L10n.text("Undo"))
 
             Button(action: model.redo) {
                 Image(systemName: "arrow.uturn.forward")
             }
             .disabled(!model.canRedo || model.isSelectingImage || model.state == .saving)
-            .help("Redo")
-            .accessibilityLabel("Redo")
+            .help(L10n.text("Redo"))
+            .accessibilityLabel(L10n.text("Redo"))
 
             Button(action: close) {
                 Image(systemName: "xmark")
             }
             .disabled(model.state == .saving)
-            .help("Close")
-            .accessibilityLabel("Close Theme Studio")
+            .help(L10n.text("Close"))
+            .accessibilityLabel(L10n.text("Close Theme Studio"))
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, HabitatDesignMetrics.spaceL)
@@ -132,9 +132,9 @@ struct ThemeStudioView: View {
     private var canvasPane: some View {
         VStack(spacing: 0) {
             HStack(spacing: HabitatDesignMetrics.spaceM) {
-                Picker("Preview route", selection: $previewRoute) {
-                    Text("Home").tag(ThemeTreatmentPreviewRoute.home)
-                    Text("Task").tag(ThemeTreatmentPreviewRoute.task)
+                Picker(L10n.text("Preview route"), selection: $previewRoute) {
+                    Text(L10n.text("Home")).tag(ThemeTreatmentPreviewRoute.home)
+                    Text(L10n.text("Task")).tag(ThemeTreatmentPreviewRoute.task)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -143,10 +143,10 @@ struct ThemeStudioView: View {
                 Spacer()
 
                 Toggle(isOn: $showsSafeArea) {
-                    Label("Safe regions", systemImage: "viewfinder")
+                    Label(L10n.text("Safe regions"), systemImage: "viewfinder")
                 }
                 .toggleStyle(.button)
-                .help("Safe regions")
+                .help(L10n.text("Safe regions"))
             }
             .padding(.horizontal, HabitatDesignMetrics.spaceL)
             .frame(height: 44)
@@ -251,7 +251,7 @@ struct ThemeStudioView: View {
         .simultaneousGesture(focalDragGesture(in: artworkRect))
         .focusable()
         .onMoveCommand(perform: moveFocalPoint)
-        .accessibilityLabel("Artwork focal point")
+        .accessibilityLabel(L10n.text("Artwork focal point"))
         .accessibilityValue(focalPointAccessibilityValue)
         .accessibilityAdjustableAction { direction in
             switch direction {
@@ -263,7 +263,7 @@ struct ThemeStudioView: View {
                 break
             }
         }
-        .help("Artwork focal point")
+        .help(L10n.text("Artwork focal point"))
     }
 
     private func safeAreaOverlay(in rect: CGRect) -> some View {
@@ -354,7 +354,7 @@ struct ThemeStudioView: View {
 
     private var metadataControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
-            TextField("Theme name", text: Binding(
+            TextField(L10n.text("Theme name"), text: Binding(
                 get: { model.name },
                 set: { model.name = $0 }
             ))
@@ -365,7 +365,7 @@ struct ThemeStudioView: View {
                 validation(message)
             }
 
-            TextField("Author (optional)", text: Binding(
+            TextField(L10n.text("Author (optional)"), text: Binding(
                 get: { model.author },
                 set: { model.author = $0 }
             ))
@@ -376,7 +376,7 @@ struct ThemeStudioView: View {
                 validation(message)
             }
 
-            Picker("Category", selection: Binding(
+            Picker(L10n.text("Category"), selection: Binding(
                 get: { model.category },
                 set: { model.setCategory($0) }
             )) {
@@ -391,7 +391,7 @@ struct ThemeStudioView: View {
     private var artworkControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
             Button(action: chooseImage) {
-                Label("Choose Image", systemImage: "photo")
+                Label(L10n.text("Choose Image"), systemImage: "photo")
             }
             .focused($focusedField, equals: .image)
             .accessibilityIdentifier("theme-studio.choose-image")
@@ -446,7 +446,7 @@ struct ThemeStudioView: View {
     @ViewBuilder
     private var paletteControls: some View {
         if model.palette == nil {
-            Text("Choose an image to generate a starting palette.")
+            Text(L10n.text("Choose an image to generate a starting palette."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -465,7 +465,7 @@ struct ThemeStudioView: View {
 
     private var sceneControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
-            Picker("Style", selection: Binding(
+            Picker(L10n.text("Style"), selection: Binding(
                 get: { model.styleFamily },
                 set: { model.setStyleFamily($0) }
             )) {
@@ -475,25 +475,25 @@ struct ThemeStudioView: View {
             }
             .pickerStyle(.menu)
 
-            Picker("Safe side", selection: Binding(
+            Picker(L10n.text("Safe side"), selection: Binding(
                 get: { model.safeSide },
                 set: { model.setSafeSide($0) }
             )) {
-                Text("Leading").tag(HabitatThemeSafeSide.leading)
-                Text("Trailing").tag(HabitatThemeSafeSide.trailing)
-                Text("Center").tag(HabitatThemeSafeSide.center)
-                Text("None").tag(HabitatThemeSafeSide.none)
+                Text(L10n.text("Leading")).tag(HabitatThemeSafeSide.leading)
+                Text(L10n.text("Trailing")).tag(HabitatThemeSafeSide.trailing)
+                Text(L10n.text("Center")).tag(HabitatThemeSafeSide.center)
+                Text(L10n.text("None")).tag(HabitatThemeSafeSide.none)
             }
             .pickerStyle(.menu)
 
             if previewRoute == .home {
-                Picker("Home treatment", selection: Binding(
+                Picker(L10n.text("Home treatment"), selection: Binding(
                     get: { model.homeMode },
                     set: { model.setHomeMode($0) }
                 )) {
-                    Text("Immersive").tag(HabitatThemeHomeMode.immersive)
-                    Text("Framed").tag(HabitatThemeHomeMode.framed)
-                    Text("Quiet").tag(HabitatThemeHomeMode.quiet)
+                    Text(L10n.text("Immersive")).tag(HabitatThemeHomeMode.immersive)
+                    Text(L10n.text("Framed")).tag(HabitatThemeHomeMode.framed)
+                    Text(L10n.text("Quiet")).tag(HabitatThemeHomeMode.quiet)
                 }
                 .pickerStyle(.segmented)
                 valueSlider(
@@ -515,13 +515,13 @@ struct ThemeStudioView: View {
                     displayScale: 100
                 )
             } else {
-                Picker("Task treatment", selection: Binding(
+                Picker(L10n.text("Task treatment"), selection: Binding(
                     get: { model.taskMode },
                     set: { model.setTaskMode($0) }
                 )) {
-                    Text("Ambient").tag(HabitatThemeTaskMode.ambient)
-                    Text("Banner").tag(HabitatThemeTaskMode.banner)
-                    Text("Off").tag(HabitatThemeTaskMode.off)
+                    Text(L10n.text("Ambient")).tag(HabitatThemeTaskMode.ambient)
+                    Text(L10n.text("Banner")).tag(HabitatThemeTaskMode.banner)
+                    Text(L10n.text("Off")).tag(HabitatThemeTaskMode.off)
                 }
                 .pickerStyle(.segmented)
                 valueSlider(
@@ -548,22 +548,22 @@ struct ThemeStudioView: View {
 
     private var materialControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
-            Picker("Density", selection: Binding(
+            Picker(L10n.text("Density"), selection: Binding(
                 get: { model.density },
                 set: { model.setDensity($0) }
             )) {
-                Text("Compact").tag(HabitatThemeDensity.compact)
-                Text("Comfortable").tag(HabitatThemeDensity.comfortable)
+                Text(L10n.text("Compact")).tag(HabitatThemeDensity.compact)
+                Text(L10n.text("Comfortable")).tag(HabitatThemeDensity.comfortable)
             }
             .pickerStyle(.segmented)
 
-            Picker("Chrome material", selection: Binding(
+            Picker(L10n.text("Chrome material"), selection: Binding(
                 get: { model.chromeMaterial },
                 set: { model.setChromeMaterial($0) }
             )) {
-                Text("Solid").tag(HabitatThemeChromeMaterial.solid)
-                Text("Tinted").tag(HabitatThemeChromeMaterial.tinted)
-                Text("Glass").tag(HabitatThemeChromeMaterial.glass)
+                Text(L10n.text("Solid")).tag(HabitatThemeChromeMaterial.solid)
+                Text(L10n.text("Tinted")).tag(HabitatThemeChromeMaterial.tinted)
+                Text(L10n.text("Glass")).tag(HabitatThemeChromeMaterial.glass)
             }
             .pickerStyle(.segmented)
 
@@ -631,14 +631,14 @@ struct ThemeStudioView: View {
     @ViewBuilder
     private var pairingControls: some View {
         if model.availablePets.isEmpty {
-            Text("None")
+            Text(L10n.text("None"))
                 .foregroundStyle(.secondary)
         } else {
-            Picker("Pet", selection: Binding(
+            Picker(L10n.text("Pet"), selection: Binding(
                 get: { model.pairedPetID },
                 set: { model.setPairedPetID($0) }
             )) {
-                Text("None").tag(String?.none)
+                Text(L10n.text("None")).tag(String?.none)
                 ForEach(model.availablePets) { pet in
                     Text(pet.name).tag(String?.some(pet.id))
                 }
@@ -649,10 +649,10 @@ struct ThemeStudioView: View {
 
     private var packageControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceS) {
-            LabeledContent("Format", value: "Habitat Pack")
-            LabeledContent("Theme ID", value: ThemePackageBuilder.safeID(for: model.name))
+            LabeledContent(L10n.text("Format"), value: L10n.text("Habitat Pack"))
+            LabeledContent(L10n.text("Theme ID"), value: ThemePackageBuilder.safeID(for: model.name))
                 .lineLimit(1)
-            Label("Local image", systemImage: "lock.shield")
+            Label(L10n.text("Local image"), systemImage: "lock.shield")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -662,17 +662,17 @@ struct ThemeStudioView: View {
         HStack(spacing: HabitatDesignMetrics.spaceS) {
             stateLabel
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Cancel", action: close)
+            Button(L10n.text("Cancel"), action: close)
                 .keyboardShortcut(.cancelAction)
                 .disabled(model.state == .saving)
                 .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: beginExport) {
-                Label("Export", systemImage: "square.and.arrow.up")
+                Label(L10n.text("Export"), systemImage: "square.and.arrow.up")
             }
             .disabled(model.isSelectingImage || model.state == .saving)
             .frame(minHeight: HabitatDesignMetrics.standardControlHeight)
             Button(action: saveLocally) {
-                Label("Save Locally", systemImage: "square.and.arrow.down")
+                Label(L10n.text("Save Locally"), systemImage: "square.and.arrow.down")
             }
             .buttonStyle(.borderedProminent)
             .disabled(model.isSelectingImage || model.state == .saving)
@@ -689,28 +689,28 @@ struct ThemeStudioView: View {
         if model.isSelectingImage {
             HStack(spacing: HabitatDesignMetrics.spaceS) {
                 ProgressView().controlSize(.small)
-                Text("Analyzing image")
+                Text(L10n.text("Analyzing image"))
             }
         } else {
             switch model.state {
             case .editing:
                 if model.isDirty {
-                    Label("Unsaved changes", systemImage: "circle.fill")
+                    Label(L10n.text("Unsaved changes"), systemImage: "circle.fill")
                         .foregroundStyle(.secondary)
                 }
             case .saving:
                 HStack(spacing: HabitatDesignMetrics.spaceS) {
                     ProgressView().controlSize(.small)
-                    Text("Saving")
+                    Text(L10n.text("Saving"))
                 }
             case .replacementRequired:
-                Label("Replacement confirmation required", systemImage: "exclamationmark.triangle.fill")
+                Label(L10n.text("Replacement confirmation required"), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             case let .validationFailure(message):
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
             case .saved:
-                Label("Saved", systemImage: "checkmark.circle.fill")
+                Label(L10n.text("Saved"), systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
             }
         }
@@ -722,7 +722,7 @@ struct ThemeStudioView: View {
             VStack(spacing: HabitatDesignMetrics.spaceS) {
                 Image(systemName: "photo")
                     .font(.system(size: 28))
-                Text("Choose Image")
+                Text(L10n.text("Choose Image"))
                     .font(.callout)
             }
             .foregroundStyle(.secondary)

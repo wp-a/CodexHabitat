@@ -35,7 +35,7 @@ struct DiagnosticsView: View {
             Divider()
 
             SettingsGroup("Recovery") {
-                LabeledContent("Official appearance") {
+                LabeledContent(L10n.text("Official appearance")) {
                     Text(L10n.text(bridge.statusText))
                         .foregroundStyle(.secondary)
                 }
@@ -50,11 +50,11 @@ struct DiagnosticsView: View {
                 .disabled(!bridge.canRestore)
                 .accessibilityIdentifier("privacy.restore-official-appearance")
                 .alert(
-                    "Restore the official Codex appearance?",
+                    L10n.text("Restore the official Codex appearance?"),
                     isPresented: $confirmsRestore
                 ) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Restore") {
+                    Button(L10n.text("Cancel"), role: .cancel) {}
+                    Button(L10n.text("Restore")) {
                         Task {
                             await bridge.restore()
                             await diagnostics.recordThemeRestore(
@@ -63,7 +63,7 @@ struct DiagnosticsView: View {
                         }
                     }
                 } message: {
-                    Text("Codex will close and reopen normally. Unsaved composer text may be lost.")
+                    Text(L10n.text("Codex will close and reopen normally. Unsaved composer text may be lost."))
                 }
             }
 
@@ -78,7 +78,7 @@ struct DiagnosticsView: View {
                 }
                 HStack(spacing: 10) {
                     Button(action: chooseExportDestination) {
-                        Label("Export Redacted Diagnostics", systemImage: "square.and.arrow.up")
+                        Label(L10n.text("Export Redacted Diagnostics"), systemImage: "square.and.arrow.up")
                     }
                     .disabled(diagnostics.isBusy)
                     .accessibilityIdentifier("privacy.export-diagnostics")
@@ -86,20 +86,20 @@ struct DiagnosticsView: View {
                     Button(role: .destructive) {
                         confirmsClear = true
                     } label: {
-                        Label("Clear Local Data", systemImage: "trash")
+                        Label(L10n.text("Clear Local Data"), systemImage: "trash")
                     }
                     .disabled(diagnostics.isBusy)
                     .accessibilityIdentifier("privacy.clear-local-data")
                     .alert(
-                        "Clear diagnostics and preview cache?",
+                        L10n.text("Clear diagnostics and preview cache?"),
                         isPresented: $confirmsClear
                     ) {
-                        Button("Cancel", role: .cancel) {}
-                        Button("Clear", role: .destructive) {
+                        Button(L10n.text("Cancel"), role: .cancel) {}
+                        Button(L10n.text("Clear"), role: .destructive) {
                             Task { await diagnostics.clearLocalData() }
                         }
                     } message: {
-                        Text("Settings, installed resources, and Codex data will be kept.")
+                        Text(L10n.text("Settings, installed resources, and Codex data will be kept."))
                     }
                 }
             }
@@ -125,7 +125,7 @@ struct DiagnosticsView: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(diagnostics.isBusy)
-                .help("Run check")
+                .help(L10n.text("Run check"))
                 .accessibilityLabel(L10n.format("Check %@", L10n.text(title)))
             }
         }

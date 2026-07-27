@@ -25,9 +25,9 @@ final class HabitatSettingsWindowController: NSWindowController {
             let availableContentSize = NSScreen.main.map {
                 NSWindow.contentRect(forFrameRect: $0.visibleFrame, styleMask: styleMask).size
             } ?? CGSize(width: 1_040, height: 680)
-            let requestedWidth: CGFloat? = visualQAOptions == .disabled
-                ? nil
-                : CGFloat(visualQAOptions.settingsWidth)
+            let requestedWidth: CGFloat? = visualQAOptions.isEnabled
+                ? CGFloat(visualQAOptions.settingsWidth)
+                : nil
             let initialContentSize = Self.initialContentSize(
                 availableSize: availableContentSize,
                 requestedWidth: requestedWidth
