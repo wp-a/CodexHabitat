@@ -39,12 +39,14 @@ enum HabitatLaunchPresentation {
 struct HabitatBridgeLaunchPolicy: Equatable {
     let allowsStatusRefresh: Bool
     let allowsWatcherResume: Bool
+    let allowsPersistentBridgeStateMutation: Bool
 
     init(arguments: [String], environment: [String: String]) {
         let isRunningTests = environment["XCTestConfigurationFilePath"] != nil
         let isVisualQA = arguments.contains("--visual-qa")
         allowsStatusRefresh = !isRunningTests
         allowsWatcherResume = !isRunningTests && !isVisualQA
+        allowsPersistentBridgeStateMutation = !isRunningTests && !isVisualQA
     }
 }
 
@@ -150,8 +152,14 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
                 bridgeWork: {
                     guard bridgePolicy.allowsStatusRefresh else { return }
                     await bridge.refresh()
-                    guard !Task.isCancelled,
-                          bridgePolicy.allowsWatcherResume,
+                    guard !Task.isCancelled else { return }
+                    if bridge.state == .ready {
+                        if bridgePolicy.allowsPersistentBridgeStateMutation {
+                            model.setThemeBridgeActive(false)
+                        }
+                        return
+                    }
+                    guard bridgePolicy.allowsWatcherResume,
                           model.settings.themeBridgeEnabled,
                           let bridgeThemeID = model.settings.bridgeThemeID,
                           model.codexBridgeThemeIDs.contains(bridgeThemeID)

@@ -135,10 +135,13 @@ func testAndVisualQALaunchesNeverResumeALiveWatcher() {
 
     #expect(normal.allowsStatusRefresh)
     #expect(normal.allowsWatcherResume)
+    #expect(normal.allowsPersistentBridgeStateMutation)
     #expect(!test.allowsStatusRefresh)
     #expect(!test.allowsWatcherResume)
+    #expect(!test.allowsPersistentBridgeStateMutation)
     #expect(visualQA.allowsStatusRefresh)
     #expect(!visualQA.allowsWatcherResume)
+    #expect(!visualQA.allowsPersistentBridgeStateMutation)
 }
 
 @Test
@@ -340,6 +343,28 @@ func bridgeResumeUsesThePersistedCodexThemeInsteadOfTheHabitatSelection() throws
 
     #expect(resumeCall.contains("themeID: bridgeThemeID"))
     #expect(!resumeCall.contains("model.settings.selectedThemeID"))
+}
+
+@Test
+func normalLaunchClearsOnlyAnExplicitlyInactivePersistedBridgeSession() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(path: "Sources/CodexHabitatApp/CodexHabitatApp.swift"),
+        encoding: .utf8
+    )
+    let refreshStart = try #require(source.range(of: "await bridge.refresh()"))
+    let resumeStart = try #require(source.range(
+        of: "await bridge.resumeWatching(",
+        range: refreshStart.upperBound..<source.endIndex
+    ))
+    let reconciliation = source[refreshStart.lowerBound..<resumeStart.lowerBound]
+
+    #expect(reconciliation.contains("bridge.state == .ready"))
+    #expect(reconciliation.contains("bridgePolicy.allowsPersistentBridgeStateMutation"))
+    #expect(reconciliation.contains("model.setThemeBridgeActive(false)"))
 }
 
 @Test
