@@ -1315,7 +1315,7 @@ struct ThemeCompiler {
         let visibleSecond = composite(secondColor, over: visibleBackground)
         let selected = contrastRatio(visibleFirst, visibleBackground)
             >= contrastRatio(visibleSecond, visibleBackground) ? visibleFirst : visibleSecond
-        if contrastRatio(selected, visibleBackground) >= 4.5 {
+        if contrastRatio(selected, visibleBackground) >= 5.0 {
             return selected.opaqueHex
         }
 

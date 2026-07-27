@@ -414,13 +414,16 @@ func submitControlsUseAccessibleForegrounds() throws {
     let greenChat = try #require(BridgeTheme.builtIn(id: "green-chat-desk"))
     let workbench = try #require(BridgeTheme.builtIn(id: "workbench"))
     let quietGarden = try #require(BridgeTheme.builtIn(id: "quiet-garden"))
+    let crimsonMecha = try #require(BridgeTheme.builtIn(id: "crimson-mecha"))
 
     let greenCSS = try compiler.compile(theme: greenChat, profile: profile)
     let darkCSS = try compiler.compile(theme: workbench, profile: profile)
     let quietCSS = try compiler.compile(theme: quietGarden, profile: profile)
+    let crimsonCSS = try compiler.compile(theme: crimsonMecha, profile: profile)
     #expect(greenCSS.contains("--habitat-on-accent: #000000"))
     #expect(darkCSS.contains("--habitat-on-accent: #171A21"))
     #expect(quietCSS.contains("--habitat-on-accent: #000000"))
+    #expect(crimsonCSS.contains("--habitat-on-accent: #000000"))
     #expect(greenCSS.contains("color: var(--habitat-on-accent)"))
 }
 
