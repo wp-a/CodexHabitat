@@ -112,6 +112,29 @@ actor ThemePreviewStore {
     }
 }
 
+enum ThemeGalleryLayout {
+    static let minimumCardWidth = 168.0
+    static let spacing = 12.0
+    static let maximumColumns = 3
+
+    static func columnCount(availableWidth: Double) -> Int {
+        let fitting = Int((max(0, availableWidth) + spacing) / (minimumCardWidth + spacing))
+        return min(maximumColumns, max(2, fitting))
+    }
+
+    static func cardWidth(availableWidth: Double) -> Double {
+        let count = Double(columnCount(availableWidth: availableWidth))
+        return (availableWidth - spacing * (count - 1)) / count
+    }
+
+    static func columns(availableWidth: Double) -> [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: minimumCardWidth), spacing: spacing),
+            count: columnCount(availableWidth: availableWidth)
+        )
+    }
+}
+
 struct ThemesSettingsView: View {
     @ObservedObject var model: HabitatAppModel
     @ObservedObject private var bridge = ThemeBridgeIntegrationModel.shared
@@ -121,11 +144,6 @@ struct ThemesSettingsView: View {
     @State private var confirmsCodexApply = false
     @State private var showsCompactInspector = false
     private let opensThemeStudioForVisualQA: Bool
-    private let columns = [
-        GridItem(.flexible(minimum: 150, maximum: 224), spacing: 12),
-        GridItem(.flexible(minimum: 150, maximum: 224), spacing: 12),
-    ]
-
     init(
         model: HabitatAppModel,
         visualQAOptions: HabitatVisualQALaunchOptions = .disabled
@@ -349,42 +367,49 @@ struct ThemesSettingsView: View {
     }
 
     private var gallery: some View {
-        ScrollView {
-            if filteredThemes.isEmpty {
-                emptyGallery
-                    .padding(16)
-            } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                    ForEach(filteredThemes) { theme in
-                        ThemeChoiceCard(
-                            theme: theme,
-                            isSelected: libraryState.previewedThemeID == theme.id,
-                            isActive: bridge.state == .active && bridge.activeThemeID == theme.id,
-                            isFavorite: model.settings.favoriteThemeIDs.contains(theme.id),
-                            action: { selectTheme(theme.id) },
-                            favoriteAction: { model.toggleThemeFavorite(theme.id) }
-                        )
+        GeometryReader { proxy in
+            let contentWidth = max(0, proxy.size.width - 32)
+            ScrollView {
+                if filteredThemes.isEmpty {
+                    emptyGallery
+                        .padding(16)
+                } else {
+                    LazyVGrid(
+                        columns: ThemeGalleryLayout.columns(availableWidth: contentWidth),
+                        alignment: .leading,
+                        spacing: ThemeGalleryLayout.spacing
+                    ) {
+                        ForEach(filteredThemes) { theme in
+                            ThemeChoiceCard(
+                                theme: theme,
+                                isSelected: libraryState.previewedThemeID == theme.id,
+                                isActive: bridge.state == .active && bridge.activeThemeID == theme.id,
+                                isFavorite: model.settings.favoriteThemeIDs.contains(theme.id),
+                                action: { selectTheme(theme.id) },
+                                favoriteAction: { model.toggleThemeFavorite(theme.id) }
+                            )
+                        }
                     }
+                    .padding(16)
                 }
-                .padding(16)
-            }
 
-            if !model.installedPackages.isEmpty {
-                DisclosureGroup(L10n.text("Installed Packs")) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(model.installedPackages.enumerated()), id: \.element.id) { index, package in
-                            installedPackageRow(package)
-                            if index < model.installedPackages.count - 1 {
-                                Divider()
+                if !model.installedPackages.isEmpty {
+                    DisclosureGroup(L10n.text("Installed Packs")) {
+                        VStack(spacing: 0) {
+                            ForEach(Array(model.installedPackages.enumerated()), id: \.element.id) { index, package in
+                                installedPackageRow(package)
+                                if index < model.installedPackages.count - 1 {
+                                    Divider()
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
             }
+            .scrollIndicators(.automatic)
         }
-        .scrollIndicators(.automatic)
         .accessibilityIdentifier("themes.gallery")
     }
 
@@ -471,15 +496,34 @@ struct ThemesSettingsView: View {
                     .foregroundStyle(.green)
                     .accessibilityIdentifier("themes.inspector.active")
             }
+            if isSelectedThemeActiveInHabitat {
+                Label(L10n.text("Active in Habitat"), systemImage: "macwindow.badge.checkmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("themes.inspector.habitat-active")
+            }
 
             Spacer(minLength: 0)
-            Button(action: requestInspectorApply) {
-                Label(L10n.text(isSelectedThemeActive ? "Active in Codex" : "Apply to Codex"), systemImage: "paintbrush")
+            VStack(spacing: 8) {
+                Button(action: useSelectedThemeInHabitat) {
+                    Label(
+                        L10n.text(isSelectedThemeActiveInHabitat ? "Active in Habitat" : "Use in Habitat"),
+                        systemImage: "macwindow"
+                    )
                     .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(isSelectedThemeActiveInHabitat)
+                .accessibilityIdentifier("themes.use-in-habitat")
+
+                Button(action: requestInspectorApply) {
+                    Label(L10n.text(isSelectedThemeActive ? "Active in Codex" : "Apply to Codex"), systemImage: "paintbrush")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canApplySelectedTheme)
+                .accessibilityIdentifier("themes.apply-to-codex")
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(!canApplySelectedTheme)
-            .accessibilityIdentifier("themes.apply-to-codex")
         }
         .padding(16)
         .accessibilityIdentifier("themes.inspector")
@@ -514,6 +558,10 @@ struct ThemesSettingsView: View {
         bridge.state == .active && bridge.activeThemeID == selectedTheme.id
     }
 
+    private var isSelectedThemeActiveInHabitat: Bool {
+        model.settings.selectedThemeID == selectedTheme.id
+    }
+
     private var isSelectedThemeFavorite: Bool {
         model.settings.favoriteThemeIDs.contains(selectedTheme.id)
     }
@@ -537,6 +585,11 @@ struct ThemesSettingsView: View {
         guard model.availableThemes.contains(where: { $0.id == themeID }) else { return }
         libraryState.select(themeID)
         model.recordRecentlyPreviewedTheme(themeID)
+    }
+
+    private func useSelectedThemeInHabitat() {
+        guard !isSelectedThemeActiveInHabitat else { return }
+        model.selectTheme(selectedTheme.id)
     }
 
     private func requestInspectorApply() {
@@ -763,7 +816,7 @@ struct ThemeChoiceCard: View {
                     .padding(.horizontal, 10)
                     .frame(height: 46)
                 }
-                .frame(maxWidth: 224, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .background(Color.primary.opacity(isSelected ? 0.07 : 0.035))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay {
@@ -818,7 +871,7 @@ struct ThemeChoiceCard: View {
                     .allowsHitTesting(false)
             }
         }
-        .frame(maxWidth: 224, minHeight: 150, maxHeight: 172, alignment: .top)
+        .frame(maxWidth: .infinity, minHeight: 150, alignment: .top)
     }
 
     private var accessibilityValue: String {

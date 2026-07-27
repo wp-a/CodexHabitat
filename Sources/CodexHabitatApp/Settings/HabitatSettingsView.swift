@@ -74,6 +74,24 @@ struct HabitatSettingsView: View {
     }
 
     private func overviewRow(_ section: HabitatOverviewState.Section) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 14) {
+                overviewSummary(section)
+                Spacer(minLength: 12)
+                overviewActions(section)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                overviewSummary(section)
+                overviewActions(section)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityIdentifier("habitat.overview.\(section.kind.rawValue)")
+    }
+
+    private func overviewSummary(_ section: HabitatOverviewState.Section) -> some View {
         HStack(spacing: 14) {
             Image(systemName: section.systemImage)
                 .font(.system(size: 20, weight: .medium))
@@ -103,17 +121,15 @@ struct HabitatSettingsView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
             }
+        }
+    }
 
-            Spacer(minLength: 12)
-            HStack(spacing: 6) {
-                ForEach(Array(section.actions.enumerated()), id: \.offset) { _, action in
-                    overviewAction(action)
-                }
+    private func overviewActions(_ section: HabitatOverviewState.Section) -> some View {
+        HStack(spacing: 6) {
+            ForEach(Array(section.actions.enumerated()), id: \.offset) { _, action in
+                overviewAction(action)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-        .contentShape(Rectangle())
-        .accessibilityIdentifier("habitat.overview.\(section.kind.rawValue)")
     }
 
     @ViewBuilder
@@ -181,6 +197,8 @@ struct HabitatSettingsView: View {
                 step: 0.05
             )
             .accessibilityIdentifier("habitat.scale")
+            .accessibilityLabel(L10n.text("Scale"))
+            .accessibilityValue(scaleAccessibilityValue)
             Text(model.settings.scale, format: .percent.precision(.fractionLength(0)))
                 .font(.system(.body, design: .monospaced))
                 .frame(width: 42, alignment: .trailing)
@@ -192,6 +210,10 @@ struct HabitatSettingsView: View {
             .accessibilityLabel(L10n.text("Reset scale"))
             .accessibilityIdentifier("habitat.scale.reset")
         }
+    }
+
+    private var scaleAccessibilityValue: String {
+        model.settings.scale.formatted(.percent.precision(.fractionLength(0)))
     }
 
     private var interactionSettings: some View {

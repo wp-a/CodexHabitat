@@ -317,7 +317,9 @@
 "Supported" = "Supported";
 "Bridge status" = "Bridge status";
 "Active in Codex" = "Active in Codex";
+"Active in Habitat" = "Active in Habitat";
 "Apply to Codex" = "Apply to Codex";
+"Use in Habitat" = "Use in Habitat";
 "Retry preview" = "Retry preview";
 "Retry %@ preview" = "Retry %@ preview";
 "Retro Messenger" = "Retro Messenger";

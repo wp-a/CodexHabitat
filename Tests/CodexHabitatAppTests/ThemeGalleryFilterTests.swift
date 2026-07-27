@@ -90,3 +90,12 @@ func galleryComposesScopeCategoryAndSearchWithMetadataOrdering() {
     )
     #expect(recentGames.map(\.id) == ["turbo-striker", "arcade-signal"])
 }
+
+@Test
+func galleryLayoutFillsItsPaneWithTwoOrThreeBalancedColumns() {
+    #expect(ThemeGalleryLayout.columnCount(availableWidth: 520) == 2)
+    #expect(ThemeGalleryLayout.columnCount(availableWidth: 690) == 3)
+    #expect(ThemeGalleryLayout.columnCount(availableWidth: 1_200) == 3)
+    #expect(ThemeGalleryLayout.cardWidth(availableWidth: 520) == 254)
+    #expect(ThemeGalleryLayout.cardWidth(availableWidth: 690) == 222)
+}

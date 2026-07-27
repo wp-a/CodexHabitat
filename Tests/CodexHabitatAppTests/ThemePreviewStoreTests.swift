@@ -164,6 +164,7 @@ func galleryPlansUseOnlyStaticPackagedPreviewsWithoutBackdropMaterial() throws {
     #expect(!thumbnailSource.contains(".stroke("))
     #expect(cardSource.contains(".lineLimit(2)"))
     #expect(cardSource.contains(".frame(height: 46)"))
+    #expect(!cardSource.contains("maxHeight: 172"))
     #expect(cardSource.contains("isSelected ? \"Selected\" : \"Not selected\""))
     #expect(cardSource.contains("isActive ? \"Active\" : \"Inactive\""))
     #expect(cardSource.contains("isFavorite ? \"Favorite\" : \"Not favorite\""))

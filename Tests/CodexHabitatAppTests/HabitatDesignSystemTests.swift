@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CodexHabitatApp
 
@@ -72,22 +73,13 @@ struct HabitatDesignSystemTests {
     }
 
     @Test
-    func opaqueSurfacePlansRetainSemanticAndThemeColoring() {
-        let focused = HabitatSurfacePlan.resolve(
-            role: .focusedControl,
-            reduceTransparency: true
-        )
-        let content = HabitatSurfacePlan.resolve(
-            role: .content,
-            reduceTransparency: true
-        )
+    func nativeSurfacesDoNotInheritTheSelectedThemesDecorativeTint() {
+        let plans = HabitatMaterialRole.allCases.map {
+            HabitatSurfacePlan.resolve(role: $0, reduceTransparency: true)
+        }
 
-        #expect(focused.semanticColor == .control)
-        #expect(focused.themeTint == .selection)
-        #expect(focused.themeTintOpacity == 0.14)
-        #expect(content.semanticColor == .window)
-        #expect(content.themeTint == .secondary)
-        #expect(content.themeTintOpacity == 0.025)
+        #expect(plans.allSatisfy { $0.themeTint == .none })
+        #expect(plans.allSatisfy { $0.themeTintOpacity == 0 })
     }
 
     @Test
@@ -107,7 +99,7 @@ struct HabitatDesignSystemTests {
         )
 
         #expect(first == second)
-        #expect(first.selection.contrastRatio(against: lightSurface) >= 3)
+        #expect(first.selection.contrastRatio(against: lightSurface) >= 4.5)
         #expect(first.focus.contrastRatio(against: lightSurface) >= 4.5)
         #expect(first.allComponentsAreBounded)
     }
@@ -147,7 +139,7 @@ struct HabitatDesignSystemTests {
         #expect(resolved.accent.alpha == 1)
         #expect(resolved.secondary.alpha == 1)
         #expect(resolved.accent != HabitatSRGBColor(hex: "#0A84FF"))
-        #expect(resolved.selection.contrastRatio(against: lightSurface) >= 3)
+        #expect(resolved.selection.contrastRatio(against: lightSurface) >= 4.5)
         #expect(resolved.focus.contrastRatio(against: lightSurface) >= 4.5)
     }
 
@@ -207,5 +199,21 @@ struct HabitatDesignSystemTests {
 
         #expect(reduced.scale == 1)
         #expect(reduced.overlayOpacity > 0)
+    }
+
+    @Test
+    func designEnvironmentLeavesNativeControlTintToMacOS() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryRoot.appending(
+                path: "Sources/CodexHabitatApp/Design/HabitatDesignSystem.swift"
+            ),
+            encoding: .utf8
+        )
+
+        #expect(!source.contains(".tint(accent.selection.color)"))
     }
 }

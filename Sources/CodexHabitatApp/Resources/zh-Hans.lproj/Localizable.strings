@@ -317,7 +317,9 @@
 "Supported" = "支持";
 "Bridge status" = "桥接状态";
 "Active in Codex" = "已在 Codex 中启用";
+"Active in Habitat" = "已用于 Habitat";
 "Apply to Codex" = "应用到 Codex";
+"Use in Habitat" = "用于 Habitat";
 "Retry preview" = "重试预览";
 "Retry %@ preview" = "重试%@预览";
 "Retro Messenger" = "复古即时通讯";

@@ -262,6 +262,47 @@ func themeGalleryCanSafelySubmitTheSelectedThemeToCodex() throws {
     #expect(!selectionImplementation.contains("bridge."))
     #expect(selectionImplementation.contains("recordRecentlyPreviewedTheme"))
     #expect(source.contains(".disabled(!bridge.canApply)"))
+
+    let habitatSelectionStart = try #require(source.range(
+        of: "private func useSelectedThemeInHabitat"
+    ))
+    let habitatSelectionEnd = try #require(source.range(
+        of: "private func requestInspectorApply",
+        range: habitatSelectionStart.upperBound..<source.endIndex
+    ))
+    let habitatSelection = source[
+        habitatSelectionStart.lowerBound..<habitatSelectionEnd.lowerBound
+    ]
+    #expect(habitatSelection.contains("model.selectTheme(selectedTheme.id)"))
+    #expect(!habitatSelection.contains("bridge."))
+    #expect(source.contains("themes.use-in-habitat"))
+    #expect(source.contains("themes.apply-to-codex"))
+}
+
+@Test
+func compactOverviewAndScaleControlsKeepNativeInteractionContracts() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let habitatSource = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/HabitatSettingsView.swift"
+        ),
+        encoding: .utf8
+    )
+    let petsSource = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/PetsSettingsView.swift"
+        ),
+        encoding: .utf8
+    )
+
+    #expect(habitatSource.contains("ViewThatFits(in: .horizontal)"))
+    #expect(habitatSource.contains(".accessibilityLabel(L10n.text(\"Scale\"))"))
+    #expect(habitatSource.contains(".accessibilityValue(scaleAccessibilityValue)"))
+    #expect(petsSource.contains(".accessibilityLabel(L10n.text(\"Scale\"))"))
+    #expect(petsSource.contains(".accessibilityValue(scaleAccessibilityValue)"))
 }
 
 @Test @MainActor

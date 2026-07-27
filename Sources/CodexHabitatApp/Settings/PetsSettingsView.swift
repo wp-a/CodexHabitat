@@ -538,6 +538,8 @@ private struct PetBehaviorInspector: View {
                         step: 0.05
                     )
                     .accessibilityIdentifier("pets.behavior.scale")
+                    .accessibilityLabel(L10n.text("Scale"))
+                    .accessibilityValue(scaleAccessibilityValue)
                 }
 
                 Picker(
@@ -586,6 +588,10 @@ private struct PetBehaviorInspector: View {
             .padding(HabitatDesignMetrics.spaceL)
         }
         .background(.background.opacity(0.35))
+    }
+
+    private var scaleAccessibilityValue: String {
+        model.settings.scale.formatted(.percent.precision(.fractionLength(0)))
     }
 
     private func inspectorValue(_ label: String, value: String) -> some View {

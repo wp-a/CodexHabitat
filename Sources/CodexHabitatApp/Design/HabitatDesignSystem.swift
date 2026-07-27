@@ -141,22 +141,7 @@ struct HabitatSurfacePlan: Equatable, Sendable {
         case .inspector, .focusedControl:
             .control
         }
-        let themeTint: HabitatSurfaceThemeTint = switch role {
-        case .content:
-            .secondary
-        case .focusedControl:
-            .selection
-        default:
-            .none
-        }
-        let themeTintOpacity = switch themeTint {
-        case .none:
-            0.0
-        case .selection:
-            0.14
-        case .secondary:
-            0.025
-        }
+        let themeTint = HabitatSurfaceThemeTint.none
 
         return Self(
             role: role,
@@ -164,7 +149,7 @@ struct HabitatSurfacePlan: Equatable, Sendable {
             opaqueBackingAlpha: usesMaterial ? 0 : 1,
             semanticColor: semanticColor,
             themeTint: themeTint,
-            themeTintOpacity: themeTintOpacity
+            themeTintOpacity: 0
         )
     }
 
@@ -332,7 +317,7 @@ struct HabitatThemeAccent: Equatable, Sendable {
         let secondary = (HabitatSRGBColor(hex: secondaryHex)
             ?? HabitatSRGBColor(red: 100 / 255, green: 210 / 255, blue: 1))
             .composited(over: background)
-        let selectionContrast = increaseContrast ? 4.5 : 3.0
+        let selectionContrast = 4.5
         let focusContrast = increaseContrast ? 7.0 : 4.5
 
         return Self(
@@ -495,7 +480,6 @@ private struct HabitatDesignEnvironmentModifier: ViewModifier {
         )
 
         content
-            .tint(accent.selection.color)
             .environment(\.habitatAccessibility, accessibility)
             .environment(\.habitatThemeAccent, accent)
     }
