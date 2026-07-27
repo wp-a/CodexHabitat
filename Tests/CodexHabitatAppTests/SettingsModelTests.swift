@@ -54,6 +54,29 @@ func settingsChangesUseKnownThemesWidgetsAndSafeScaleBounds() async throws {
 }
 
 @Test @MainActor
+func habitatSelectionDoesNotChangeThePersistedCodexBridgeTheme() async {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatIndependentThemeState-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: root.appending(path: "Settings")),
+        petRoot: root.appending(path: "Pets")
+    )
+    await model.load()
+
+    model.setThemeBridgeActive(true, themeID: "workbench")
+    model.selectTheme("quiet-garden")
+
+    #expect(model.settings.selectedThemeID == "quiet-garden")
+    #expect(model.settings.themeBridgeEnabled)
+    #expect(model.settings.bridgeThemeID == "workbench")
+
+    model.setThemeBridgeActive(false)
+    #expect(!model.settings.themeBridgeEnabled)
+    #expect(model.settings.bridgeThemeID == nil)
+}
+
+@Test @MainActor
 func overlayPlacementAndLockAreNormalizedAndPersisted() async throws {
     let root = FileManager.default.temporaryDirectory
         .appending(path: "CodexHabitatPlacementTests-\(UUID().uuidString)", directoryHint: .isDirectory)

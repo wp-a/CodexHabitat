@@ -293,7 +293,7 @@ func themeGalleryCanSafelySubmitTheSelectedThemeToCodex() throws {
 
     #expect(source.contains("requestInspectorApply"))
     #expect(source.contains("await bridge.enable("))
-    #expect(source.contains("model.setThemeBridgeEnabled(bridge.state == .active)"))
+    #expect(source.contains("model.setThemeBridgeActive(true, themeID: themeID)"))
     let selectionStart = try #require(source.range(of: "private func selectTheme("))
     let selectionEnd = try #require(source.range(
         of: "private func requestInspectorApply",
@@ -319,6 +319,27 @@ func themeGalleryCanSafelySubmitTheSelectedThemeToCodex() throws {
     #expect(!habitatSelection.contains("bridge."))
     #expect(source.contains("themes.use-in-habitat"))
     #expect(source.contains("themes.apply-to-codex"))
+}
+
+@Test
+func bridgeResumeUsesThePersistedCodexThemeInsteadOfTheHabitatSelection() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(path: "Sources/CodexHabitatApp/CodexHabitatApp.swift"),
+        encoding: .utf8
+    )
+    let resumeStart = try #require(source.range(of: "await bridge.resumeWatching("))
+    let resumeEnd = try #require(source.range(
+        of: ")",
+        range: resumeStart.upperBound..<source.endIndex
+    ))
+    let resumeCall = source[resumeStart.lowerBound...resumeEnd.lowerBound]
+
+    #expect(resumeCall.contains("themeID: bridgeThemeID"))
+    #expect(!resumeCall.contains("model.settings.selectedThemeID"))
 }
 
 @Test

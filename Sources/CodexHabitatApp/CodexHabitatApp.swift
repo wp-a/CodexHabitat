@@ -152,16 +152,20 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
                     await bridge.refresh()
                     guard !Task.isCancelled,
                           bridgePolicy.allowsWatcherResume,
-                          model.settings.themeBridgeEnabled
+                          model.settings.themeBridgeEnabled,
+                          let bridgeThemeID = model.settings.bridgeThemeID,
+                          model.codexBridgeThemeIDs.contains(bridgeThemeID)
                     else {
                         return
                     }
                     await bridge.resumeWatching(
-                        themeID: model.settings.selectedThemeID,
+                        themeID: bridgeThemeID,
                         approvedThemeIDs: model.codexBridgeThemeIDs
                     )
                     guard !Task.isCancelled else { return }
-                    model.setThemeBridgeEnabled(bridge.state == .active)
+                    if bridge.state == .active {
+                        model.setThemeBridgeActive(true, themeID: bridge.activeThemeID)
+                    }
                 }
             )
         }
@@ -180,8 +184,9 @@ final class HabitatApplicationDelegate: NSObject, NSApplicationDelegate {
             if bridgeTerminationPolicy.allowsAppearanceRestore {
                 await ThemeBridgeIntegrationModel.shared.restoreForApplicationTermination()
             }
-            if bridgeTerminationPolicy.allowsPersistentBridgeStateMutation {
-                HabitatAppEnvironment.model.setThemeBridgeEnabled(false)
+            if bridgeTerminationPolicy.allowsPersistentBridgeStateMutation,
+               ThemeBridgeIntegrationModel.shared.state == .ready {
+                HabitatAppEnvironment.model.setThemeBridgeActive(false)
             }
             await HabitatAppEnvironment.model.flushSettings()
             sender.reply(toApplicationShouldTerminate: true)

@@ -665,8 +665,22 @@ final class HabitatAppModel: ObservableObject {
         updateSettings { $0.reduceMotion = preference }
     }
 
-    func setThemeBridgeEnabled(_ enabled: Bool) {
-        updateSettings { $0.themeBridgeEnabled = enabled }
+    func setThemeBridgeActive(_ active: Bool, themeID: String? = nil) {
+        let approvedThemeIDs = codexBridgeThemeIDs
+        updateSettings { settings in
+            guard active else {
+                settings.themeBridgeEnabled = false
+                settings.bridgeThemeID = nil
+                return
+            }
+            guard let resolvedThemeID = themeID ?? settings.bridgeThemeID,
+                  approvedThemeIDs.contains(resolvedThemeID)
+            else {
+                return
+            }
+            settings.themeBridgeEnabled = true
+            settings.bridgeThemeID = resolvedThemeID
+        }
     }
 
     func flushSettings() async {

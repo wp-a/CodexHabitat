@@ -32,8 +32,9 @@ public enum HabitatSettingsError: Error, Equatable, Sendable {
 }
 
 public struct HabitatSettings: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 6
+    public static let currentSchemaVersion = 7
     private static let themeBridgeSchemaVersion = 1
+    private static let independentBridgeThemeSchemaVersion = 7
     private static let usefulMetricsSchemaVersion = 4
     private static let legacyDefaultWidgetOrder: [WidgetIdentifier] = [
         .status, .usage, .clock, .pomodoro,
@@ -51,6 +52,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     public var reduceMotion: ReduceMotionPreference
     public var themeBridgeEnabled: Bool
+    public var bridgeThemeID: String?
     public var onboardingCompleted: Bool
     public var favoriteThemeIDs: [String]
     public var recentThemeIDs: [String]
@@ -68,6 +70,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         launchAtLogin: false,
         reduceMotion: .system,
         themeBridgeEnabled: false,
+        bridgeThemeID: nil,
         onboardingCompleted: false,
         favoriteThemeIDs: [],
         recentThemeIDs: []
@@ -86,6 +89,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         launchAtLogin: Bool,
         reduceMotion: ReduceMotionPreference,
         themeBridgeEnabled: Bool,
+        bridgeThemeID: String? = nil,
         onboardingCompleted: Bool = false,
         favoriteThemeIDs: [String] = [],
         recentThemeIDs: [String] = []
@@ -102,6 +106,7 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         self.launchAtLogin = launchAtLogin
         self.reduceMotion = reduceMotion
         self.themeBridgeEnabled = themeBridgeEnabled
+        self.bridgeThemeID = bridgeThemeID
         self.onboardingCompleted = onboardingCompleted
         self.favoriteThemeIDs = favoriteThemeIDs
         self.recentThemeIDs = recentThemeIDs
@@ -151,6 +156,13 @@ public struct HabitatSettings: Codable, Equatable, Sendable {
         themeBridgeEnabled = storedSchemaVersion >= HabitatSettings.themeBridgeSchemaVersion
             ? try container.decodeIfPresent(Bool.self, forKey: .themeBridgeEnabled) ?? false
             : false
+        if !themeBridgeEnabled {
+            bridgeThemeID = nil
+        } else if storedSchemaVersion >= HabitatSettings.independentBridgeThemeSchemaVersion {
+            bridgeThemeID = try container.decodeIfPresent(String.self, forKey: .bridgeThemeID)
+        } else {
+            bridgeThemeID = selectedThemeID
+        }
         onboardingCompleted = try container.decodeIfPresent(
             Bool.self,
             forKey: .onboardingCompleted

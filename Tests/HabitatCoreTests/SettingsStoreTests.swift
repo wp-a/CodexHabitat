@@ -6,16 +6,65 @@ import Testing
 func defaultSettingsKeepRiskyFeaturesDisabled() {
     let settings = HabitatSettings.default
 
-    #expect(settings.schemaVersion == 6)
+    #expect(settings.schemaVersion == 7)
     #expect(settings.selectedThemeID == "workbench")
     #expect(settings.themePetPairings.isEmpty)
     #expect(settings.scale == 1)
     #expect(settings.themeBridgeEnabled == false)
+    #expect(settings.bridgeThemeID == nil)
     #expect(settings.launchAtLogin == false)
     #expect(settings.positionLocked == false)
     #expect(settings.onboardingCompleted == false)
     #expect(settings.favoriteThemeIDs.isEmpty)
     #expect(settings.recentThemeIDs.isEmpty)
+}
+
+@Test
+func schemaSixMigratesAnActiveBridgeThemeIndependently() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 6,
+              "selectedThemeID": "night-shift",
+              "themeBridgeEnabled": true
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        let settings = try await store.load()
+
+        #expect(settings.schemaVersion == 7)
+        #expect(settings.themeBridgeEnabled)
+        #expect(settings.bridgeThemeID == "night-shift")
+    }
+}
+
+@Test
+func schemaSevenPreservesDifferentHabitatAndBridgeThemes() async throws {
+    try await withTemporarySettingsRoot { root in
+        let store = SettingsStore(root: root)
+        let data = Data(
+            """
+            {
+              "schemaVersion": 7,
+              "selectedThemeID": "quiet-garden",
+              "themeBridgeEnabled": true,
+              "bridgeThemeID": "night-shift"
+            }
+            """.utf8
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try data.write(to: root.appending(path: "Settings.json"))
+
+        let settings = try await store.load()
+
+        #expect(settings.selectedThemeID == "quiet-garden")
+        #expect(settings.bridgeThemeID == "night-shift")
+    }
 }
 
 @Test
@@ -35,7 +84,7 @@ func schemaFiveMigratesWithEmptyThemeLibraryMetadata() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 6)
+        #expect(settings.schemaVersion == 7)
         #expect(settings.favoriteThemeIDs.isEmpty)
         #expect(settings.recentThemeIDs.isEmpty)
     }
@@ -58,7 +107,7 @@ func schemaThreeOldDefaultsMigrateToUsefulCodexMetrics() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 6)
+        #expect(settings.schemaVersion == 7)
         #expect(settings.widgetOrder == [.status, .tokens, .context, .speed, .usage])
     }
 }
@@ -124,7 +173,7 @@ func schemaFourMigratesWithNoThemePetPairings() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 6)
+        #expect(settings.schemaVersion == 7)
         #expect(settings.themePetPairings.isEmpty)
     }
 }
@@ -194,7 +243,7 @@ func schemaZeroMigratesWithThemeBridgeDisabled() async throws {
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 6)
+        #expect(settings.schemaVersion == 7)
         #expect(settings.selectedPetID == "test-pet")
         #expect(settings.selectedThemeID == "night-shift")
         #expect(settings.themeBridgeEnabled == false)
@@ -219,7 +268,7 @@ func schemaOnePreservesThemeBridgeAndDefaultsOnboardingToIncomplete() async thro
 
         let settings = try await store.load()
 
-        #expect(settings.schemaVersion == 6)
+        #expect(settings.schemaVersion == 7)
         #expect(settings.themeBridgeEnabled)
         #expect(settings.onboardingCompleted == false)
         #expect(settings.positionLocked == false)

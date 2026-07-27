@@ -202,7 +202,6 @@ struct ThemesSettingsView: View {
         }
         .task {
             await bridge.refresh()
-            model.setThemeBridgeEnabled(bridge.state == .active)
         }
         .task {
             guard opensThemeStudioForVisualQA, themeStudioModel == nil else { return }
@@ -612,8 +611,8 @@ struct ThemesSettingsView: View {
             )
             if bridge.activeThemeID == themeID {
                 model.selectTheme(themeID)
+                model.setThemeBridgeActive(true, themeID: themeID)
             }
-            model.setThemeBridgeEnabled(bridge.state == .active)
             libraryState.clearPendingApply()
         }
     }

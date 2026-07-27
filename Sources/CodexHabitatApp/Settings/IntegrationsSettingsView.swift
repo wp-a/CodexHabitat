@@ -76,7 +76,9 @@ struct IntegrationsSettingsView: View {
                     Button {
                         Task {
                             await bridge.restore()
-                            model.setThemeBridgeEnabled(bridge.state == .active)
+                            if bridge.state == .ready {
+                                model.setThemeBridgeActive(false)
+                            }
                         }
                     } label: {
                         Label(L10n.text("Restore Official Appearance"), systemImage: "arrow.counterclockwise")
@@ -98,7 +100,6 @@ struct IntegrationsSettingsView: View {
         .task {
             codexVariant = CodexThemeShareString.suggestedVariant(for: model.selectedTheme)
             await bridge.refresh()
-            model.setThemeBridgeEnabled(bridge.state == .active)
         }
         .onChange(of: model.settings.selectedThemeID) { _, _ in
             codexVariant = CodexThemeShareString.suggestedVariant(for: model.selectedTheme)
@@ -117,7 +118,12 @@ struct IntegrationsSettingsView: View {
                         themeID: model.settings.selectedThemeID,
                         approvedThemeIDs: model.codexBridgeThemeIDs
                     )
-                    model.setThemeBridgeEnabled(bridge.state == .active)
+                    if bridge.activeThemeID == model.settings.selectedThemeID {
+                        model.setThemeBridgeActive(
+                            true,
+                            themeID: model.settings.selectedThemeID
+                        )
+                    }
                 }
             }
         } message: {
