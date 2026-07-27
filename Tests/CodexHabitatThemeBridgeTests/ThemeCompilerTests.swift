@@ -430,11 +430,18 @@ func submitControlsUseAccessibleForegrounds() throws {
 @Test
 func homeActionControlsUseAnOpaqueMaximumContrastForeground() throws {
     let profile = try currentCompleteSurfaceProfile()
-    let theme = try #require(BridgeTheme.builtIn(id: "win95-workbench"))
-    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let compiler = try ThemeCompiler.bundled()
+    let win95 = try #require(BridgeTheme.builtIn(id: "win95-workbench"))
+    let blockFrontier = try #require(BridgeTheme.builtIn(id: "block-frontier"))
+    let win95CSS = try compiler.compile(theme: win95, profile: profile)
+    let blockCSS = try compiler.compile(theme: blockFrontier, profile: profile)
 
-    #expect(css.contains("--habitat-home-action-text: #000000"))
-    #expect(css.contains("color: var(--habitat-home-action-text)"))
+    #expect(win95CSS.contains("--habitat-home-action-background: #E7E7E7"))
+    #expect(win95CSS.contains("--habitat-home-action-text: #000000"))
+    #expect(blockCSS.contains("--habitat-home-action-background: #36523B"))
+    #expect(blockCSS.contains("--habitat-home-action-text: #FFFFFF"))
+    #expect(win95CSS.contains("color: var(--habitat-home-action-text)"))
+    #expect(win95CSS.contains("background-color: var(--habitat-home-action-background)"))
 }
 
 @Test

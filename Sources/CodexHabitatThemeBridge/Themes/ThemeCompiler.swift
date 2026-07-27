@@ -316,8 +316,9 @@ struct ThemeCompiler {
             "panel-alt": theme.tokens.panelAlt,
             "text": theme.tokens.text,
             "muted-text": theme.tokens.mutedText,
+            "home-action-background": theme.tokens.panel,
             "home-action-text": Self.higherContrastForeground(
-                against: theme.tokens.panelAlt,
+                against: theme.tokens.panel,
                 first: "#000000",
                 second: "#FFFFFF"
             ),
@@ -885,7 +886,7 @@ struct ThemeCompiler {
             /* habitat-surface: home-actions */
             \(root) \(action) {
               color: var(--habitat-home-action-text);
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 82%, transparent);
+              background-color: var(--habitat-home-action-background);
               \(styleHomeAction(for: recipe))
             }
             """
@@ -902,7 +903,7 @@ struct ThemeCompiler {
         let homeHoverRule = homeActionSelector.map { action in
             """
             \(root) \(action):hover {
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) \(recipe.hoverEmphasisPercent)%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-home-action-background) 94%, var(--habitat-accent));
               border-color: color-mix(in srgb, var(--habitat-accent) 62%, var(--habitat-highlight));
             }
             """
@@ -910,7 +911,7 @@ struct ThemeCompiler {
         let homeActiveRule = homeActionSelector.map { action in
             """
             \(root) \(action):active {
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 94%, transparent);
+              background-color: color-mix(in srgb, var(--habitat-home-action-background) 90%, var(--habitat-accent));
               border-color: color-mix(in srgb, var(--habitat-accent) 68%, var(--habitat-highlight));
               box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 54%, transparent);
             }

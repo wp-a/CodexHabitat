@@ -5,6 +5,7 @@ html[data-codex-habitat-theme="1"] {
   --habitat-text: {{text}};
   --habitat-muted-text: {{muted-text}};
   --habitat-readable-muted: color-mix(in srgb, var(--habitat-muted-text) 30%, var(--habitat-text));
+  --habitat-home-action-background: {{home-action-background}};
   --habitat-home-action-text: {{home-action-text}};
   --habitat-on-accent: {{on-accent}};
   --habitat-accent: {{accent}};
