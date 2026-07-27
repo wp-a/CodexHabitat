@@ -98,4 +98,6 @@ func galleryLayoutFillsItsPaneWithTwoOrThreeBalancedColumns() {
     #expect(ThemeGalleryLayout.columnCount(availableWidth: 1_200) == 3)
     #expect(ThemeGalleryLayout.cardWidth(availableWidth: 520) == 254)
     #expect(ThemeGalleryLayout.cardWidth(availableWidth: 690) == 222)
+    #expect(!ThemeGalleryLayout.showsInlineInspector(availableWidth: 719))
+    #expect(ThemeGalleryLayout.showsInlineInspector(availableWidth: 720))
 }

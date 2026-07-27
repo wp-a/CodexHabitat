@@ -121,6 +121,7 @@ enum ThemeGalleryLayout {
     static let minimumCardWidth = 168.0
     static let spacing = 12.0
     static let maximumColumns = 3
+    static let inspectorBreakpoint = 720.0
 
     static func columnCount(availableWidth: Double) -> Int {
         let fitting = Int((max(0, availableWidth) + spacing) / (minimumCardWidth + spacing))
@@ -137,6 +138,10 @@ enum ThemeGalleryLayout {
             repeating: GridItem(.flexible(minimum: minimumCardWidth), spacing: spacing),
             count: columnCount(availableWidth: availableWidth)
         )
+    }
+
+    static func showsInlineInspector(availableWidth: Double) -> Bool {
+        availableWidth >= inspectorBreakpoint
     }
 }
 
@@ -161,13 +166,18 @@ struct ThemesSettingsView: View {
     }
 
     var body: some View {
-        SettingsPage(
-            "Themes",
-            subtitle: "Browse local themes and explicitly apply a compatible choice",
-            scrollBehavior: .pageOwned
-        ) {
-            VStack(spacing: 0) {
-                toolbar
+        GeometryReader { pageProxy in
+            SettingsPage(
+                "Themes",
+                subtitle: "Browse local themes and explicitly apply a compatible choice",
+                scrollBehavior: .pageOwned
+            ) {
+                VStack(spacing: 0) {
+                    toolbar(
+                        showsInspectorAction: !ThemeGalleryLayout.showsInlineInspector(
+                            availableWidth: pageProxy.size.width
+                        )
+                    )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background { HabitatSurface(role: .toolbar) }
@@ -186,7 +196,9 @@ struct ThemesSettingsView: View {
                 }
 
                 GeometryReader { proxy in
-                    if proxy.size.width >= 720 {
+                    if ThemeGalleryLayout.showsInlineInspector(
+                        availableWidth: proxy.size.width
+                    ) {
                         HStack(spacing: 0) {
                             gallery
                             Divider()
@@ -257,9 +269,10 @@ struct ThemesSettingsView: View {
         } message: {
             Text(L10n.text("Pets and themes supplied by this pack will be removed from Habitat. Codex files are not changed."))
         }
+        }
     }
 
-    private var toolbar: some View {
+    private func toolbar(showsInspectorAction: Bool) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {
                 searchField.frame(minWidth: 170, idealWidth: 220, maxWidth: 280)
@@ -267,6 +280,9 @@ struct ThemesSettingsView: View {
                 categoryMenu
                 Spacer(minLength: 0)
                 toolbarActions
+                if showsInspectorAction {
+                    compactInspectorButton(showsTitle: false)
+                }
             }
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
@@ -277,14 +293,27 @@ struct ThemesSettingsView: View {
                 HStack(spacing: 8) {
                     scopePicker
                     Spacer(minLength: 0)
-                    Button(action: { showsCompactInspector = true }) {
-                        Label(L10n.text("Theme details"), systemImage: "sidebar.right")
+                    if showsInspectorAction {
+                        compactInspectorButton(showsTitle: true)
                     }
-                    .controlSize(.small)
-                    .accessibilityIdentifier("themes.compact-inspector")
                 }
             }
         }
+    }
+
+    private func compactInspectorButton(showsTitle: Bool) -> some View {
+        Button(action: { showsCompactInspector = true }) {
+            if showsTitle {
+                Label(L10n.text("Theme details"), systemImage: "sidebar.right")
+            } else {
+                Image(systemName: "sidebar.right")
+                    .frame(width: 24, height: 24)
+            }
+        }
+        .controlSize(.small)
+        .help(L10n.text("Theme details"))
+        .accessibilityLabel(L10n.text("Theme details"))
+        .accessibilityIdentifier("themes.compact-inspector")
     }
 
     private var searchField: some View {
