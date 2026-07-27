@@ -438,6 +438,13 @@ struct ThemeCompiler {
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) p {
               color: var(--habitat-readable-muted);
+              width: fit-content;
+              max-width: calc(100% - 36px);
+              margin-inline: auto;
+              padding: 3px 18px;
+              background-image: linear-gradient(to right, transparent 0%, color-mix(in srgb, var(--habitat-surface) 88%, transparent) 8% 92%, transparent 100%);
+              background-repeat: no-repeat;
+              background-size: 100% 100%;
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) :where(h1, h2, h3, p) {
               text-shadow: 0 1px 3px color-mix(in srgb, var(--habitat-surface) 86%, transparent);

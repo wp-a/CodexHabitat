@@ -796,6 +796,14 @@ func compiledSurfacesOverrideHostTextClassesWithSemanticForegrounds() throws {
     #expect(css.contains("color: var(--habitat-readable-muted)"))
     #expect(!css.contains("\(profile.selectors.sidebar) > :last-child"))
 
+    let homeSubtitle = try cssRuleBody(
+        selector: "\(root)[data-codex-habitat-route=\"home\"] \(homeContent) p",
+        in: css
+    )
+    #expect(homeSubtitle.contains("background-image: linear-gradient"))
+    #expect(homeSubtitle.contains("var(--habitat-surface) 88%"))
+    #expect(homeSubtitle.contains("width: fit-content"))
+
     let sidebarAction = try cssRuleBody(
         selector: "\(root) \(profile.selectors.sidebar) :where(a, button, [role=\"button\"])",
         in: css
