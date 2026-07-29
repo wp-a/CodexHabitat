@@ -409,6 +409,10 @@ func installedThemePreservesHighPrecisionFocusThroughUnrelatedSave() async throw
     #expect(saved.artFocus == request.artFocus)
     #expect(saved.homeArtFocus == request.homeArtFocus)
     #expect(saved.taskArtFocus == request.taskArtFocus)
+    #expect(saved.artSaturation == request.artSaturation)
+    #expect(saved.artContrast == request.artContrast)
+    #expect(saved.artExposure == request.artExposure)
+    #expect(saved.localizedScrimStrength == request.localizedScrimStrength)
 }
 
 @Test @MainActor
@@ -604,6 +608,10 @@ func installedCustomThemeReopensAsCleanStronglyTypedStudioDraft() async throws {
     #expect(editor.taskContentOpacity == 0.73)
     #expect(editor.homeContentWidth == 0.58)
     #expect(editor.vignetteStrength == 0.42)
+    #expect(editor.artSaturation == 0.92)
+    #expect(editor.artContrast == 0.96)
+    #expect(editor.artExposure == 0.98)
+    #expect(editor.localizedScrimStrength == 0.34)
     #expect(editor.pairedPetID == "test-pet")
     #expect(!editor.isDirty)
     #expect(appModel.makeThemeStudioModel(editingThemeID: "workbench") == nil)
@@ -748,7 +756,11 @@ private func highPrecisionThemeRequest(sourceImageURL: URL) -> ThemePackageReque
         homeContentOpacity: 0.56,
         taskContentOpacity: 0.73,
         homeContentWidth: 0.58,
-        vignetteStrength: 0.42
+        vignetteStrength: 0.42,
+        artSaturation: 0.86,
+        artContrast: 0.94,
+        artExposure: 1.03,
+        localizedScrimStrength: 0.38
     )
 }
 

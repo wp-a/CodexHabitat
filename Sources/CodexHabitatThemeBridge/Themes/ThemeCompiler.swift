@@ -60,6 +60,10 @@ struct BridgeThemeAppearance: Codable, Equatable, Sendable {
     let taskContentOpacity: Double
     let homeContentWidth: Double
     let vignetteStrength: Double
+    let artSaturation: Double
+    let artContrast: Double
+    let artExposure: Double
+    let localizedScrimStrength: Double
 
     init(_ appearance: HabitatThemeAppearance) {
         styleFamily = appearance.styleFamily
@@ -87,6 +91,10 @@ struct BridgeThemeAppearance: Codable, Equatable, Sendable {
         taskContentOpacity = appearance.resolvedTaskContentOpacity
         homeContentWidth = appearance.resolvedHomeContentWidth
         vignetteStrength = appearance.resolvedVignetteStrength
+        artSaturation = appearance.resolvedArtSaturation
+        artContrast = appearance.resolvedArtContrast
+        artExposure = appearance.resolvedArtExposure
+        localizedScrimStrength = appearance.resolvedLocalizedScrimStrength
     }
 
     static let workbench = BridgeThemeAppearance(
@@ -181,6 +189,8 @@ struct BridgeThemeDecoder {
                     "homeArtFocus", "taskArtFocus", "homeArtScale", "taskArtScale",
                     "taskSidebarOpacity", "taskHeaderOpacity", "homeContentOpacity",
                     "taskContentOpacity", "homeContentWidth", "vignetteStrength",
+                    "artSaturation", "artContrast", "artExposure",
+                    "localizedScrimStrength",
                 ],
                 prefix: "appearance."
             )
@@ -404,6 +414,12 @@ struct ThemeCompiler {
                 theme.appearance.taskContentOpacity * 100
             ),
             "vignette-strength": Self.cssPercent(theme.appearance.vignetteStrength * 100),
+            "art-saturation": Self.cssPercent(theme.appearance.artSaturation * 100),
+            "art-contrast": Self.cssPercent(theme.appearance.artContrast * 100),
+            "art-exposure": Self.cssPercent(theme.appearance.artExposure * 100),
+            "localized-scrim-strength": Self.cssPercent(
+                theme.appearance.localizedScrimStrength * 100
+            ),
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "task-safe-scrim": Self.taskSafeScrim(for: theme.appearance.safeSide),
             "task-reading-scrim": Self.taskReadingScrim(for: theme.appearance.safeSide),
@@ -1281,6 +1297,10 @@ struct ThemeCompiler {
             ("taskContentOpacity", appearance.taskContentOpacity, 0.60...0.84),
             ("homeContentWidth", appearance.homeContentWidth, 0.46...0.68),
             ("vignetteStrength", appearance.vignetteStrength, 0.00...0.70),
+            ("artSaturation", appearance.artSaturation, 0.60...1.20),
+            ("artContrast", appearance.artContrast, 0.80...1.15),
+            ("artExposure", appearance.artExposure, 0.80...1.15),
+            ("localizedScrimStrength", appearance.localizedScrimStrength, 0.00...0.70),
         ] where !value.isFinite || !range.contains(value) {
             throw ThemeCompilationError.invalidAppearance(name)
         }

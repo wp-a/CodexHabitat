@@ -56,6 +56,10 @@ public struct BuiltInThemeTreatment: Equatable, Sendable {
     public let taskContentOpacity: Double
     public let homeContentWidth: Double
     public let vignetteStrength: Double
+    public let artSaturation: Double
+    public let artContrast: Double
+    public let artExposure: Double
+    public let localizedScrimStrength: Double
 
     public init(
         homeMode: HabitatThemeHomeMode,
@@ -77,7 +81,11 @@ public struct BuiltInThemeTreatment: Equatable, Sendable {
         homeContentOpacity: Double,
         taskContentOpacity: Double,
         homeContentWidth: Double,
-        vignetteStrength: Double
+        vignetteStrength: Double,
+        artSaturation: Double = 0.92,
+        artContrast: Double = 0.96,
+        artExposure: Double = 0.98,
+        localizedScrimStrength: Double? = nil
     ) {
         self.homeMode = homeMode
         self.taskMode = taskMode
@@ -99,6 +107,10 @@ public struct BuiltInThemeTreatment: Equatable, Sendable {
         self.taskContentOpacity = taskContentOpacity
         self.homeContentWidth = homeContentWidth
         self.vignetteStrength = vignetteStrength
+        self.artSaturation = artSaturation
+        self.artContrast = artContrast
+        self.artExposure = artExposure
+        self.localizedScrimStrength = localizedScrimStrength ?? vignetteStrength
     }
 }
 
@@ -169,7 +181,11 @@ public struct BuiltInThemeDefinition: Equatable, Sendable {
             homeContentOpacity: treatment?.homeContentOpacity,
             taskContentOpacity: treatment?.taskContentOpacity,
             homeContentWidth: treatment?.homeContentWidth,
-            vignetteStrength: treatment?.vignetteStrength
+            vignetteStrength: treatment?.vignetteStrength,
+            artSaturation: treatment?.artSaturation,
+            artContrast: treatment?.artContrast,
+            artExposure: treatment?.artExposure,
+            localizedScrimStrength: treatment?.localizedScrimStrength
         )
     }
 }
@@ -658,7 +674,11 @@ public enum BuiltInThemeCatalog {
         contentWidth: Double,
         vignette: Double,
         blur: Double,
-        density: HabitatThemeDensity
+        density: HabitatThemeDensity,
+        artSaturation: Double = 0.92,
+        artContrast: Double = 0.96,
+        artExposure: Double = 0.98,
+        localizedScrimStrength: Double? = nil
     ) -> BuiltInThemeTreatment {
         BuiltInThemeTreatment(
             homeMode: homeMode,
@@ -680,7 +700,11 @@ public enum BuiltInThemeCatalog {
             homeContentOpacity: homeContent,
             taskContentOpacity: taskContent,
             homeContentWidth: contentWidth,
-            vignetteStrength: vignette
+            vignetteStrength: vignette,
+            artSaturation: artSaturation,
+            artContrast: artContrast,
+            artExposure: artExposure,
+            localizedScrimStrength: localizedScrimStrength
         )
     }
 }

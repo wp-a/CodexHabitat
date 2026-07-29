@@ -52,6 +52,7 @@ private enum ManifestShapeValidator {
                 "homeArtFocus", "taskArtFocus", "homeArtScale", "taskArtScale",
                 "taskSidebarOpacity", "taskHeaderOpacity", "homeContentOpacity",
                 "taskContentOpacity", "homeContentWidth", "vignetteStrength",
+                "artSaturation", "artContrast", "artExposure", "localizedScrimStrength",
             ],
             path: "$.theme"
         )

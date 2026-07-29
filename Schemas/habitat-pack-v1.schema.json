@@ -174,7 +174,11 @@
         "homeContentOpacity": {"type": "number", "minimum": 0.40, "maximum": 0.78},
         "taskContentOpacity": {"type": "number", "minimum": 0.60, "maximum": 0.84},
         "homeContentWidth": {"type": "number", "minimum": 0.46, "maximum": 0.68},
-        "vignetteStrength": {"type": "number", "minimum": 0.0, "maximum": 0.70}
+        "vignetteStrength": {"type": "number", "minimum": 0.0, "maximum": 0.70},
+        "artSaturation": {"type": "number", "minimum": 0.60, "maximum": 1.20},
+        "artContrast": {"type": "number", "minimum": 0.80, "maximum": 1.15},
+        "artExposure": {"type": "number", "minimum": 0.80, "maximum": 1.15},
+        "localizedScrimStrength": {"type": "number", "minimum": 0.0, "maximum": 0.70}
       }
     },
     "resource": {

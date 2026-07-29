@@ -39,6 +39,10 @@ html[data-codex-habitat-theme="1"] {
   --habitat-home-content-opacity: {{home-content-opacity}};
   --habitat-task-content-opacity: {{task-content-opacity}};
   --habitat-vignette-strength: {{vignette-strength}};
+  --habitat-art-saturation: {{art-saturation}};
+  --habitat-art-contrast: {{art-contrast}};
+  --habitat-art-exposure: {{art-exposure}};
+  --habitat-localized-scrim-strength: {{localized-scrim-strength}};
   --habitat-composer-opacity: {{composer-opacity}};
   --habitat-blur-radius: {{blur-radius}};
   --habitat-tinted-blur-radius: {{tinted-blur-radius}};
@@ -70,6 +74,10 @@ html[data-codex-habitat-theme="1"] {{app-shell}}::before {
   background-size: cover;
   transform: scale(var(--habitat-home-art-scale));
   transform-origin: var(--habitat-home-art-position);
+  filter:
+    saturate(var(--habitat-art-saturation))
+    contrast(var(--habitat-art-contrast))
+    brightness(var(--habitat-art-exposure));
   opacity: var(--habitat-home-strength);
 }
 

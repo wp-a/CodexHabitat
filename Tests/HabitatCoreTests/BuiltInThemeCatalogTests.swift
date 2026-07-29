@@ -89,6 +89,17 @@ func allBuiltInThemesDeclareExplicitScenes() throws {
         #expect(appearance.taskContentOpacity != nil, "Missing task content opacity for \(definition.id)")
         #expect(appearance.homeContentWidth != nil, "Missing home content width for \(definition.id)")
         #expect(appearance.vignetteStrength != nil, "Missing vignette for \(definition.id)")
+        #expect(appearance.artSaturation != nil, "Missing art saturation for \(definition.id)")
+        #expect(appearance.artContrast != nil, "Missing art contrast for \(definition.id)")
+        #expect(appearance.artExposure != nil, "Missing art exposure for \(definition.id)")
+        #expect(
+            appearance.localizedScrimStrength != nil,
+            "Missing localized scrim strength for \(definition.id)"
+        )
+        #expect((0.60...1.20).contains(appearance.resolvedArtSaturation))
+        #expect((0.80...1.15).contains(appearance.resolvedArtContrast))
+        #expect((0.80...1.15).contains(appearance.resolvedArtExposure))
+        #expect((0.00...0.70).contains(appearance.resolvedLocalizedScrimStrength))
     }
 
     for family in HabitatThemeStyleFamily.allCases {
@@ -162,6 +173,10 @@ private func wholeWindowSignature(_ appearance: HabitatThemeAppearance) -> Strin
         numberSignature(appearance.resolvedTaskContentOpacity),
         numberSignature(appearance.resolvedHomeContentWidth),
         numberSignature(appearance.resolvedVignetteStrength),
+        numberSignature(appearance.resolvedArtSaturation),
+        numberSignature(appearance.resolvedArtContrast),
+        numberSignature(appearance.resolvedArtExposure),
+        numberSignature(appearance.resolvedLocalizedScrimStrength),
     ].joined(separator: "|")
 }
 

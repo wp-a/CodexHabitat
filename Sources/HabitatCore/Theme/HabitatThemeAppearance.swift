@@ -101,6 +101,10 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
     public let taskContentOpacity: Double?
     public let homeContentWidth: Double?
     public let vignetteStrength: Double?
+    public let artSaturation: Double?
+    public let artContrast: Double?
+    public let artExposure: Double?
+    public let localizedScrimStrength: Double?
 
     public init(
         category: HabitatThemeCategory,
@@ -129,7 +133,11 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
         homeContentOpacity: Double? = nil,
         taskContentOpacity: Double? = nil,
         homeContentWidth: Double? = nil,
-        vignetteStrength: Double? = nil
+        vignetteStrength: Double? = nil,
+        artSaturation: Double? = nil,
+        artContrast: Double? = nil,
+        artExposure: Double? = nil,
+        localizedScrimStrength: Double? = nil
     ) {
         self.category = category
         self.styleFamily = styleFamily
@@ -158,6 +166,10 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
         self.taskContentOpacity = taskContentOpacity
         self.homeContentWidth = homeContentWidth
         self.vignetteStrength = vignetteStrength
+        self.artSaturation = artSaturation
+        self.artContrast = artContrast
+        self.artExposure = artExposure
+        self.localizedScrimStrength = localizedScrimStrength
     }
 
     public var resolvedHomeMode: HabitatThemeHomeMode { homeMode ?? .quiet }
@@ -190,4 +202,10 @@ public struct HabitatThemeAppearance: Codable, Equatable, Sendable {
     }
     public var resolvedHomeContentWidth: Double { homeContentWidth ?? 0.56 }
     public var resolvedVignetteStrength: Double { vignetteStrength ?? 0.34 }
+    public var resolvedArtSaturation: Double { artSaturation ?? 0.92 }
+    public var resolvedArtContrast: Double { artContrast ?? 0.96 }
+    public var resolvedArtExposure: Double { artExposure ?? 0.98 }
+    public var resolvedLocalizedScrimStrength: Double {
+        localizedScrimStrength ?? resolvedVignetteStrength
+    }
 }

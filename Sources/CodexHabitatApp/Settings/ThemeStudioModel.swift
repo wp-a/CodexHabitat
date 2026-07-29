@@ -60,6 +60,10 @@ struct ThemeStudioDraft: Equatable, Sendable {
     var taskContentOpacity = 0.84
     var homeContentWidth = 0.56
     var vignetteStrength = 0.34
+    var artSaturation = 0.92
+    var artContrast = 0.96
+    var artExposure = 0.98
+    var localizedScrimStrength = 0.34
     var pairedPetID: String?
 }
 
@@ -214,6 +218,10 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
     var taskContentOpacity: Double { draft.taskContentOpacity }
     var homeContentWidth: Double { draft.homeContentWidth }
     var vignetteStrength: Double { draft.vignetteStrength }
+    var artSaturation: Double { draft.artSaturation }
+    var artContrast: Double { draft.artContrast }
+    var artExposure: Double { draft.artExposure }
+    var localizedScrimStrength: Double { draft.localizedScrimStrength }
     var pairedPetID: String? { draft.pairedPetID }
     var isDirty: Bool { draft != baselineDraft }
     var canPersistDraft: Bool {
@@ -282,7 +290,11 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             homeContentOpacity: homeContentOpacity,
             taskContentOpacity: taskContentOpacity,
             homeContentWidth: homeContentWidth,
-            vignetteStrength: vignetteStrength
+            vignetteStrength: vignetteStrength,
+            artSaturation: artSaturation,
+            artContrast: artContrast,
+            artExposure: artExposure,
+            localizedScrimStrength: localizedScrimStrength
         )
     }
 
@@ -346,6 +358,10 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             initial.taskContentOpacity = appearance.resolvedTaskContentOpacity
             initial.homeContentWidth = appearance.resolvedHomeContentWidth
             initial.vignetteStrength = appearance.resolvedVignetteStrength
+            initial.artSaturation = appearance.resolvedArtSaturation
+            initial.artContrast = appearance.resolvedArtContrast
+            initial.artExposure = appearance.resolvedArtExposure
+            initial.localizedScrimStrength = appearance.resolvedLocalizedScrimStrength
         }
         draft = initial
         baselineDraft = initial
@@ -714,7 +730,11 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
             homeContentOpacity: draft.homeContentOpacity,
             taskContentOpacity: draft.taskContentOpacity,
             homeContentWidth: draft.homeContentWidth,
-            vignetteStrength: draft.vignetteStrength
+            vignetteStrength: draft.vignetteStrength,
+            artSaturation: draft.artSaturation,
+            artContrast: draft.artContrast,
+            artExposure: draft.artExposure,
+            localizedScrimStrength: draft.localizedScrimStrength
         )
     }
 

@@ -59,6 +59,10 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
     let homeContentOpacity: Double
     let taskContentOpacity: Double
     let vignetteStrength: Double
+    let artSaturation: Double
+    let artContrast: Double
+    let artExposure: Double
+    let localizedScrimStrength: Double
     let surfaceHex: String
     let panelHex: String
     let panelAltHex: String
@@ -110,6 +114,10 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
         homeContentOpacity = appearance.resolvedHomeContentOpacity
         taskContentOpacity = appearance.resolvedTaskContentOpacity
         vignetteStrength = appearance.resolvedVignetteStrength
+        artSaturation = appearance.resolvedArtSaturation
+        artContrast = appearance.resolvedArtContrast
+        artExposure = appearance.resolvedArtExposure
+        localizedScrimStrength = appearance.resolvedLocalizedScrimStrength
         self.surfaceHex = surfaceHex
         self.panelHex = panelHex
         self.panelAltHex = panelAltHex
@@ -140,6 +148,10 @@ struct ThemeTreatmentPreviewModel: Equatable, Sendable {
             Self.number(homeContentOpacity),
             Self.number(taskContentOpacity),
             Self.number(vignetteStrength),
+            Self.number(artSaturation),
+            Self.number(artContrast),
+            Self.number(artExposure),
+            Self.number(localizedScrimStrength),
         ].joined(separator: "|")
     }
 
@@ -266,7 +278,7 @@ struct ThemeTreatmentPreview: View {
                 .opacity(1 - artStrength)
             if artStrength > 0 {
                 readabilityScrim
-                    .opacity(model.vignetteStrength)
+                    .opacity(model.localizedScrimStrength)
             }
         }
     }
@@ -289,6 +301,9 @@ struct ThemeTreatmentPreview: View {
             ZStack(alignment: .topLeading) {
                 Image(decorative: image, scale: 1, orientation: .up)
                     .resizable()
+                    .saturation(model.artSaturation)
+                    .contrast(model.artContrast)
+                    .brightness(model.artExposure - 1)
                     .frame(width: cropRect.width, height: cropRect.height)
                     .offset(x: cropRect.x, y: cropRect.y)
             }

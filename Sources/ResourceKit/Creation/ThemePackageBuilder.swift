@@ -47,6 +47,10 @@ public struct ThemePackageRequest: Equatable, Sendable {
     public let taskContentOpacity: Double?
     public let homeContentWidth: Double?
     public let vignetteStrength: Double?
+    public let artSaturation: Double?
+    public let artContrast: Double?
+    public let artExposure: Double?
+    public let localizedScrimStrength: Double?
 
     public init(
         name: String,
@@ -78,7 +82,11 @@ public struct ThemePackageRequest: Equatable, Sendable {
         homeContentOpacity: Double? = nil,
         taskContentOpacity: Double? = nil,
         homeContentWidth: Double? = nil,
-        vignetteStrength: Double? = nil
+        vignetteStrength: Double? = nil,
+        artSaturation: Double? = nil,
+        artContrast: Double? = nil,
+        artExposure: Double? = nil,
+        localizedScrimStrength: Double? = nil
     ) {
         self.name = name
         self.author = author
@@ -110,6 +118,10 @@ public struct ThemePackageRequest: Equatable, Sendable {
         self.taskContentOpacity = taskContentOpacity
         self.homeContentWidth = homeContentWidth
         self.vignetteStrength = vignetteStrength
+        self.artSaturation = artSaturation
+        self.artContrast = artContrast
+        self.artExposure = artExposure
+        self.localizedScrimStrength = localizedScrimStrength
     }
 }
 
@@ -509,6 +521,10 @@ public struct ThemePackageBuilder: Sendable {
             ("taskContentOpacity", request.taskContentOpacity),
             ("homeContentWidth", request.homeContentWidth),
             ("vignetteStrength", request.vignetteStrength),
+            ("artSaturation", request.artSaturation),
+            ("artContrast", request.artContrast),
+            ("artExposure", request.artExposure),
+            ("localizedScrimStrength", request.localizedScrimStrength),
         ] {
             if let value {
                 theme[key] = value

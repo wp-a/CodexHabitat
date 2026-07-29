@@ -60,7 +60,11 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
         homeContentOpacity: 0.56,
         taskContentOpacity: 0.72,
         homeContentWidth: 0.52,
-        vignetteStrength: 0.46
+        vignetteStrength: 0.46,
+        artSaturation: 0.86,
+        artContrast: 0.94,
+        artExposure: 1.03,
+        localizedScrimStrength: 0.40
     )
 
     let result = try builder.build(request, to: archive)
@@ -87,6 +91,10 @@ func themePackageBuilderCreatesDeterministicInstallableThemeArchive() throws {
     #expect(result.manifest.theme?.taskContentOpacity == 0.72)
     #expect(result.manifest.theme?.homeContentWidth == 0.52)
     #expect(result.manifest.theme?.vignetteStrength == 0.46)
+    #expect(result.manifest.theme?.artSaturation == 0.86)
+    #expect(result.manifest.theme?.artContrast == 0.94)
+    #expect(result.manifest.theme?.artExposure == 1.03)
+    #expect(result.manifest.theme?.localizedScrimStrength == 0.40)
     #expect(result.manifest.license.spdx == "LicenseRef-Codex-Habitat-User-Content")
     #expect(try ArchiveInspector().inspect(archive).entries.map(\.path).sorted() == [
         "LICENSE", "background.jpg", "habitat.json", "preview.png",

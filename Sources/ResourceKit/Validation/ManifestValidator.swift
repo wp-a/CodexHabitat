@@ -212,6 +212,10 @@ public struct ManifestValidator: Sendable {
             ("taskContentOpacity", theme.taskContentOpacity, 0.60...0.84),
             ("homeContentWidth", theme.homeContentWidth, 0.46...0.68),
             ("vignetteStrength", theme.vignetteStrength, 0.00...0.70),
+            ("artSaturation", theme.artSaturation, 0.60...1.20),
+            ("artContrast", theme.artContrast, 0.80...1.15),
+            ("artExposure", theme.artExposure, 0.80...1.15),
+            ("localizedScrimStrength", theme.localizedScrimStrength, 0.00...0.70),
         ] {
             guard value.map({ $0.isFinite && range.contains($0) }) != false else {
                 throw ManifestValidationError.numericOutOfRange("theme.\(name)")

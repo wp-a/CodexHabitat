@@ -76,6 +76,10 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
     #expect(manifest.theme?.resolvedTaskContentOpacity == 0.72)
     #expect(manifest.theme?.resolvedHomeContentWidth == 0.52)
     #expect(manifest.theme?.resolvedVignetteStrength == 0.44)
+    #expect(manifest.theme?.resolvedArtSaturation == 0.84)
+    #expect(manifest.theme?.resolvedArtContrast == 0.93)
+    #expect(manifest.theme?.resolvedArtExposure == 1.04)
+    #expect(manifest.theme?.resolvedLocalizedScrimStrength == 0.38)
 
     let transparentHomeHeader = try ManifestDecoder(runtimeVersion: "1.0.0").decode(
         try mutatedValidManifest {
@@ -95,6 +99,7 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
                 "homeArtFocus", "taskArtFocus", "homeArtScale", "taskArtScale",
                 "taskSidebarOpacity", "taskHeaderOpacity", "homeContentOpacity",
                 "taskContentOpacity", "homeContentWidth", "vignetteStrength",
+                "artSaturation", "artContrast", "artExposure", "localizedScrimStrength",
             ] {
                 theme.removeValue(forKey: key)
             }
@@ -116,6 +121,10 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
     #expect(legacyManifest.theme?.resolvedTaskContentOpacity == 0.84)
     #expect(legacyManifest.theme?.resolvedHomeContentWidth == 0.56)
     #expect(legacyManifest.theme?.resolvedVignetteStrength == 0.34)
+    #expect(legacyManifest.theme?.resolvedArtSaturation == 0.92)
+    #expect(legacyManifest.theme?.resolvedArtContrast == 0.96)
+    #expect(legacyManifest.theme?.resolvedArtExposure == 0.98)
+    #expect(legacyManifest.theme?.resolvedLocalizedScrimStrength == 0.34)
 
     for (key, value) in [
         ("category", "unknownCategory"),
@@ -170,6 +179,14 @@ func optionalThemeAppearanceIsTypedBoundedAndReferencesDeclaredImage() throws {
         ("homeContentWidth", 0.69),
         ("vignetteStrength", -0.01),
         ("vignetteStrength", 0.71),
+        ("artSaturation", 0.59),
+        ("artSaturation", 1.21),
+        ("artContrast", 0.79),
+        ("artContrast", 1.16),
+        ("artExposure", 0.79),
+        ("artExposure", 1.16),
+        ("localizedScrimStrength", -0.01),
+        ("localizedScrimStrength", 0.71),
     ] {
         #expect(throws: (any Error).self, "Expected \(key)=\(value) to fail") {
             try ManifestDecoder(runtimeVersion: "1.0.0").decode(
@@ -424,6 +441,12 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     )
     let homeContentWidth = try #require(themeProperties["homeContentWidth"] as? [String: Any])
     let vignetteStrength = try #require(themeProperties["vignetteStrength"] as? [String: Any])
+    let artSaturation = try #require(themeProperties["artSaturation"] as? [String: Any])
+    let artContrast = try #require(themeProperties["artContrast"] as? [String: Any])
+    let artExposure = try #require(themeProperties["artExposure"] as? [String: Any])
+    let localizedScrimStrength = try #require(
+        themeProperties["localizedScrimStrength"] as? [String: Any]
+    )
 
     #expect(schema["additionalProperties"] as? Bool == false)
     #expect((properties["schemaVersion"] as? [String: Any])?["const"] as? Int == 1)
@@ -470,6 +493,14 @@ func committedJSONSchemaMatchesTheRuntimeContract() throws {
     #expect(homeContentWidth["maximum"] as? Double == 0.68)
     #expect(vignetteStrength["minimum"] as? Double == 0.0)
     #expect(vignetteStrength["maximum"] as? Double == 0.70)
+    #expect(artSaturation["minimum"] as? Double == 0.60)
+    #expect(artSaturation["maximum"] as? Double == 1.20)
+    for field in [artContrast, artExposure] {
+        #expect(field["minimum"] as? Double == 0.80)
+        #expect(field["maximum"] as? Double == 1.15)
+    }
+    #expect(localizedScrimStrength["minimum"] as? Double == 0.0)
+    #expect(localizedScrimStrength["maximum"] as? Double == 0.70)
 }
 
 private func validManifestData() throws -> Data {
@@ -521,5 +552,9 @@ private func validThemeObject() -> [String: Any] {
         "taskContentOpacity": 0.72,
         "homeContentWidth": 0.52,
         "vignetteStrength": 0.44,
+        "artSaturation": 0.84,
+        "artContrast": 0.93,
+        "artExposure": 1.04,
+        "localizedScrimStrength": 0.38,
     ]
 }
