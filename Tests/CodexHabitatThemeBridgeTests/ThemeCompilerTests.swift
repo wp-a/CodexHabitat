@@ -41,6 +41,38 @@ func bundledProfileCompilesOnlyHostSelectorsApprovedTokensAndLocalBlobArt() thro
 }
 
 @Test
+func everyBuiltInThemeCompilesTheSharedSemanticMaterialShell() throws {
+    let store = try CompatibilityProfileStore.bundled()
+    let profile = try #require(store.profile(forVersion: "26.715.31925"))
+    let compiler = try ThemeCompiler.bundled()
+    let requiredTokens = [
+        "--habitat-stage-scrim:",
+        "--habitat-sidebar-chrome:",
+        "--habitat-task-sidebar-chrome:",
+        "--habitat-header-chrome:",
+        "--habitat-task-header-chrome:",
+        "--habitat-action-fill:",
+        "--habitat-composer-fill:",
+        "--habitat-popover-fill:",
+        "--habitat-divider:",
+        "--habitat-selected-fill:",
+        "--habitat-focus-ring:",
+        "--habitat-ambient-shadow:",
+        "--habitat-inner-highlight:",
+    ]
+
+    #expect(BuiltInThemeCatalog.all.count == 24)
+    for definition in BuiltInThemeCatalog.all {
+        let theme = try #require(BridgeTheme.builtIn(id: definition.id))
+        let css = try compiler.compile(theme: theme, profile: profile)
+
+        for token in requiredTokens {
+            #expect(css.contains(token), "\(definition.id) omits \(token)")
+        }
+    }
+}
+
+@Test
 func fourPrototypesCompileDistinctRouteAwareWindowTreatments() throws {
     let profile = try #require(
         try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31251")
@@ -147,8 +179,8 @@ func compiledHeadersConsumeTheTypedRouteOpacityVariables() throws {
         in: css
     )
 
-    #expect(homeRule.contains("var(--habitat-header-opacity)"))
-    #expect(taskRule.contains("var(--habitat-task-header-opacity)"))
+    #expect(homeRule.contains("var(--habitat-header-chrome)"))
+    #expect(taskRule.contains("var(--habitat-task-header-chrome)"))
 }
 
 @Test
@@ -309,7 +341,7 @@ func compilerConsumesTheSharedNonGeometricSurfaceRecipe() throws {
         #expect(selected.contains("inset 0 0 0 1px"))
         #expect(selected.contains("border-radius: \(cssNumber(recipe.selectedRadius))px"))
         #expect(focus.contains("outline-style: \(cssFocusStyle(recipe.focusStyle))"))
-        #expect(focus.contains("var(--habitat-accent) \(recipe.focusEmphasisPercent)%"))
+        #expect(focus.contains("var(--habitat-focus-ring)"))
     }
 }
 
@@ -479,7 +511,7 @@ func homeActionControlsUseAnOpaqueMaximumContrastForeground() throws {
     #expect(blockCSS.contains("--habitat-home-action-background: #1F2922"))
     #expect(blockCSS.contains("--habitat-home-action-text: #FFFFFF"))
     #expect(win95CSS.contains("color: var(--habitat-home-action-text)"))
-    #expect(win95CSS.contains("background-color: var(--habitat-home-action-background)"))
+    #expect(win95CSS.contains("background-color: var(--habitat-action-fill)"))
 }
 
 @Test
@@ -493,7 +525,7 @@ func submitControlDoesNotInheritTheComposerMaterial() throws {
     )
     let submit = try cssRuleBody(selector: "\(root) button[type=\"submit\"]", in: css)
 
-    #expect(composer.contains("var(--habitat-control-surface)"))
+    #expect(composer.contains("var(--habitat-composer-fill)"))
     #expect(submit.contains("background-color: var(--habitat-submit-accent)"))
     #expect(submit.contains("border-radius: 999px"))
     #expect(!submit.contains("var(--habitat-control-surface)"))
@@ -698,10 +730,10 @@ func homeSafeScrimUsesContentOpacityForTheReadingWash() throws {
         )
         #expect(!scrim.contains("linear-gradient(transparent, transparent)"))
         if let vignetteStop {
-            #expect(scrim.contains("var(--habitat-vignette-strength)"))
+            #expect(scrim.contains("var(--habitat-localized-scrim-strength)"))
             #expect(scrim.contains(vignetteStop), "\(safeSide.rawValue) loses its vignette falloff")
         } else {
-            #expect(!scrim.contains("var(--habitat-vignette-strength)"))
+            #expect(!scrim.contains("var(--habitat-localized-scrim-strength)"))
         }
     }
 }
@@ -913,8 +945,8 @@ func routeStrengthDoesNotWeakenTheReadabilityVignette() throws {
     )
 
     #expect(baseArtwork.contains("var(--habitat-art-background)"))
-    #expect(!baseArtwork.contains("var(--habitat-safe-scrim)"))
-    #expect(baseOverlay.contains("var(--habitat-safe-scrim)"))
+    #expect(!baseArtwork.contains("var(--habitat-stage-scrim)"))
+    #expect(baseOverlay.contains("var(--habitat-stage-scrim)"))
     #expect(!baseOverlay.contains("var(--habitat-home-strength)"))
     #expect(!baseOverlay.contains("var(--habitat-task-strength)"))
 }

@@ -9,7 +9,19 @@ html[data-codex-habitat-theme="1"] {
   --habitat-control-surface: {{control-surface}};
   --habitat-raised-surface: {{raised-surface}};
   --habitat-selection-surface: {{selection-surface}};
+  --habitat-stage-scrim: {{stage-scrim}};
+  --habitat-sidebar-chrome: {{sidebar-chrome}};
+  --habitat-task-sidebar-chrome: {{task-sidebar-chrome}};
+  --habitat-header-chrome: {{header-chrome}};
+  --habitat-task-header-chrome: {{task-header-chrome}};
+  --habitat-action-fill: {{action-fill}};
+  --habitat-composer-fill: {{composer-fill}};
+  --habitat-popover-fill: {{popover-fill}};
   --habitat-divider: {{divider}};
+  --habitat-selected-fill: {{selected-fill}};
+  --habitat-focus-ring: {{focus-ring}};
+  --habitat-ambient-shadow: {{ambient-shadow}};
+  --habitat-inner-highlight: {{inner-highlight}};
   --habitat-home-action-background: {{home-action-background}};
   --habitat-home-action-text: {{home-action-text}};
   --habitat-on-accent: {{on-accent}};
@@ -88,7 +100,7 @@ html[data-codex-habitat-theme="1"] {{app-shell}}::after {
   z-index: -1;
   inset: 0;
   pointer-events: none;
-  background-image: var(--habitat-safe-scrim);
+  background-image: var(--habitat-stage-scrim);
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -96,22 +108,14 @@ html[data-codex-habitat-theme="1"] {{app-shell}}::after {
 
 html[data-codex-habitat-theme="1"] {{sidebar}} {
   color: var(--habitat-text);
-  background-color: color-mix(
-    in srgb,
-    var(--habitat-chrome-surface) calc(var(--habitat-sidebar-opacity) + 16%),
-    transparent
-  );
+  background-color: var(--habitat-sidebar-chrome);
   background-image: none;
   backdrop-filter: none;
   border-right-color: var(--habitat-divider);
 }
 
 html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{sidebar}} {
-  background-color: color-mix(
-    in srgb,
-    var(--habitat-chrome-surface) calc(var(--habitat-task-sidebar-opacity) + 8%),
-    transparent
-  );
+  background-color: var(--habitat-task-sidebar-chrome);
   background-image: none;
   backdrop-filter: none;
 }
@@ -125,24 +129,24 @@ html[data-codex-habitat-theme="1"] {{main}} {
 
 html[data-codex-habitat-theme="1"] {{header}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-chrome-surface) var(--habitat-header-opacity), transparent);
+  background-color: var(--habitat-header-chrome);
   border-bottom-color: var(--habitat-divider);
 }
 
 html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{header}} {
-  background-color: color-mix(in srgb, var(--habitat-chrome-surface) var(--habitat-task-header-opacity), transparent);
+  background-color: var(--habitat-task-header-chrome);
 }
 
 html[data-codex-habitat-theme="1"] {{composer}},
 html[data-codex-habitat-theme="1"] {{popover}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-control-surface) var(--habitat-composer-opacity), transparent);
+  background-color: var(--habitat-composer-fill);
   border-color: var(--habitat-divider);
-  box-shadow: 0 8px 24px color-mix(in srgb, black 14%, transparent);
+  box-shadow: 0 8px 24px var(--habitat-ambient-shadow);
 }
 
 html[data-codex-habitat-theme="1"] {{popover}} {
-  background-color: color-mix(in srgb, var(--habitat-raised-surface) 96%, transparent);
+  background-color: var(--habitat-popover-fill);
 }
 
 html[data-codex-habitat-theme="1"] {{popover}} > * {
@@ -176,7 +180,7 @@ html[data-codex-habitat-theme="1"] [aria-selected="true"],
 html[data-codex-habitat-theme="1"] [aria-current],
 html[data-codex-habitat-theme="1"] [aria-pressed="true"] {
   color: var(--habitat-text);
-  background-color: var(--habitat-selection-surface);
+  background-color: var(--habitat-selected-fill);
   outline-color: var(--habitat-attention);
 }
 
@@ -194,7 +198,7 @@ html[data-codex-habitat-theme="1"] ::selection {
 }
 
 html[data-codex-habitat-theme="1"] :focus-visible {
-  outline-color: var(--habitat-secondary);
+  outline-color: var(--habitat-focus-ring);
 }
 
 {{surface-treatment}}

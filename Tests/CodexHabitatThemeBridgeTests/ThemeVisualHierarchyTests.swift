@@ -99,9 +99,51 @@ struct ThemeVisualHierarchyTests {
                 }
             )
 
-            #expect(action.contains("var(--habitat-home-action-background)"))
-            #expect(selected.contains("var(--habitat-selection-surface)"))
-            #expect(hover.contains("var(--habitat-selection-surface) 54%, transparent"))
+            #expect(action.contains("var(--habitat-action-fill)"))
+            #expect(selected.contains("var(--habitat-selected-fill)"))
+            #expect(hover.contains("var(--habitat-selected-fill) 54%, transparent"))
+        }
+    }
+
+    @Test
+    func sharedShellKeepsIdleBoundariesNeutralAndMainStageTransparent() throws {
+        let profile = try hierarchyProfile()
+        let suggestions = try #require(profile.selectors.homeSuggestions)
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let selectors = [
+            "\(root) \(suggestions) :where(button, [role=\"button\"])",
+            "\(root) \(profile.selectors.composer)",
+            "\(root) \(profile.selectors.header)",
+            "\(root) \(profile.selectors.sidebar)",
+        ]
+
+        for definition in BuiltInThemeCatalog.all {
+            let css = try compiledCSS(for: definition, profile: profile)
+            for selector in selectors {
+                for body in hierarchyRuleBodies(selector: selector, in: css) {
+                    let declarations = hierarchyDeclarations(in: body)
+                    for property in ["border", "border-color", "outline", "outline-color", "box-shadow"] {
+                        let value = declarations[property] ?? ""
+                        #expect(
+                            !value.contains("var(--habitat-accent)"),
+                            "\(definition.id) uses accent for idle \(property) on \(selector)"
+                        )
+                    }
+                }
+            }
+
+            let mainBodies = hierarchyRuleBodies(
+                selector: "\(root) \(profile.selectors.mainSurface)",
+                in: css
+            )
+            #expect(!mainBodies.isEmpty)
+            for body in mainBodies {
+                let background = hierarchyDeclarations(in: body)["background-color"]
+                #expect(
+                    background == nil || background == "transparent",
+                    "\(definition.id) paints over the full-window stage"
+                )
+            }
         }
     }
 
@@ -188,7 +230,7 @@ struct ThemeVisualHierarchyTests {
 
         for (surface, body) in [("home action", action), ("composer", composer)] {
             #expect(body.contains("border: 1px solid var(--habitat-divider)"), "\(surface) lacks a quiet semantic border")
-            #expect(body.contains("var(--habitat-highlight)"), "\(surface) lacks an inner highlight")
+            #expect(body.contains("var(--habitat-inner-highlight)"), "\(surface) lacks an inner highlight")
             #expect(body.contains("inset 0 1px 0"), "\(surface) lacks an inner highlight")
             #expect(!body.contains("3px solid var(--habitat-attention)"), "\(surface) keeps the attention rail")
             #expect(!body.contains("30px"), "\(surface) keeps the long cinematic shadow")
@@ -352,6 +394,19 @@ private func hierarchyRuleBodies(containingSelector selector: String, in css: St
 
 private func hierarchyPropertyCount(_ property: String, in body: String) -> Int {
     body.components(separatedBy: "\(property):").count - 1
+}
+
+private func hierarchyDeclarations(in body: String) -> [String: String] {
+    body.split(separator: ";").reduce(into: [:]) { declarations, rawDeclaration in
+        guard let colon = rawDeclaration.firstIndex(of: ":") else { return }
+        let property = rawDeclaration[..<colon]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let value = rawDeclaration[rawDeclaration.index(after: colon)...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+        declarations[property] = value
+    }
 }
 
 private func hierarchyBorderRadius(in body: String) throws -> Double {

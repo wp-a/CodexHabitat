@@ -29,12 +29,12 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
         let taskBackgroundRules = taskRules.filter(\.declaresBackground)
         let baseWash = try #require(baseRules.first { rule in
             rule.declarations["background-color"]?.contains(
-                "var(--habitat-sidebar-opacity)"
+                "var(--habitat-sidebar-chrome)"
             ) == true
         })
         let taskWash = try #require(taskRules.first { rule in
             rule.declarations["background-color"]?.contains(
-                "var(--habitat-task-sidebar-opacity)"
+                "var(--habitat-task-sidebar-chrome)"
             ) == true
         })
 
@@ -48,8 +48,8 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
         )
         for rule in homeBackgroundRules {
             let body = rule.body.lowercased()
-            #expect(body.contains("var(--habitat-sidebar-opacity)"))
-            #expect(!body.contains("var(--habitat-task-sidebar-opacity)"))
+            #expect(body.contains("var(--habitat-sidebar-chrome)"))
+            #expect(!body.contains("var(--habitat-task-sidebar-chrome)"))
         }
         #expect(
             baseWash.declarations["background-image"] == "none",
@@ -61,9 +61,9 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
         )
         #expect(
             baseWash.declarations["background-color"]?.contains(
-                "var(--habitat-sidebar-opacity)"
+                "var(--habitat-sidebar-chrome)"
             ) == true,
-            "\(definition.id) home/base sidebar must use the home opacity token"
+            "\(definition.id) home/base sidebar must use the home chrome material"
         )
         #expect(
             taskWash.declarations["background-image"] == "none",
@@ -75,9 +75,9 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
         )
         #expect(
             taskWash.declarations["background-color"]?.contains(
-                "var(--habitat-task-sidebar-opacity)"
+                "var(--habitat-task-sidebar-chrome)"
             ) == true,
-            "\(definition.id) task sidebar must use the stronger task opacity token"
+            "\(definition.id) task sidebar must use the stronger task chrome material"
         )
 
         for rule in baseRules + homeRules + taskRules {
@@ -123,10 +123,47 @@ func everyThemeKeepsOneFixedFullWindowArtworkConsumer() throws {
         #expect(scene.declarations["position"] == "fixed")
         #expect(scene.declarations["inset"] == "0")
         #expect(scene.declarations["background-image"] == "var(--habitat-art-background)")
+        let filter = try #require(scene.declarations["filter"])
+        #expect(filter.contains("saturate(var(--habitat-art-saturation))"))
+        #expect(filter.contains("contrast(var(--habitat-art-contrast))"))
+        #expect(filter.contains("brightness(var(--habitat-art-exposure))"))
         #expect(
             occurrenceCount(of: "var(--habitat-art-background)", in: css) == 1,
             "\(definition.id) must not redraw the bitmap on another surface"
         )
+    }
+}
+
+@Test
+func everyThemeCompilesAStableRouteAwareMaterialHierarchy() throws {
+    let compiler = try ThemeCompiler.bundled()
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+
+    for definition in BuiltInThemeCatalog.all {
+        let theme = try #require(BridgeTheme.builtIn(id: definition.id))
+        let css = try compiler.compile(theme: theme, profile: profile)
+        let rootRule = try #require(
+            try parsedCSSRules(css).first { $0.selectors == [root] }
+        )
+        let declarations = rootRule.declarations
+        let homeSidebar = try materialAlpha("--habitat-sidebar-chrome", in: declarations)
+        let taskSidebar = try materialAlpha("--habitat-task-sidebar-chrome", in: declarations)
+        let homeHeader = try materialAlpha("--habitat-header-chrome", in: declarations)
+        let taskHeader = try materialAlpha("--habitat-task-header-chrome", in: declarations)
+        let action = try materialAlpha("--habitat-action-fill", in: declarations)
+        let composer = try materialAlpha("--habitat-composer-fill", in: declarations)
+
+        #expect(homeSidebar > homeHeader, "\(definition.id) home sidebar is not stronger than its header")
+        #expect(taskSidebar > taskHeader, "\(definition.id) task sidebar is not stronger than its header")
+        #expect(taskSidebar >= homeSidebar, "\(definition.id) task sidebar regresses hierarchy")
+        #expect(taskHeader >= homeHeader, "\(definition.id) task header regresses hierarchy")
+        #expect(composer > action, "\(definition.id) composer is not stronger than home actions")
+        if definition.treatment?.homeMode == .immersive {
+            #expect(homeHeader <= 0.20, "\(definition.id) immersive home header is too opaque")
+        }
     }
 }
 
@@ -196,4 +233,16 @@ private func occurrenceCount(of needle: String, in haystack: String) -> Int {
         searchRange = range.upperBound..<haystack.endIndex
     }
     return count
+}
+
+private func materialAlpha(
+    _ property: String,
+    in declarations: [String: String]
+) throws -> Double {
+    let value = try #require(declarations[property])
+    let expression = try NSRegularExpression(pattern: #"([0-9]+(?:\.[0-9]+)?)%"#)
+    let range = NSRange(value.startIndex..<value.endIndex, in: value)
+    let match = try #require(expression.matches(in: value, range: range).last)
+    let capture = try #require(Range(match.range(at: 1), in: value))
+    return try #require(Double(value[capture])) / 100
 }

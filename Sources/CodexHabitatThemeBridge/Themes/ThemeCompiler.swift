@@ -346,6 +346,35 @@ struct ThemeCompiler {
             weight: 0.14,
             over: controlSurface
         )
+        let homeHeaderAlpha = theme.appearance.homeMode == .immersive
+            ? min(theme.appearance.headerOpacity, 0.20)
+            : min(theme.appearance.headerOpacity, 0.74)
+        let homeSidebarAlpha = min(
+            max(theme.appearance.sidebarOpacity + 0.18, homeHeaderAlpha + 0.08),
+            0.90
+        )
+        let taskHeaderAlpha = min(
+            max(theme.appearance.taskHeaderOpacity, homeHeaderAlpha),
+            0.90
+        )
+        let taskSidebarAlpha = min(
+            max(
+                theme.appearance.taskSidebarOpacity + 0.04,
+                max(homeSidebarAlpha, taskHeaderAlpha + 0.06)
+            ),
+            0.94
+        )
+        let actionAlpha = min(max(theme.appearance.homeContentOpacity, 0.48), 0.72)
+        let composerAlpha = min(
+            max(theme.appearance.composerOpacity, actionAlpha + 0.12),
+            1.0
+        )
+        let shadowAnchor = Self.colorScheme(for: theme.tokens.surface) == "dark"
+            ? Self.mixedOpaqueColor(theme.tokens.surface, weight: 0.72, over: "#050608")
+            : Self.mixedOpaqueColor(theme.tokens.surface, weight: 0.42, over: "#34404C")
+        let innerHighlightAnchor = Self.colorScheme(for: theme.tokens.surface) == "dark"
+            ? Self.mixedOpaqueColor(theme.tokens.text, weight: 0.32, over: chromeSurface)
+            : "#FFFFFF"
 
         var result = template
         let replacements = [
@@ -365,6 +394,23 @@ struct ThemeCompiler {
                 first: "#000000",
                 second: "#FFFFFF"
             ),
+            "sidebar-chrome": Self.translucentColor(chromeSurface, alpha: homeSidebarAlpha),
+            "task-sidebar-chrome": Self.translucentColor(
+                chromeSurface,
+                alpha: taskSidebarAlpha
+            ),
+            "header-chrome": Self.translucentColor(chromeSurface, alpha: homeHeaderAlpha),
+            "task-header-chrome": Self.translucentColor(
+                chromeSurface,
+                alpha: taskHeaderAlpha
+            ),
+            "action-fill": Self.translucentColor(controlSurface, alpha: actionAlpha),
+            "composer-fill": Self.translucentColor(controlSurface, alpha: composerAlpha),
+            "popover-fill": Self.translucentColor(raisedSurface, alpha: 0.96),
+            "selected-fill": Self.translucentColor(selectionSurface, alpha: 0.92),
+            "focus-ring": submitAccent,
+            "ambient-shadow": Self.translucentColor(shadowAnchor, alpha: 0.22),
+            "inner-highlight": Self.translucentColor(innerHighlightAnchor, alpha: 0.18),
             "on-accent": Self.higherContrastForeground(
                 against: submitAccent,
                 first: theme.tokens.text,
@@ -420,6 +466,7 @@ struct ThemeCompiler {
             "localized-scrim-strength": Self.cssPercent(
                 theme.appearance.localizedScrimStrength * 100
             ),
+            "stage-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "task-safe-scrim": Self.taskSafeScrim(for: theme.appearance.safeSide),
             "task-reading-scrim": Self.taskReadingScrim(for: theme.appearance.safeSide),
@@ -556,7 +603,7 @@ struct ThemeCompiler {
         if let selectedNavigation = profile.selectors.selectedNavigation {
             rules.append("""
             \(root) \(selectedNavigation) {
-              background-color: var(--habitat-selection-surface);
+              background-color: var(--habitat-selected-fill);
               box-shadow: inset 0 0 0 1px var(--habitat-divider);
             }
             """)
@@ -664,9 +711,9 @@ struct ThemeCompiler {
               inset: 16px;
               opacity: 1;
               background-image: var(--habitat-safe-scrim);
-              border: 1px solid color-mix(in srgb, var(--habitat-accent) 42%, transparent);
+              border: 1px solid var(--habitat-divider);
               border-radius: 12px;
-              box-shadow: 0 0 0 100vmax var(--habitat-surface), 0 14px 34px color-mix(in srgb, var(--habitat-surface) 24%, transparent);
+              box-shadow: 0 0 0 100vmax var(--habitat-surface), 0 14px 34px var(--habitat-ambient-shadow);
             }
             \(main) {
               background-color: transparent;
@@ -805,7 +852,7 @@ struct ThemeCompiler {
               clip-path: inset(0);
             }
             \(main) {
-              background-color: color-mix(in srgb, var(--habitat-surface) 96%, transparent);
+              background-color: transparent;
               background-image: none;
             }
             \(readingSurfaceRules("""
@@ -855,7 +902,7 @@ struct ThemeCompiler {
             }
             \(smallChrome) {
               backdrop-filter: blur(var(--habitat-blur-radius)) saturate(1.16);
-              box-shadow: inset 0 1px 0 color-mix(in srgb, white 34%, transparent), 0 12px 30px color-mix(in srgb, var(--habitat-surface) 18%, transparent);
+              box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), 0 12px 30px var(--habitat-ambient-shadow);
             }
             """
         }
@@ -935,7 +982,7 @@ struct ThemeCompiler {
             /* habitat-surface: home-actions */
             \(root) \(action) {
               color: var(--habitat-home-action-text);
-              background-color: var(--habitat-home-action-background);
+              background-color: var(--habitat-action-fill);
               \(styleHomeAction(for: recipe))
             }
             """
@@ -952,17 +999,17 @@ struct ThemeCompiler {
         let homeHoverRule = homeActionSelector.map { action in
             """
             \(root) \(action):hover {
-              background-color: color-mix(in srgb, var(--habitat-home-action-background) 94%, var(--habitat-accent));
-              border-color: color-mix(in srgb, var(--habitat-accent) 62%, var(--habitat-highlight));
+              background-color: color-mix(in srgb, var(--habitat-action-fill) 88%, var(--habitat-selected-fill));
+              border-color: var(--habitat-divider);
             }
             """
         } ?? ""
         let homeActiveRule = homeActionSelector.map { action in
             """
             \(root) \(action):active {
-              background-color: color-mix(in srgb, var(--habitat-home-action-background) 90%, var(--habitat-accent));
-              border-color: color-mix(in srgb, var(--habitat-accent) 68%, var(--habitat-highlight));
-              box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--habitat-accent) 54%, transparent);
+              background-color: var(--habitat-selected-fill);
+              border-color: var(--habitat-divider);
+              box-shadow: inset 0 1px 0 var(--habitat-inner-highlight);
             }
             """
         } ?? ""
@@ -983,7 +1030,7 @@ struct ThemeCompiler {
         /* habitat-surface: shell */
         \(root) \(shell) {
           accent-color: var(--habitat-accent);
-          scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
+          scrollbar-color: var(--habitat-focus-ring) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
         }
 
         /* habitat-surface: sidebar */
@@ -998,7 +1045,7 @@ struct ThemeCompiler {
         /* habitat-surface: transcript */
         \(scopedSelectors(transcriptSurfaces, root: root)) {
           \(styleStage())
-          scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
+          scrollbar-color: var(--habitat-focus-ring) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
         }
 
         /* habitat-surface: request */
@@ -1024,7 +1071,7 @@ struct ThemeCompiler {
 
         /* habitat-surface: floating-content */
         \(scopedSelectors(floatingSurfaces, root: root)) {
-          background-color: color-mix(in srgb, var(--habitat-raised-surface) 96%, transparent);
+          background-color: var(--habitat-popover-fill);
           \(declarations.reading)
         }
 
@@ -1060,19 +1107,19 @@ struct ThemeCompiler {
         @media (hover: hover) and (pointer: fine) {
           \(homeHoverRule)
           \(root) \(sidebarHoverSelector) {
-            background-color: color-mix(in srgb, var(--habitat-selection-surface) 54%, transparent);
+            background-color: color-mix(in srgb, var(--habitat-selected-fill) 54%, transparent);
           }
         }
 
         \(homeActiveRule)
         \(root) \(sidebarActiveSelector) {
-          background-color: color-mix(in srgb, var(--habitat-selection-surface) 74%, transparent);
+          background-color: color-mix(in srgb, var(--habitat-selected-fill) 74%, transparent);
           box-shadow: inset 0 0 0 1px var(--habitat-divider);
         }
 
         \(scopedSelectors(composerFocusSurfaces, root: root)) {
-          border-color: color-mix(in srgb, var(--habitat-accent) 88%, var(--habitat-highlight));
-          box-shadow: 0 0 0 2px color-mix(in srgb, var(--habitat-accent) 58%, transparent), 0 8px 20px color-mix(in srgb, var(--habitat-surface) 32%, transparent);
+          border-color: var(--habitat-focus-ring);
+          box-shadow: 0 0 0 2px color-mix(in srgb, var(--habitat-focus-ring) 38%, transparent), 0 8px 18px var(--habitat-ambient-shadow);
         }
 
         /* habitat-semantic-state: focus */
@@ -1080,7 +1127,7 @@ struct ThemeCompiler {
           outline-style: \(styleFocus(for: recipe));
           outline-width: 2px;
           outline-offset: 2px;
-          outline-color: color-mix(in srgb, var(--habitat-accent) \(recipe.focusEmphasisPercent)%, var(--habitat-highlight));
+          outline-color: var(--habitat-focus-ring);
         }
         \(root) \(profile.selectors.composer) :focus-visible {
           outline: none;
@@ -1118,19 +1165,19 @@ struct ThemeCompiler {
         case .arcadeSignal:
             "\(edge) box-shadow: inset 0 -\(depth)px 0 var(--habitat-secondary);"
         case .messengerGlass:
-            "\(edge) box-shadow: inset 0 1px 0 color-mix(in srgb, white 58%, transparent), inset 0 \(depth)px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
+            "\(edge) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), inset 0 \(depth)px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
         case .chatUtility:
             "\(edge) border-bottom-color: var(--habitat-secondary); box-shadow: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);"
         case .desktopRaised:
             "\(edge) border-bottom-color: var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white;"
         case .cinematicShade:
-            "\(edge) border-bottom-color: var(--habitat-attention); box-shadow: inset 0 -\(depth)px 18px color-mix(in srgb, black 18%, transparent);"
+            "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 0 -\(depth)px 18px var(--habitat-ambient-shadow);"
         case .cozySoft:
             "\(edge) box-shadow: inset 0 -\(depth)px 12px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
         case .energyStripe:
-            "\(edge) border-bottom-color: var(--habitat-highlight); box-shadow: inset 0 -\(depth)px 0 color-mix(in srgb, var(--habitat-accent) 16%, transparent);"
+            "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 0 -\(depth)px 0 color-mix(in srgb, var(--habitat-secondary) 16%, transparent);"
         case .fantasyOrnate:
-            "\(edge) border-bottom-color: color-mix(in srgb, var(--habitat-highlight) 62%, var(--habitat-accent)); box-shadow: inset 0 -\(depth)px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
+            "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 0 -\(depth)px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
         case .pixelHard:
             "\(edge) box-shadow: inset 0 -\(depth)px 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;"
         }
@@ -1166,15 +1213,15 @@ struct ThemeCompiler {
         let radius = cssNumber(recipe.composerRadius)
         let edge = cssNumber(recipe.composerEdgeWidth)
         let shadow = recipe.composerShadowRadius > 0
-            ? ", 0 2px \(cssNumber(recipe.composerShadowRadius))px color-mix(in srgb, var(--habitat-surface) 10%, transparent)"
+            ? ", 0 2px \(cssNumber(recipe.composerShadowRadius))px var(--habitat-ambient-shadow)"
             : ""
         let rendering = recipe.materialStyle == .pixelHard ? " image-rendering: pixelated;" : ""
-        return "background-color: color-mix(in srgb, var(--habitat-control-surface) var(--habitat-composer-opacity), transparent); border: \(edge)px solid var(--habitat-divider); border-radius: \(radius)px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) \(recipe.innerHighlightPercent)%, transparent)\(shadow);\(rendering)"
+        return "background-color: var(--habitat-composer-fill); border: \(edge)px solid var(--habitat-divider); border-radius: \(radius)px; box-shadow: inset 0 1px 0 var(--habitat-inner-highlight)\(shadow);\(rendering)"
     }
 
     private static func stylePrimaryControl(for recipe: HabitatThemeSurfaceRecipe) -> String {
         let rendering = recipe.materialStyle == .pixelHard ? " image-rendering: pixelated;" : ""
-        return "border: 1px solid color-mix(in srgb, var(--habitat-highlight) 46%, transparent); border-radius: 999px; box-shadow: 0 1px 2px color-mix(in srgb, black 16%, transparent);\(rendering)"
+        return "border: 1px solid color-mix(in srgb, var(--habitat-focus-ring) 46%, transparent); border-radius: 999px; box-shadow: 0 1px 2px var(--habitat-ambient-shadow);\(rendering)"
     }
 
     private static func styleSelected(for recipe: HabitatThemeSurfaceRecipe) -> String {
@@ -1215,11 +1262,11 @@ struct ThemeCompiler {
         case .desktopRaised:
             "\(shared) box-shadow: inset 1px 1px 0 color-mix(in srgb, white 18%, transparent), inset -1px -1px 0 color-mix(in srgb, black 12%, transparent);"
         case .cinematicShade:
-            "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 8%, transparent);"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight);"
         case .cozySoft:
             "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);"
         case .energyStripe:
-            "\(shared) box-shadow: inset 0 2px 0 color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
+            "\(shared) box-shadow: inset 0 2px 0 var(--habitat-inner-highlight);"
         case .fantasyOrnate:
             "\(shared) box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--habitat-secondary) 8%, transparent);"
         case .pixelHard:
@@ -1310,11 +1357,11 @@ struct ThemeCompiler {
         let chromeWash = "linear-gradient(to bottom, color-mix(in srgb, var(--habitat-surface) 22%, transparent) 0%, transparent 14% 78%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 100%)"
         let directional = switch safeSide {
         case .leading:
-            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 52%, transparent 78%)"
+            "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-localized-scrim-strength), transparent) 52%, transparent 78%)"
         case .trailing:
-            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 52%, transparent 78%)"
+            "linear-gradient(to left, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-localized-scrim-strength), transparent) 52%, transparent 78%)"
         case .center:
-            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-vignette-strength), transparent) 56%, transparent 82%)"
+            "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-localized-scrim-strength), transparent) 56%, transparent 82%)"
         case .none:
             "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent))"
         }
@@ -1446,6 +1493,10 @@ struct ThemeCompiler {
             alpha: min(max(weight, 0), 1)
         )
         return composite(weighted, over: rgbaColor(background).opaque).opaqueHex
+    }
+
+    private static func translucentColor(_ color: String, alpha: Double) -> String {
+        "color-mix(in srgb, \(color) \(cssPercent(min(max(alpha, 0), 1) * 100)), transparent)"
     }
 
     private static func contrastRatio(_ first: RGBAColor, _ second: RGBAColor) -> Double {
