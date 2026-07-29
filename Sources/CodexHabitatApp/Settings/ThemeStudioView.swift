@@ -198,12 +198,13 @@ struct ThemeStudioView: View {
         GeometryReader { geometry in
             let canvasSize = aspectFit16By10(in: geometry.size)
             let presentation = ThemeStudioCanvasPresentation(draft: model.draft)
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 if presentation.rendersHostShell {
                     artworkEditor(size: canvasSize)
                 }
                 if presentation.showsArtworkPrompt {
                     emptyArtwork
+                        .padding(12)
                 }
             }
             .frame(width: canvasSize.width, height: canvasSize.height)
@@ -233,7 +234,8 @@ struct ThemeStudioView: View {
                 imageURL: model.sourceImageURL,
                 symbol: "paintpalette.fill",
                 route: previewRoute,
-                height: size.height
+                height: size.height,
+                showsFallbackSymbol: false
             )
             .frame(width: size.width, height: size.height)
 
@@ -763,14 +765,14 @@ struct ThemeStudioView: View {
 
     private var emptyArtwork: some View {
         Button(action: chooseImage) {
-            Label(L10n.text("Choose Image"), systemImage: "photo.badge.plus")
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, HabitatDesignMetrics.spaceM)
-                .frame(minHeight: HabitatDesignMetrics.prominentControlHeight)
+            Image(systemName: "photo.badge.plus")
+                .frame(width: 22, height: 22)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
         .disabled(model.isSelectingImage || model.state == .saving)
+        .help(L10n.text("Choose Image"))
+        .accessibilityLabel(L10n.text("Choose Image"))
         .accessibilityIdentifier("theme-studio.empty-artwork")
     }
 

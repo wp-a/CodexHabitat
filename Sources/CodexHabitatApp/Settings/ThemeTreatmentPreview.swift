@@ -7,10 +7,31 @@ enum ThemeTreatmentPreviewRoute: Equatable, Hashable, Sendable {
     case task
 }
 
+enum ThemeTreatmentPreviewReadingSurface: Equatable, Sendable {
+    case unframed
+    case bounded
+}
+
+struct ThemeTreatmentPreviewComposition: Equatable, Sendable {
+    let readingSurface: ThemeTreatmentPreviewReadingSurface
+    let actionCount: Int
+    let sidebarItemCount: Int
+    let includesComposer: Bool
+
+    static func resolve(route: ThemeTreatmentPreviewRoute) -> Self {
+        Self(
+            readingSurface: route == .home ? .unframed : .bounded,
+            actionCount: route == .home ? 3 : 0,
+            sidebarItemCount: 4,
+            includesComposer: true
+        )
+    }
+}
+
 enum ThemeTreatmentPreviewSceneMetrics {
     static let bannerArtworkFraction = 0.52
     static let frameMatteThickness = 6.0
-    static let homeContentFraction = 0.56
+    static let homeContentFraction = 0.70
     static let sidebarFraction = 0.24
     static let outerRadius = 6.0
     static let outerBorderWidth = 1.0
@@ -151,6 +172,7 @@ struct ThemeTreatmentPreview: View {
     var route = ThemeTreatmentPreviewRoute.home
     var height = 100.0
     var showsRetryControl = false
+    var showsFallbackSymbol = true
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var image: CGImage?
     @State private var presentationState = ThemePreviewPresentationState()
@@ -271,9 +293,11 @@ struct ThemeTreatmentPreview: View {
         } else {
             Color(habitatHex: model.panelAltHex)
                 .overlay {
-                    Image(systemName: symbol)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Color(habitatHex: model.accentHex))
+                    if showsFallbackSymbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Color(habitatHex: model.accentHex))
+                    }
                 }
         }
     }
@@ -308,7 +332,7 @@ struct ThemeTreatmentPreview: View {
 
     private func chrome(in size: CGSize) -> some View {
         let sidebarWidth = size.width * sidebarFraction
-        let headerHeight = (model.density == .compact ? 15.0 : 18.0)
+        let headerHeight = (model.density == .compact ? 20.0 : 24.0)
             + recipe.headerEdgeWidth * 0.25
         return HStack(spacing: 0) {
             chromeSurface(opacity: sidebarOpacity)
@@ -320,14 +344,11 @@ struct ThemeTreatmentPreview: View {
                 }
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: densitySpacing) {
-                        ForEach(0..<ThemeTreatmentPreviewSceneMetrics.railCount, id: \.self) { index in
-                            railMark(
-                                width: sidebarWidth * railWidth(at: index),
-                                emphasized: index == 0
-                            )
+                        ForEach(0..<composition.sidebarItemCount, id: \.self) { index in
+                            sidebarItem(index: index, width: sidebarWidth - 12)
                         }
                     }
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 6)
                     .padding(.top, headerHeight + 8)
                 }
 
@@ -338,11 +359,18 @@ struct ThemeTreatmentPreview: View {
                         headerTreatment
                     }
                     .overlay(alignment: .leading) {
-                        HStack(spacing: 4) {
-                            Circle().fill(Color(habitatHex: model.accentHex)).frame(width: 4, height: 4)
-                            railMark(width: 32, emphasized: true)
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                            Image(systemName: "chevron.right")
+                            contentLine(width: 30, emphasized: true)
+                            Spacer(minLength: 0)
+                            Circle()
+                                .fill(Color(habitatHex: model.textHex).opacity(0.42))
+                                .frame(width: 5, height: 5)
                         }
-                        .padding(.leading, 8)
+                        .font(.system(size: 6, weight: .semibold))
+                        .foregroundStyle(Color(habitatHex: model.textHex).opacity(0.52))
+                        .padding(.horizontal, 8)
                     }
 
                 contentStage(in: CGSize(
@@ -358,7 +386,7 @@ struct ThemeTreatmentPreview: View {
             contentBlock(in: size)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: contentAlignment)
             chromeSurface(opacity: model.composerOpacity)
-                .frame(height: model.density == .compact ? 18 : 22)
+                .frame(height: model.density == .compact ? 26 : 30)
                 .clipShape(RoundedRectangle(cornerRadius: recipe.composerRadius))
                 .overlay {
                     RoundedRectangle(cornerRadius: recipe.composerRadius)
@@ -371,9 +399,23 @@ struct ThemeTreatmentPreview: View {
                     color: Color(habitatHex: model.surfaceHex).opacity(0.22),
                     radius: recipe.composerShadowRadius
                 )
-                .overlay(alignment: .leading) {
-                    contentLine(width: size.width * 0.32)
-                        .padding(.leading, 7)
+                .overlay {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 6, weight: .semibold))
+                            .foregroundStyle(Color(habitatHex: model.textHex).opacity(0.64))
+                        contentLine(width: size.width * 0.24)
+                        Spacer(minLength: 0)
+                        Circle()
+                            .fill(Color(habitatHex: model.textHex).opacity(0.76))
+                            .frame(width: 13, height: 13)
+                            .overlay {
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 5, weight: .bold))
+                                    .foregroundStyle(Color(habitatHex: model.surfaceHex))
+                            }
+                    }
+                    .padding(.horizontal, 7)
                 }
         }
         .padding(mainInset)
@@ -382,21 +424,10 @@ struct ThemeTreatmentPreview: View {
     @ViewBuilder
     private func contentBlock(in size: CGSize) -> some View {
         if route == .home {
-            chromeSurface(opacity: model.homeContentOpacity)
+            homeReadingSurface(in: size)
                 .frame(
-                    width: size.width * ThemeTreatmentPreviewSceneMetrics.homeContentFraction,
-                    height: size.height * (model.homeMode == .quiet ? 0.56 : 0.46)
+                    width: size.width * ThemeTreatmentPreviewSceneMetrics.homeContentFraction
                 )
-                .clipShape(RoundedRectangle(cornerRadius: recipe.readingRadius))
-                .overlay {
-                    readingSurfaceBorder
-                }
-                .overlay(alignment: .topLeading) {
-                    contentMarks(
-                        width: size.width
-                            * ThemeTreatmentPreviewSceneMetrics.homeContentFraction
-                    )
-                }
         } else {
             chromeSurface(opacity: model.taskContentOpacity)
                 .clipShape(RoundedRectangle(cornerRadius: recipe.readingRadius))
@@ -409,18 +440,75 @@ struct ThemeTreatmentPreview: View {
         }
     }
 
+    private func homeReadingSurface(in size: CGSize) -> some View {
+        let width = size.width * ThemeTreatmentPreviewSceneMetrics.homeContentFraction
+        return VStack(alignment: .leading, spacing: densitySpacing + 1) {
+            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                .font(.system(size: model.density == .compact ? 9 : 11, weight: .semibold))
+                .foregroundStyle(Color(habitatHex: model.textHex).opacity(0.66))
+            contentLine(width: width * 0.62, emphasized: true)
+            contentLine(width: width * 0.42)
+            HStack(spacing: densitySpacing) {
+                ForEach(0..<composition.actionCount, id: \.self) { index in
+                    homeActionCard(index: index)
+                }
+            }
+            .padding(.top, 2)
+        }
+        .padding(mainInset)
+    }
+
+    private func homeActionCard(index: Int) -> some View {
+        let symbols = ["megaphone", "hammer", "arrow.triangle.2.circlepath"]
+        return GeometryReader { geometry in
+            VStack(alignment: .leading, spacing: 5) {
+                Image(systemName: symbols[index % symbols.count])
+                    .font(.system(size: model.density == .compact ? 7 : 9, weight: .semibold))
+                    .foregroundStyle(Color(habitatHex: model.accentHex))
+                Spacer(minLength: 0)
+                contentLine(width: geometry.size.width * 0.58, emphasized: true)
+                contentLine(width: geometry.size.width * 0.40)
+            }
+            .padding(6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background {
+                chromeSurface(opacity: max(model.homeContentOpacity, 0.54))
+            }
+            .clipShape(RoundedRectangle(cornerRadius: recipe.actionRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: recipe.actionRadius)
+                    .stroke(
+                        Color(habitatHex: model.textHex).opacity(
+                            0.10 + Double(recipe.hoverEmphasisPercent) / 100 * 0.16
+                        ),
+                        style: strokeStyle(
+                            for: recipe.actionLineStyle,
+                            width: recipe.actionEdgeWidth
+                        )
+                    )
+            }
+            .overlay {
+                if index == 0 {
+                    RoundedRectangle(cornerRadius: recipe.actionRadius)
+                        .stroke(
+                            Color(habitatHex: model.accentHex).opacity(
+                                Double(recipe.focusEmphasisPercent) / 100 * 0.34
+                            ),
+                            style: focusStrokeStyle(for: recipe.focusStyle)
+                        )
+                        .padding(-0.5)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: model.density == .compact ? 38 : 46)
+    }
+
     private func contentMarks(width: Double) -> some View {
         VStack(alignment: .leading, spacing: densitySpacing) {
             contentLine(width: width * 0.52, emphasized: true)
             contentLine(width: width * 0.78)
-            if route == .home {
-                HStack(spacing: 4) {
-                    actionMark(width: width * 0.20, emphasized: true)
-                    actionMark(width: width * 0.24, emphasized: false)
-                }
-            } else {
-                contentLine(width: width * 0.64)
-            }
+            contentLine(width: width * 0.64)
         }
         .padding(mainInset)
     }
@@ -522,36 +610,33 @@ struct ThemeTreatmentPreview: View {
         }
     }
 
-    private func actionMark(width: Double, emphasized: Bool) -> some View {
-        RoundedRectangle(cornerRadius: recipe.actionRadius)
-            .fill(
-                Color(habitatHex: model.panelAltHex).opacity(
-                    Double(recipe.hoverEmphasisPercent) / 100 * 0.42
-                )
-            )
-            .frame(width: width, height: 7)
-            .overlay {
-                RoundedRectangle(cornerRadius: recipe.actionRadius)
-                    .stroke(
-                        Color(habitatHex: model.accentHex).opacity(0.46),
-                        style: strokeStyle(
-                            for: recipe.actionLineStyle,
-                            width: recipe.actionEdgeWidth
-                        )
-                    )
+    private func sidebarItem(index: Int, width: Double) -> some View {
+        let symbols = ["square.and.pencil", "clock", "puzzlepiece", "point.3.connected.trianglepath.dotted"]
+        let isSelected = index == 0
+        return HStack(spacing: 5) {
+            Image(systemName: symbols[index % symbols.count])
+                .font(.system(size: 7, weight: .medium))
+                .frame(width: 9)
+            railMark(width: width * railWidth(at: index), emphasized: isSelected)
+        }
+        .foregroundStyle(
+            isSelected
+                ? Color(habitatHex: model.accentHex)
+                : Color(habitatHex: model.textHex).opacity(0.46)
+        )
+        .padding(.horizontal, 4)
+        .frame(width: width, height: model.density == .compact ? 14 : 17, alignment: .leading)
+        .background(
+            Color(habitatHex: model.accentHex).opacity(isSelected ? 0.10 : 0),
+            in: RoundedRectangle(cornerRadius: recipe.selectedRadius)
+        )
+        .overlay(alignment: .leading) {
+            if isSelected {
+                Rectangle()
+                    .fill(Color(habitatHex: model.accentHex))
+                    .frame(width: recipe.selectedEdgeWidth, height: 9)
             }
-            .overlay {
-                if emphasized {
-                    RoundedRectangle(cornerRadius: recipe.actionRadius)
-                        .stroke(
-                            Color(habitatHex: model.accentHex).opacity(
-                                Double(recipe.focusEmphasisPercent) / 100
-                            ),
-                            style: focusStrokeStyle(for: recipe.focusStyle)
-                        )
-                        .padding(-1)
-                }
-            }
+        }
     }
 
     private func railMark(width: Double, emphasized: Bool = false) -> some View {
@@ -564,13 +649,6 @@ struct ThemeTreatmentPreview: View {
                 color: Color(habitatHex: model.accentHex).opacity(emphasized ? 0.16 : 0),
                 radius: emphasized ? recipe.selectedShadowRadius : 0
             )
-            .overlay(alignment: .leading) {
-                if emphasized {
-                    Rectangle()
-                        .fill(Color(habitatHex: model.accentHex))
-                        .frame(width: recipe.selectedEdgeWidth, height: 8)
-                }
-            }
     }
 
     private func contentLine(width: Double, emphasized: Bool = false) -> some View {
@@ -668,6 +746,10 @@ struct ThemeTreatmentPreview: View {
 
     private var recipe: HabitatThemeSurfaceRecipe {
         model.surfaceRecipe
+    }
+
+    private var composition: ThemeTreatmentPreviewComposition {
+        .resolve(route: route)
     }
 
     private var borderColor: Color {

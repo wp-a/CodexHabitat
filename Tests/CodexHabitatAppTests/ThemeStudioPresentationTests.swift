@@ -52,3 +52,25 @@ func completeStudioDraftKeepsTheShellAndEnablesFocalEditing() {
     #expect(!presentation.showsArtworkPrompt)
     #expect(presentation.allowsFocalEditing)
 }
+
+@Test
+func emptyStudioUsesACompactArtworkToolWithoutAFallbackWatermark() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeStudioView.swift"
+        ),
+        encoding: .utf8
+    )
+    let promptStart = try #require(source.range(of: "private var emptyArtwork"))
+    let previewModelStart = try #require(source.range(of: "private var previewModel"))
+    let promptSource = source[promptStart.lowerBound..<previewModelStart.lowerBound]
+
+    #expect(source.contains("showsFallbackSymbol: false"))
+    #expect(promptSource.contains("Image(systemName: \"photo.badge.plus\")"))
+    #expect(promptSource.contains(".help(L10n.text(\"Choose Image\"))"))
+    #expect(!promptSource.contains("Label(L10n.text(\"Choose Image\"), systemImage:"))
+}

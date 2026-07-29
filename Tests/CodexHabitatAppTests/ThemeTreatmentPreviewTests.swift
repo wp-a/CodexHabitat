@@ -4,6 +4,21 @@ import Testing
 @testable import CodexHabitatApp
 
 @Test
+func previewCompositionMatchesTheRecognizableCodexShell() {
+    let home = ThemeTreatmentPreviewComposition.resolve(route: .home)
+    #expect(home.readingSurface == .unframed)
+    #expect(home.actionCount == 3)
+    #expect(home.sidebarItemCount == 4)
+    #expect(home.includesComposer)
+
+    let task = ThemeTreatmentPreviewComposition.resolve(route: .task)
+    #expect(task.readingSurface == .bounded)
+    #expect(task.actionCount == 0)
+    #expect(task.sidebarItemCount == 4)
+    #expect(task.includesComposer)
+}
+
+@Test
 func themeTreatmentPreviewUsesOpaqueGlassWhenTransparencyIsReduced() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
