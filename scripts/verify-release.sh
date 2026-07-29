@@ -79,7 +79,7 @@ build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"
     || fail "invalid expected bundle build: $EXPECTED_BUILD_NUMBER"
 [[ "$build" == "$EXPECTED_BUILD_NUMBER" ]] \
     || fail "bundle build does not match expected build: $build != $EXPECTED_BUILD_NUMBER"
-helper_version="$($HELPER --version)" \
+helper_version="$("$HELPER" --version)" \
     || fail "could not read helper version"
 [[ "$helper_version" == "Codex Habitat Theme Bridge $version" ]] \
     || fail "helper version does not match app version: $helper_version"

@@ -223,6 +223,7 @@ func releaseVerificationRequiresTheHelperAndApplicationVersionsToMatch() throws 
         encoding: .utf8
     )
 
+    #expect(verifier.contains("\"$HELPER\" --version"))
     #expect(verifier.contains("Codex Habitat Theme Bridge $version"))
     #expect(verifier.contains("helper version does not match app version"))
 }
