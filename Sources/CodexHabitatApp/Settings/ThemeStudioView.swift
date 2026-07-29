@@ -235,7 +235,8 @@ struct ThemeStudioView: View {
                 symbol: "paintpalette.fill",
                 route: previewRoute,
                 height: size.height,
-                showsFallbackSymbol: false
+                showsFallbackSymbol: false,
+                showsFrame: false
             )
             .frame(width: size.width, height: size.height)
 

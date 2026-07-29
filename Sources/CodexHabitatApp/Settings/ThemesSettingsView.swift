@@ -545,20 +545,17 @@ struct ThemesSettingsView: View {
                     value: selectedThemeSupportsBridge ? "Supported" : "Habitat only",
                     symbol: selectedThemeSupportsBridge ? "checkmark.shield" : "macwindow"
                 )
+            }
+
+            inspectorBridgeStatus
+
+            if bridge.canRestore {
                 inspectorStatusCell(
-                    "Bridge status",
-                    value: bridge.statusText,
-                    symbol: bridge.state == .failed
-                        ? "exclamationmark.triangle"
-                        : "point.3.connected.trianglepath.dotted"
+                    "Restore",
+                    value: "Restore available",
+                    symbol: "arrow.uturn.backward"
                 )
-                if bridge.canRestore {
-                    inspectorStatusCell(
-                        "Restore",
-                        value: "Restore available",
-                        symbol: "arrow.uturn.backward"
-                    )
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if isSelectedThemeActive || isSelectedThemeActiveInHabitat {
@@ -605,7 +602,24 @@ struct ThemesSettingsView: View {
         }
     }
 
-    private func inspectorStatusCell(_ title: String, value: String, symbol: String) -> some View {
+    private var inspectorBridgeStatus: some View {
+        inspectorStatusCell(
+            "Bridge status",
+            value: bridge.statusText,
+            symbol: bridge.state == .failed
+                ? "exclamationmark.triangle"
+                : "point.3.connected.trianglepath.dotted",
+            valueLineLimit: 2
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func inspectorStatusCell(
+        _ title: String,
+        value: String,
+        symbol: String,
+        valueLineLimit: Int = 1
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(L10n.text(title), systemImage: symbol)
                 .font(.caption2)
@@ -613,7 +627,8 @@ struct ThemesSettingsView: View {
                 .lineLimit(1)
             Text(L10n.text(value))
                 .font(.caption.weight(.medium))
-                .lineLimit(1)
+                .lineLimit(valueLineLimit)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -906,8 +921,10 @@ struct ThemeChoiceCard: View {
                 .background(Color(nsColor: .controlBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: ThemeGalleryLayout.cardRadius))
                 .overlay {
-                    RoundedRectangle(cornerRadius: ThemeGalleryLayout.cardRadius)
-                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                    if !isPreviewed {
+                        RoundedRectangle(cornerRadius: ThemeGalleryLayout.cardRadius)
+                            .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                    }
                 }
             }
             .buttonStyle(HabitatPressButtonStyle(radius: ThemeGalleryLayout.cardRadius))

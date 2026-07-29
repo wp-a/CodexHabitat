@@ -74,3 +74,23 @@ func emptyStudioUsesACompactArtworkToolWithoutAFallbackWatermark() throws {
     #expect(promptSource.contains(".help(L10n.text(\"Choose Image\"))"))
     #expect(!promptSource.contains("Label(L10n.text(\"Choose Image\"), systemImage:"))
 }
+
+@Test
+func studioCanvasHasOneVisibleBoundaryOwner() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemeStudioView.swift"
+        ),
+        encoding: .utf8
+    )
+    let editorStart = try #require(source.range(of: "private func artworkEditor"))
+    let markerStart = try #require(source.range(of: "private func focalMarker"))
+    let editorSource = source[editorStart.lowerBound..<markerStart.lowerBound]
+
+    #expect(editorSource.contains("showsFrame: false"))
+    #expect(editorSource.components(separatedBy: ".stroke(").count == 2)
+}

@@ -221,6 +221,29 @@ func themeInspectorUsesScrollableDetailsAndAPinnedActionBar() throws {
 }
 
 @Test
+func themeLibraryKeepsLongBridgeStatusReadableAndUsesOneCardBoundary() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemesSettingsView.swift"
+        ),
+        encoding: .utf8
+    )
+    let bridgeStatusStart = try #require(source.range(of: "private var inspectorBridgeStatus"))
+    let statusCellStart = try #require(source.range(of: "private func inspectorStatusCell"))
+    let bridgeStatusSource = source[bridgeStatusStart.lowerBound..<statusCellStart.lowerBound]
+    #expect(bridgeStatusSource.contains("valueLineLimit: 2"))
+    #expect(bridgeStatusSource.contains("maxWidth: .infinity"))
+
+    let cardStart = try #require(source.range(of: "struct ThemeChoiceCard"))
+    let cardSource = source[cardStart.lowerBound...]
+    #expect(cardSource.contains("if !isPreviewed"))
+}
+
+@Test
 func treatmentPreviewUsesRequestStateToClearFailedReplacementImages() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

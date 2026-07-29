@@ -173,6 +173,7 @@ struct ThemeTreatmentPreview: View {
     var height = 100.0
     var showsRetryControl = false
     var showsFallbackSymbol = true
+    var showsFrame = true
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var image: CGImage?
     @State private var presentationState = ThemePreviewPresentationState()
@@ -187,10 +188,12 @@ struct ThemeTreatmentPreview: View {
                 chrome(in: geometry.size)
                 frameTreatment
             }
-            .clipShape(RoundedRectangle(cornerRadius: outerRadius))
+            .clipShape(RoundedRectangle(cornerRadius: showsFrame ? outerRadius : 0))
             .overlay {
-                RoundedRectangle(cornerRadius: outerRadius)
-                    .stroke(borderColor, lineWidth: borderWidth)
+                if showsFrame {
+                    RoundedRectangle(cornerRadius: outerRadius)
+                        .stroke(borderColor, lineWidth: borderWidth)
+                }
             }
         }
         .frame(maxWidth: .infinity)
