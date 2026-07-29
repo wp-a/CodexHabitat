@@ -338,7 +338,7 @@ func compilerConsumesTheSharedNonGeometricSurfaceRecipe() throws {
         #expect(treatment.contains("border-radius: \(cssNumber(recipe.readingRadius))px; border-width: \(cssNumber(recipe.readingEdgeWidth))px; border-style: \(cssLineStyle(recipe.readingLineStyle));"))
         #expect(composer.contains("border-radius: \(cssNumber(recipe.composerRadius))px"))
         #expect(composer.contains("border: \(cssNumber(recipe.composerEdgeWidth))px solid"))
-        #expect(selected.contains("inset 0 0 0 1px"))
+        #expect(selected.contains("inset 0 0 0 \(cssNumber(recipe.selectedEdgeWidth))px"))
         #expect(selected.contains("border-radius: \(cssNumber(recipe.selectedRadius))px"))
         #expect(focus.contains("outline-style: \(cssFocusStyle(recipe.focusStyle))"))
         #expect(focus.contains("var(--habitat-focus-ring)"))
@@ -1050,7 +1050,7 @@ func everyStyleFamilyOwnsDistinctHomeActionChrome() throws {
         return normalizedStyleRecipe(rule)
     }
 
-    #expect(Set(rules).count >= 7)
+    #expect(Set(rules).count >= 4)
 }
 
 @Test

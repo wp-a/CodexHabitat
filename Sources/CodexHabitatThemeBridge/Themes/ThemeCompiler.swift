@@ -1167,9 +1167,9 @@ struct ThemeCompiler {
         case .messengerGlass:
             "\(edge) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), inset 0 \(depth)px 0 color-mix(in srgb, var(--habitat-secondary) 24%, transparent);"
         case .chatUtility:
-            "\(edge) border-bottom-color: var(--habitat-secondary); box-shadow: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);"
+            "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 0 1px 0 var(--habitat-inner-highlight);"
         case .desktopRaised:
-            "\(edge) border-bottom-color: var(--habitat-panel-alt); box-shadow: inset 1px 1px 0 white;"
+            "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 1px 1px 0 var(--habitat-inner-highlight);"
         case .cinematicShade:
             "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 0 -\(depth)px 18px var(--habitat-ambient-shadow);"
         case .cozySoft:
@@ -1179,7 +1179,7 @@ struct ThemeCompiler {
         case .fantasyOrnate:
             "\(edge) border-bottom-color: var(--habitat-divider); box-shadow: inset 0 -\(depth)px 14px color-mix(in srgb, var(--habitat-secondary) 12%, transparent);"
         case .pixelHard:
-            "\(edge) box-shadow: inset 0 -\(depth)px 0 color-mix(in srgb, black 42%, transparent); image-rendering: pixelated;"
+            "\(edge) box-shadow: inset 0 -\(depth)px 0 var(--habitat-divider); image-rendering: pixelated;"
         }
     }
 
@@ -1233,44 +1233,44 @@ struct ThemeCompiler {
         }
         let secondaryShadow = switch recipe.materialStyle {
         case .arcadeSignal:
-            ", inset 0 0 0 1px var(--habitat-secondary)"
+            ", inset 2px 0 0 var(--habitat-secondary)"
         case .messengerGlass:
-            ", inset 0 1px 0 color-mix(in srgb, white 70%, transparent)"
+            ", inset 0 1px 0 var(--habitat-inner-highlight)"
         case .cinematicShade:
-            ", 0 2px \(cssNumber(recipe.selectedShadowRadius))px color-mix(in srgb, black 18%, transparent)"
+            ", 0 2px \(cssNumber(recipe.selectedShadowRadius))px var(--habitat-ambient-shadow)"
         case .energyStripe:
             ", \(cssNumber(recipe.selectedShadowRadius))px \(cssNumber(recipe.selectedShadowRadius))px 0 color-mix(in srgb, var(--habitat-secondary) 16%, transparent)"
         case .fantasyOrnate:
-            ", inset 0 0 \(cssNumber(recipe.selectedShadowRadius))px color-mix(in srgb, var(--habitat-secondary) 12%, transparent)"
+            ", inset 0 1px \(cssNumber(recipe.selectedShadowRadius))px var(--habitat-inner-highlight)"
         case .pixelHard:
-            ", \(cssNumber(recipe.selectedShadowRadius))px \(cssNumber(recipe.selectedShadowRadius))px 0 color-mix(in srgb, black 38%, transparent)"
+            ", \(cssNumber(recipe.selectedShadowRadius))px \(cssNumber(recipe.selectedShadowRadius))px 0 var(--habitat-ambient-shadow)"
         case .chatUtility, .desktopRaised, .cozySoft:
             ""
         }
-        return "box-shadow: inset 0 0 0 1px \(edgeColor)\(secondaryShadow); border-radius: \(cssNumber(recipe.selectedRadius))px;"
+        return "box-shadow: inset 0 0 0 \(cssNumber(recipe.selectedEdgeWidth))px \(edgeColor)\(secondaryShadow); border-radius: \(cssNumber(recipe.selectedRadius))px;"
     }
 
     private static func styleHomeAction(for recipe: HabitatThemeSurfaceRecipe) -> String {
         let shared = "border: \(cssNumber(recipe.actionEdgeWidth))px solid var(--habitat-divider); border-style: \(lineStyle(recipe.actionLineStyle)); border-radius: \(cssNumber(recipe.actionRadius))px;"
         return switch recipe.materialStyle {
         case .arcadeSignal:
-            "\(shared) box-shadow: inset 0 2px 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), inset 0 2px 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
         case .messengerGlass:
-            "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight);"
         case .chatUtility:
-            "\(shared) box-shadow: inset 2px 0 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), inset 2px 0 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
         case .desktopRaised:
-            "\(shared) box-shadow: inset 1px 1px 0 color-mix(in srgb, white 18%, transparent), inset -1px -1px 0 color-mix(in srgb, black 12%, transparent);"
+            "\(shared) box-shadow: inset 1px 1px 0 var(--habitat-inner-highlight), inset -1px -1px 0 var(--habitat-divider);"
         case .cinematicShade:
             "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight);"
         case .cozySoft:
-            "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight);"
         case .energyStripe:
             "\(shared) box-shadow: inset 0 2px 0 var(--habitat-inner-highlight);"
         case .fantasyOrnate:
-            "\(shared) box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--habitat-secondary) 8%, transparent);"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), inset 1px 0 0 color-mix(in srgb, var(--habitat-secondary) 8%, transparent);"
         case .pixelHard:
-            "\(shared) box-shadow: 2px 2px 0 color-mix(in srgb, black 12%, transparent); image-rendering: pixelated;"
+            "\(shared) box-shadow: inset 0 1px 0 var(--habitat-inner-highlight), 1px 1px 0 var(--habitat-ambient-shadow); image-rendering: pixelated;"
         }
     }
 

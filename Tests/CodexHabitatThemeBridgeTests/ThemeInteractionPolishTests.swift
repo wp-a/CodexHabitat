@@ -56,7 +56,7 @@ struct ThemeInteractionPolishTests {
         let expectedGlowSelectors = fixture.glowSelectors(root: root)
         let expectedMotionTargets = fixture.motionTargets(root: root)
         let glowSelectors = rules
-            .filter { $0.declarations["box-shadow"]?.contains("0 8px 20px") == true }
+            .filter { $0.declarations["box-shadow"]?.contains("0 8px 18px") == true }
             .flatMap(\.selectors)
 
         #expect(Set(glowSelectors) == expectedGlowSelectors)
@@ -140,6 +140,41 @@ struct ThemeInteractionPolishTests {
         }
     }
 
+    @Test
+    func familyBaseSurfacesRemainQuietWithoutBlurAccentFramesOrPersistentGlow() throws {
+        let profile = try completeInteractionProfile()
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let suggestions = try #require(profile.selectors.homeSuggestions)
+        let action = "\(root) \(suggestions) :where(button, [role=\"button\"])"
+        let composer = "\(root) \(profile.selectors.composer)"
+
+        for family in HabitatThemeStyleFamily.allCases {
+            let rules = parseCSSRules(ThemeCompiler.styleTreatment(for: family, profile: profile))
+            for (surface, selector) in [("action", action), ("composer", composer)] {
+                let base = try #require(rule(for: selector, in: rules))
+                let boundary = [
+                    base.declarations["border"] ?? "",
+                    base.declarations["border-color"] ?? "",
+                    base.declarations["box-shadow"] ?? "",
+                ].joined(separator: " ")
+                #expect(base.declarations["backdrop-filter"] == nil, "\(family.rawValue) blurs \(surface)")
+                #expect(!boundary.contains("var(--habitat-accent)"), "\(family.rawValue) accents idle \(surface)")
+                #expect(!hasPersistentGlow(boundary), "\(family.rawValue) adds an idle \(surface) glow")
+            }
+
+            let transitionRules = rules.filter {
+                !$0.isReducedMotionRule && $0.hasTransitionDeclaration
+            }
+            for transitionRule in transitionRules {
+                let durations = try milliseconds(
+                    in: transitionRule.declarations["transition-duration"] ?? ""
+                )
+                #expect(!durations.isEmpty)
+                #expect(durations.allSatisfy { (120...180).contains($0) })
+            }
+        }
+    }
+
     @Test(arguments: [
         "border", "border-width", "font-size", "line-height", "transform", "width",
     ])
@@ -169,8 +204,6 @@ struct ThemeInteractionPolishTests {
         let composer = "\(root) \(profile.selectors.composer)"
         let composerFocus = "\(composer):focus-within"
         let composerDescendantFocus = "\(composer) :focus-visible"
-        let maximumIdleShadowPercent = 18.0
-
         for definition in BuiltInThemeCatalog.all {
             let css = try compiledInteractionCSS(for: definition, profile: profile)
             let rules = parseCSSRules(css)
@@ -185,19 +218,15 @@ struct ThemeInteractionPolishTests {
             let composerFocusRule = try #require(rule(for: composerFocus, in: rules))
             let innerFocusRule = try #require(rule(for: composerDescendantFocus, in: rules))
 
-            let idleShadowPercentages = try percentages(
-                in: home.declarations["box-shadow"] ?? ""
-            )
-            #expect(home.declarations["background-color"] == "var(--habitat-home-action-background)")
+            #expect(home.declarations["background-color"] == "var(--habitat-action-fill)")
             #expect(
                 selectedMaterialRule.declarations["background-color"]
-                    == "var(--habitat-selection-surface)"
+                    == "var(--habitat-selected-fill)"
             )
             #expect(home.declarations["border"]?.contains("var(--habitat-divider)") == true)
-            #expect(!idleShadowPercentages.isEmpty, "\(definition.id) has no idle inner highlight")
             #expect(
-                idleShadowPercentages.allSatisfy { $0 <= maximumIdleShadowPercent },
-                "\(definition.id) idle shadow is too strong: \(idleShadowPercentages)"
+                home.declarations["box-shadow"]?.contains("var(--habitat-inner-highlight)") == true,
+                "\(definition.id) has no idle inner highlight"
             )
 
             #expect(selectedRule.declarations["font-weight"] == "600")
@@ -209,14 +238,14 @@ struct ThemeInteractionPolishTests {
             #expect(selectedRule.declarations["border-width"] == nil)
 
             #expect(
-                focusRule.declarations["outline-color"]?.contains("78%") == true,
+                focusRule.declarations["outline-color"] == "var(--habitat-focus-ring)",
                 "\(definition.id) keyboard focus is not in the ordered emphasis scale"
             )
             #expect(focusRule.declarations["outline-width"] == "2px")
             #expect(focusRule.declarations["outline-offset"] == "2px")
 
             #expect(
-                composerFocusRule.declarations["border-color"]?.contains("88%") == true,
+                composerFocusRule.declarations["border-color"] == "var(--habitat-focus-ring)",
                 "\(definition.id) composer focus is not the strongest boundary"
             )
             #expect(composerFocusRule.declarations["box-shadow"]?.contains("0 0 0 2px") == true)
@@ -370,12 +399,21 @@ private func compiledInteractionCSS(
     return try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
 }
 
-private func percentages(in value: String) throws -> [Double] {
-    let expression = try NSRegularExpression(pattern: #"([0-9]+(?:\.[0-9]+)?)%"#)
+private func milliseconds(in value: String) throws -> [Double] {
+    let expression = try NSRegularExpression(pattern: #"([0-9]+(?:\.[0-9]+)?)ms"#)
     let range = NSRange(value.startIndex..<value.endIndex, in: value)
     return expression.matches(in: value, range: range).compactMap { match in
         guard let capture = Range(match.range(at: 1), in: value) else { return nil }
         return Double(value[capture])
+    }
+}
+
+private func hasPersistentGlow(_ value: String) -> Bool {
+    splitTopLevel(value, separator: ",").contains { layer in
+        let normalized = layer
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+        return normalized.hasPrefix("0 0 ") || normalized.hasPrefix("inset 0 0 ")
     }
 }
 
