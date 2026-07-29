@@ -117,12 +117,12 @@ html[data-codex-habitat-theme="1"] {{main}} {
 
 html[data-codex-habitat-theme="1"] {{header}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-chrome-surface) 78%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-chrome-surface) var(--habitat-header-opacity), transparent);
   border-bottom-color: var(--habitat-divider);
 }
 
 html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{header}} {
-  background-color: color-mix(in srgb, var(--habitat-chrome-surface) 90%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-chrome-surface) var(--habitat-task-header-opacity), transparent);
 }
 
 html[data-codex-habitat-theme="1"] {{composer}},

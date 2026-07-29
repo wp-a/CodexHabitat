@@ -46,24 +46,46 @@ actor ThemePreviewStore {
     private enum CachedResult {
         case image(CGImage)
         case missing
+
+        var cost: Int {
+            switch self {
+            case let .image(image):
+                let (cost, overflow) = image.bytesPerRow.multipliedReportingOverflow(
+                    by: image.height
+                )
+                return overflow ? .max : max(1, cost)
+            case .missing:
+                return 1
+            }
+        }
     }
 
     private let loader: Loader
+    private let maximumCacheCost: Int
+    private let maximumCacheEntries: Int
     private var cache: [ThemePreviewRequestKey: CachedResult] = [:]
+    private var cacheCost = 0
+    private var cacheRecency: [ThemePreviewRequestKey] = []
     private struct InFlight {
         let token: UUID
         let task: Task<CGImage?, Never>
     }
     private var inFlight: [ThemePreviewRequestKey: InFlight] = [:]
 
-    init(loader: @escaping Loader) {
+    init(
+        maximumCacheCost: Int = 96 * 1_024 * 1_024,
+        maximumCacheEntries: Int = 128,
+        loader: @escaping Loader
+    ) {
+        self.maximumCacheCost = max(0, maximumCacheCost)
+        self.maximumCacheEntries = max(0, maximumCacheEntries)
         self.loader = loader
     }
 
     func image(at url: URL?, maximumPixelSize: Int = 480) async -> CGImage? {
         guard let url else { return nil }
         let key = ThemePreviewRequestKey(url: url, maximumPixelSize: maximumPixelSize)
-        if let cached = cache[key] {
+        if let cached = cachedResult(for: key) {
             switch cached {
             case let .image(image):
                 return image
@@ -79,7 +101,7 @@ actor ThemePreviewStore {
             $0.url == url && $0.maximumPixelSize == maximumPixelSize
         }
         for staleKey in staleKeys {
-            cache.removeValue(forKey: staleKey)
+            removeCachedResult(for: staleKey)
         }
         let staleInFlightKeys = inFlight.keys.filter {
             $0.url == url && $0.maximumPixelSize == maximumPixelSize
@@ -98,22 +120,53 @@ actor ThemePreviewStore {
         guard inFlight[key]?.token == token else { return loadedImage }
         inFlight[key] = nil
         guard let image = loadedImage else {
-            cache[key] = .missing
+            insert(.missing, for: key)
             return nil
         }
-        cache[key] = .image(image)
+        insert(.image(image), for: key)
         return image
     }
 
     func invalidate(url: URL) {
         let matchingKeys = cache.keys.filter { $0.url == url }
         for key in matchingKeys {
-            cache.removeValue(forKey: key)
+            removeCachedResult(for: key)
         }
         let matchingInFlightKeys = inFlight.keys.filter { $0.url == url }
         for key in matchingInFlightKeys {
             inFlight.removeValue(forKey: key)?.task.cancel()
         }
+    }
+
+    private func cachedResult(for key: ThemePreviewRequestKey) -> CachedResult? {
+        guard let result = cache[key] else { return nil }
+        markRecentlyUsed(key)
+        return result
+    }
+
+    private func insert(_ result: CachedResult, for key: ThemePreviewRequestKey) {
+        guard maximumCacheEntries > 0, result.cost <= maximumCacheCost else { return }
+        removeCachedResult(for: key)
+        cache[key] = result
+        cacheCost += result.cost
+        markRecentlyUsed(key)
+
+        while cacheCost > maximumCacheCost || cache.count > maximumCacheEntries {
+            guard let oldestKey = cacheRecency.first else { break }
+            removeCachedResult(for: oldestKey)
+        }
+    }
+
+    private func markRecentlyUsed(_ key: ThemePreviewRequestKey) {
+        cacheRecency.removeAll { $0 == key }
+        cacheRecency.append(key)
+    }
+
+    private func removeCachedResult(for key: ThemePreviewRequestKey) {
+        if let result = cache.removeValue(forKey: key) {
+            cacheCost -= result.cost
+        }
+        cacheRecency.removeAll { $0 == key }
     }
 }
 

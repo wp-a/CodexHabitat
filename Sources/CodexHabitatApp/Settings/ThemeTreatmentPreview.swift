@@ -196,6 +196,7 @@ struct ThemeTreatmentPreview: View {
                 }
             }
         }
+        .accessibilityHidden(true)
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .overlay {

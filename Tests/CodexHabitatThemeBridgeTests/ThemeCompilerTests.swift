@@ -127,6 +127,27 @@ func immersiveHomeHeaderAcceptsTheTypedTransparentRange() throws {
 }
 
 @Test
+func compiledHeadersConsumeTheTypedRouteOpacityVariables() throws {
+    let profile = try #require(
+        try CompatibilityProfileStore.bundled().profile(forVersion: "26.715.31925")
+    )
+    let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let header = profile.selectors.header
+    let homeRule = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"] \(header)",
+        in: css
+    )
+    let taskRule = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"] \(header)",
+        in: css
+    )
+
+    #expect(homeRule.contains("var(--habitat-header-opacity)"))
+    #expect(taskRule.contains("var(--habitat-task-header-opacity)"))
+}
+
+@Test
 func unknownCodexVersionsFailClosed() throws {
     let store = try CompatibilityProfileStore.bundled()
 

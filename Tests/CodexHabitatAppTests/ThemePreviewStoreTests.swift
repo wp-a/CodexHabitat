@@ -36,6 +36,24 @@ func missingThemePreviewResultsAreCached() async {
 }
 
 @Test
+func themePreviewCacheEvictsLeastRecentImagesPastItsCostBudget() async throws {
+    let image = try themePreviewTestImage()
+    let counter = ThemePreviewLoadCounter()
+    let store = ThemePreviewStore(maximumCacheCost: 4) { _ in
+        counter.increment()
+        return image
+    }
+    let firstURL = URL(fileURLWithPath: "/tmp/theme-preview-budget-first.png")
+    let secondURL = URL(fileURLWithPath: "/tmp/theme-preview-budget-second.png")
+
+    _ = await store.image(at: firstURL)
+    _ = await store.image(at: secondURL)
+    _ = await store.image(at: firstURL)
+
+    #expect(counter.value == 3)
+}
+
+@Test
 func differentThemePreviewsDecodeConcurrently() async {
     let probe = ConcurrentThemePreviewProbe()
     let store = ThemePreviewStore { _ in
@@ -260,6 +278,7 @@ func treatmentPreviewUsesRequestStateToClearFailedReplacementImages() throws {
     #expect(source.contains("case .clearImage:"))
     #expect(source.contains("image = nil"))
     #expect(source.contains("case .ignored:"))
+    #expect(source.contains(".accessibilityHidden(true)"))
 }
 
 private final class ThemePreviewLoadCounter: @unchecked Sendable {
