@@ -244,8 +244,10 @@ func themeStudioSourceKeepsTheWideCanvasInspectorContract() throws {
 
     #expect(source.contains("HSplitView"))
     #expect(source.contains("minWidth: 560"))
-    #expect(source.contains("minWidth: 320, idealWidth: 330, maxWidth: 340"))
-    #expect(source.contains("idealWidth: 1_000"))
+    #expect(source.contains("ThemeStudioLayoutMetrics.inspectorMinimumWidth"))
+    #expect(source.contains("ThemeStudioLayoutMetrics.inspectorIdealWidth"))
+    #expect(source.contains("ThemeStudioLayoutMetrics.inspectorMaximumWidth"))
+    #expect(source.contains("idealWidth: 1_040"))
     #expect(source.contains("idealHeight: 700"))
     #expect(source.contains("aspectRatio(16.0 / 10.0"))
     #expect(source.components(separatedBy: "ScrollView {").count - 1 == 1)
@@ -294,7 +296,7 @@ func themeStudioSourceMakesTheFirstRunFlowObviousAndValidatesBeforeExportPanels(
 }
 
 @Test
-func themeStudioSourceProvidesDirectManipulationAndSevenInspectorGroups() throws {
+func themeStudioSourceProvidesDirectManipulationAndGroupedInspectorSections() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -321,6 +323,7 @@ func themeStudioSourceProvidesDirectManipulationAndSevenInspectorGroups() throws
     ] {
         #expect(source.contains("\"\(title)\""))
     }
+    #expect(source.components(separatedBy: "ThemeStudioDisclosureSection(").count - 1 == 3)
 }
 
 @Test @MainActor

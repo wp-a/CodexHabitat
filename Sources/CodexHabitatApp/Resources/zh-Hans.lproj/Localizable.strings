@@ -7,6 +7,8 @@
 "Resets in %@" = "%@后重置";
 "Weekly limit" = "每周限额";
 "Appearance" = "外观";
+"Advanced" = "高级";
+"Basic" = "基础";
 "Apply Selected Theme to Codex" = "将所选主题应用到 Codex";
 "Applying and checking layout" = "正在应用并检查布局";
 "Approval required in Login Items" = "需要在登录项中批准";

@@ -3,6 +3,54 @@ import HabitatCore
 import ResourceKit
 import SwiftUI
 
+enum ThemeStudioLayoutMetrics {
+    static let inspectorMinimumWidth = 352.0
+    static let inspectorIdealWidth = 368.0
+    static let inspectorMaximumWidth = 388.0
+    static let toolbarHeight = 48.0
+}
+
+enum ThemeStudioInspectorSection: CaseIterable, Hashable, Sendable {
+    case metadata
+    case artwork
+    case palette
+    case scene
+    case material
+    case petPairing
+    case package
+}
+
+enum ThemeStudioInspectorGroup: CaseIterable, Hashable, Sendable {
+    case basic
+    case appearance
+    case advanced
+
+    static let defaultExpanded: Set<Self> = [.basic]
+
+    var sections: [ThemeStudioInspectorSection] {
+        switch self {
+        case .basic:
+            [.metadata, .artwork]
+        case .appearance:
+            [.palette, .scene, .material]
+        case .advanced:
+            [.petPairing, .package]
+        }
+    }
+}
+
+struct ThemeStudioCanvasPresentation: Equatable, Sendable {
+    let rendersHostShell: Bool
+    let showsArtworkPrompt: Bool
+    let allowsFocalEditing: Bool
+
+    init(draft: ThemeStudioDraft) {
+        rendersHostShell = true
+        showsArtworkPrompt = draft.sourceImageURL == nil
+        allowsFocalEditing = draft.sourceImageURL != nil && draft.palette != nil
+    }
+}
+
 struct ThemeStudioView: View {
     @ObservedObject var model: ThemeStudioModel
     let onSaved: (String, String?) -> Void
@@ -10,7 +58,7 @@ struct ThemeStudioView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: FocusField?
-    @State private var expandedSections: Set<InspectorSection> = [.metadata, .artwork, .scene]
+    @State private var expandedGroups = ThemeStudioInspectorGroup.defaultExpanded
     @State private var pendingExportURL: URL?
     @State private var showsRightsConfirmation = false
     @State private var rightsAccepted = false
@@ -27,12 +75,17 @@ struct ThemeStudioView: View {
                 canvasPane
                     .frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
                 inspector
-                    .frame(minWidth: 320, idealWidth: 330, maxWidth: 340, maxHeight: .infinity)
+                    .frame(
+                        minWidth: ThemeStudioLayoutMetrics.inspectorMinimumWidth,
+                        idealWidth: ThemeStudioLayoutMetrics.inspectorIdealWidth,
+                        maxWidth: ThemeStudioLayoutMetrics.inspectorMaximumWidth,
+                        maxHeight: .infinity
+                    )
             }
             Divider()
             footer
         }
-        .frame(minWidth: 900, idealWidth: 1_000, minHeight: 620, idealHeight: 700)
+        .frame(minWidth: 940, idealWidth: 1_040, minHeight: 620, idealHeight: 700)
         .background(HabitatSurface(role: .content))
         .interactiveDismissDisabled(model.isDirty || model.state == .saving || model.isSelectingImage)
         .confirmationDialog(
@@ -91,14 +144,25 @@ struct ThemeStudioView: View {
         HStack(spacing: HabitatDesignMetrics.spaceM) {
             Image(systemName: "paintbrush.pointed.fill")
                 .foregroundStyle(accentColor)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(L10n.text("Theme Studio"))
-                    .font(.headline)
-                Text(L10n.text("Local Habitat theme"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            Text(L10n.text("Theme Studio"))
+                .font(.headline)
+
+            Divider()
+                .frame(height: 18)
+
+            Picker(L10n.text("Preview route"), selection: $previewRoute) {
+                Text(L10n.text("Home")).tag(ThemeTreatmentPreviewRoute.home)
+                Text(L10n.text("Task")).tag(ThemeTreatmentPreviewRoute.task)
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 164)
+
+            Toggle(isOn: $showsSafeArea) {
+                Label(L10n.text("Safe regions"), systemImage: "viewfinder")
+            }
+            .toggleStyle(.button)
+            .help(L10n.text("Safe regions"))
 
             Spacer(minLength: HabitatDesignMetrics.spaceM)
 
@@ -117,51 +181,29 @@ struct ThemeStudioView: View {
             .accessibilityLabel(L10n.text("Redo"))
         }
         .buttonStyle(.borderless)
+        .controlSize(.small)
         .padding(.horizontal, HabitatDesignMetrics.spaceL)
-        .frame(minHeight: 52, idealHeight: 54, maxHeight: 56)
+        .frame(height: ThemeStudioLayoutMetrics.toolbarHeight)
         .background(HabitatSurface(role: .toolbar))
     }
 
     private var canvasPane: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: HabitatDesignMetrics.spaceM) {
-                Picker(L10n.text("Preview route"), selection: $previewRoute) {
-                    Text(L10n.text("Home")).tag(ThemeTreatmentPreviewRoute.home)
-                    Text(L10n.text("Task")).tag(ThemeTreatmentPreviewRoute.task)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 176)
-
-                Spacer()
-
-                Toggle(isOn: $showsSafeArea) {
-                    Label(L10n.text("Safe regions"), systemImage: "viewfinder")
-                }
-                .toggleStyle(.button)
-                .help(L10n.text("Safe regions"))
-            }
-            .padding(.horizontal, HabitatDesignMetrics.spaceL)
-            .frame(height: 44)
-
-            Divider()
-
-            previewCanvas
-                .padding(HabitatDesignMetrics.spaceXL)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .background(HabitatSurface(role: .content))
+        previewCanvas
+            .padding(HabitatDesignMetrics.spaceXL)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(HabitatSurface(role: .content))
     }
 
     private var previewCanvas: some View {
         GeometryReader { geometry in
             let canvasSize = aspectFit16By10(in: geometry.size)
+            let presentation = ThemeStudioCanvasPresentation(draft: model.draft)
             ZStack {
-                if model.sourceImageURL != nil, model.palette != nil {
+                if presentation.rendersHostShell {
                     artworkEditor(size: canvasSize)
-                } else {
+                }
+                if presentation.showsArtworkPrompt {
                     emptyArtwork
-                        .frame(width: canvasSize.width, height: canvasSize.height)
                 }
             }
             .frame(width: canvasSize.width, height: canvasSize.height)
@@ -283,55 +325,45 @@ struct ThemeStudioView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ThemeStudioInspectorSection(
-                        title: "Metadata",
-                        isExpanded: sectionBinding(.metadata)
+                    ThemeStudioDisclosureSection(
+                        title: "Basic",
+                        isExpanded: groupBinding(.basic)
                     ) {
-                        metadataControls
+                        ThemeStudioInspectorSubsection(title: "Metadata") {
+                            metadataControls
+                        }
+                        ThemeStudioInspectorSubsection(title: "Artwork") {
+                            artworkControls
+                        }
                     }
-                    .id(InspectorSection.metadata)
-                    ThemeStudioInspectorSection(
-                        title: "Artwork",
-                        isExpanded: sectionBinding(.artwork)
+                    .id(ThemeStudioInspectorGroup.basic)
+                    ThemeStudioDisclosureSection(
+                        title: "Appearance",
+                        isExpanded: groupBinding(.appearance)
                     ) {
-                        artworkControls
+                        ThemeStudioInspectorSubsection(title: "Palette") {
+                            paletteControls
+                        }
+                        ThemeStudioInspectorSubsection(title: "Scene") {
+                            sceneControls
+                        }
+                        ThemeStudioInspectorSubsection(title: "Material") {
+                            materialControls
+                        }
                     }
-                    .id(InspectorSection.artwork)
-                    ThemeStudioInspectorSection(
-                        title: "Palette",
-                        isExpanded: sectionBinding(.palette)
+                    .id(ThemeStudioInspectorGroup.appearance)
+                    ThemeStudioDisclosureSection(
+                        title: "Advanced",
+                        isExpanded: groupBinding(.advanced)
                     ) {
-                        paletteControls
+                        ThemeStudioInspectorSubsection(title: "Pet Pairing") {
+                            pairingControls
+                        }
+                        ThemeStudioInspectorSubsection(title: "Package") {
+                            packageControls
+                        }
                     }
-                    .id(InspectorSection.palette)
-                    ThemeStudioInspectorSection(
-                        title: "Scene",
-                        isExpanded: sectionBinding(.scene)
-                    ) {
-                        sceneControls
-                    }
-                    .id(InspectorSection.scene)
-                    ThemeStudioInspectorSection(
-                        title: "Material",
-                        isExpanded: sectionBinding(.material)
-                    ) {
-                        materialControls
-                    }
-                    .id(InspectorSection.material)
-                    ThemeStudioInspectorSection(
-                        title: "Pet Pairing",
-                        isExpanded: sectionBinding(.petPairing)
-                    ) {
-                        pairingControls
-                    }
-                    .id(InspectorSection.petPairing)
-                    ThemeStudioInspectorSection(
-                        title: "Package",
-                        isExpanded: sectionBinding(.package)
-                    ) {
-                        packageControls
-                    }
-                    .id(InspectorSection.package)
+                    .id(ThemeStudioInspectorGroup.advanced)
                 }
                 .padding(.horizontal, HabitatDesignMetrics.spaceM)
                 .padding(.vertical, HabitatDesignMetrics.spaceS)
@@ -731,20 +763,13 @@ struct ThemeStudioView: View {
 
     private var emptyArtwork: some View {
         Button(action: chooseImage) {
-            ZStack {
-                Color.secondary.opacity(0.07)
-                VStack(spacing: HabitatDesignMetrics.spaceS) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 28))
-                    Text(L10n.text("Choose Image"))
-                        .font(.callout)
-                }
-                .foregroundStyle(.secondary)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
-            .contentShape(RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius))
+            Label(L10n.text("Choose Image"), systemImage: "photo.badge.plus")
+                .font(.callout.weight(.medium))
+                .padding(.horizontal, HabitatDesignMetrics.spaceM)
+                .frame(minHeight: HabitatDesignMetrics.prominentControlHeight)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .disabled(model.isSelectingImage || model.state == .saving)
         .accessibilityIdentifier("theme-studio.empty-artwork")
     }
@@ -874,14 +899,14 @@ struct ThemeStudioView: View {
         }
     }
 
-    private func sectionBinding(_ section: InspectorSection) -> Binding<Bool> {
+    private func groupBinding(_ group: ThemeStudioInspectorGroup) -> Binding<Bool> {
         Binding(
-            get: { expandedSections.contains(section) },
+            get: { expandedGroups.contains(group) },
             set: { isExpanded in
                 if isExpanded {
-                    expandedSections.insert(section)
+                    expandedGroups.insert(group)
                 } else {
-                    expandedSections.remove(section)
+                    expandedGroups.remove(group)
                 }
             }
         )
@@ -902,23 +927,20 @@ struct ThemeStudioView: View {
     }
 
     private func focusFirstValidationError(using proxy: ScrollViewProxy) {
-        let section: InspectorSection
         if model.nameValidationMessage != nil {
-            section = .metadata
             focusedField = .name
         } else if model.authorValidationMessage != nil {
-            section = .metadata
             focusedField = .author
         } else {
-            section = .artwork
             focusedField = .image
         }
-        expandedSections.insert(section)
+        let group = ThemeStudioInspectorGroup.basic
+        expandedGroups.insert(group)
         if reduceMotion {
-            proxy.scrollTo(section, anchor: .top)
+            proxy.scrollTo(group, anchor: .top)
         } else {
             withAnimation(.easeOut(duration: HabitatMotion.navigationDuration)) {
-                proxy.scrollTo(section, anchor: .top)
+                proxy.scrollTo(group, anchor: .top)
             }
         }
     }
@@ -973,7 +995,7 @@ struct ThemeStudioView: View {
     }
 }
 
-private struct ThemeStudioInspectorSection<Content: View>: View {
+private struct ThemeStudioDisclosureSection<Content: View>: View {
     let title: String
     @Binding var isExpanded: Bool
     let content: Content
@@ -1006,14 +1028,23 @@ private struct ThemeStudioInspectorSection<Content: View>: View {
     }
 }
 
-private enum InspectorSection: Hashable {
-    case metadata
-    case artwork
-    case palette
-    case scene
-    case material
-    case petPairing
-    case package
+private struct ThemeStudioInspectorSubsection<Content: View>: View {
+    let title: String
+    let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceS) {
+            Text(L10n.text(title))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content
+        }
+    }
 }
 
 private enum FocusField: Hashable {
