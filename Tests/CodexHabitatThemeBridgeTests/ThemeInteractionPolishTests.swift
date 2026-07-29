@@ -169,11 +169,7 @@ struct ThemeInteractionPolishTests {
         let composer = "\(root) \(profile.selectors.composer)"
         let composerFocus = "\(composer):focus-within"
         let composerDescendantFocus = "\(composer) :focus-visible"
-        let maximumIdleBoundaryPercent = 28.0
-        let expectedIdleMaterialPercent = 82.0
-        let expectedSelectedMaterialPercent = 88.0
-
-        #expect(expectedIdleMaterialPercent < expectedSelectedMaterialPercent)
+        let maximumIdleShadowPercent = 18.0
 
         for definition in BuiltInThemeCatalog.all {
             let css = try compiledInteractionCSS(for: definition, profile: profile)
@@ -189,42 +185,18 @@ struct ThemeInteractionPolishTests {
             let composerFocusRule = try #require(rule(for: composerFocus, in: rules))
             let innerFocusRule = try #require(rule(for: composerDescendantFocus, in: rules))
 
-            let idleBoundaryPercentages = try percentages(
-                in: [
-                    home.declarations["border"],
-                    home.declarations["border-color"],
-                    home.declarations["border-top-color"],
-                    home.declarations["border-right-color"],
-                    home.declarations["border-bottom-color"],
-                    home.declarations["border-left-color"],
-                    home.declarations["border-inline-color"],
-                ].compactMap { $0 }.joined(separator: " ")
-            )
             let idleShadowPercentages = try percentages(
                 in: home.declarations["box-shadow"] ?? ""
             )
-            let idleMaterialPercent = try #require(
-                percentages(in: home.declarations["background-color"] ?? "").first
-            )
-            let selectedMaterialPercent = try #require(
-                percentages(
-                    in: selectedMaterialRule.declarations["background-color"] ?? ""
-                ).first
-            )
-            #expect(idleMaterialPercent == expectedIdleMaterialPercent)
-            #expect(selectedMaterialPercent == expectedSelectedMaterialPercent)
+            #expect(home.declarations["background-color"] == "var(--habitat-home-action-background)")
             #expect(
-                idleMaterialPercent < selectedMaterialPercent,
-                "\(definition.id) idle action material is stronger than selected navigation"
+                selectedMaterialRule.declarations["background-color"]
+                    == "var(--habitat-selection-surface)"
             )
-            #expect(!idleBoundaryPercentages.isEmpty, "\(definition.id) has no idle boundary mix")
+            #expect(home.declarations["border"]?.contains("var(--habitat-divider)") == true)
             #expect(!idleShadowPercentages.isEmpty, "\(definition.id) has no idle inner highlight")
             #expect(
-                idleBoundaryPercentages.allSatisfy { $0 <= maximumIdleBoundaryPercent },
-                "\(definition.id) idle boundary is too saturated: \(idleBoundaryPercentages)"
-            )
-            #expect(
-                idleShadowPercentages.allSatisfy { $0 <= 12 },
+                idleShadowPercentages.allSatisfy { $0 <= maximumIdleShadowPercent },
                 "\(definition.id) idle shadow is too strong: \(idleShadowPercentages)"
             )
 

@@ -308,6 +308,34 @@ struct ThemeCompiler {
             theme.tokens.accent,
             over: theme.tokens.panel
         )
+        let neutralAnchor = Self.colorScheme(for: theme.tokens.surface) == "dark"
+            ? "#141516"
+            : "#F7F7F5"
+        let chromeSurface = Self.mixedOpaqueColor(
+            theme.tokens.surface,
+            weight: 0.30,
+            over: neutralAnchor
+        )
+        let controlSurface = Self.mixedOpaqueColor(
+            theme.tokens.panel,
+            weight: 0.32,
+            over: neutralAnchor
+        )
+        let raisedSurface = Self.mixedOpaqueColor(
+            theme.tokens.panel,
+            weight: 0.48,
+            over: neutralAnchor
+        )
+        let selectionSurface = Self.mixedOpaqueColor(
+            theme.tokens.accent,
+            weight: 0.14,
+            over: controlSurface
+        )
+        let divider = Self.mixedOpaqueColor(
+            theme.tokens.text,
+            weight: 0.14,
+            over: controlSurface
+        )
 
         var result = template
         let replacements = [
@@ -316,9 +344,14 @@ struct ThemeCompiler {
             "panel-alt": theme.tokens.panelAlt,
             "text": theme.tokens.text,
             "muted-text": theme.tokens.mutedText,
-            "home-action-background": theme.tokens.panel,
+            "chrome-surface": chromeSurface,
+            "control-surface": controlSurface,
+            "raised-surface": raisedSurface,
+            "selection-surface": selectionSurface,
+            "divider": divider,
+            "home-action-background": controlSurface,
             "home-action-text": Self.higherContrastForeground(
-                against: theme.tokens.panel,
+                against: controlSurface,
                 first: "#000000",
                 second: "#FFFFFF"
             ),
@@ -447,10 +480,8 @@ struct ThemeCompiler {
               width: fit-content;
               max-width: calc(100% - 36px);
               margin-inline: auto;
-              padding: 3px 18px;
-              background-image: linear-gradient(to right, transparent 0%, color-mix(in srgb, var(--habitat-surface) 88%, transparent) 8% 92%, transparent 100%);
-              background-repeat: no-repeat;
-              background-size: 100% 100%;
+              padding: 0;
+              background-image: none;
             }
             \(root)[data-codex-habitat-route="home"] \(homeContent) :where(h1, h2, h3, p) {
               text-shadow: 0 1px 3px color-mix(in srgb, var(--habitat-surface) 86%, transparent);
@@ -478,8 +509,8 @@ struct ThemeCompiler {
             rules.append("""
             \(root)[data-codex-habitat-route="task"] \(userMessage) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent);
-              border-color: color-mix(in srgb, var(--habitat-accent) 30%, transparent);
+              background-color: var(--habitat-control-surface);
+              border-color: var(--habitat-divider);
             }
             """)
         }
@@ -487,8 +518,9 @@ struct ThemeCompiler {
             rules.append("""
             \(root)[data-codex-habitat-route="task"] \(message) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel) 84%, transparent);
-              border-color: color-mix(in srgb, var(--habitat-accent) 24%, transparent);
+              background-color: transparent;
+              border-color: transparent;
+              box-shadow: none;
               backdrop-filter: none;
             }
             """)
@@ -499,8 +531,8 @@ struct ThemeCompiler {
             rules.append("""
             \(scopedSelectors(protectedContent, root: "\(root)[data-codex-habitat-route=\"task\"]")) {
               color: var(--habitat-text);
-              background-color: color-mix(in srgb, var(--habitat-panel) 94%, transparent);
-              border-color: color-mix(in srgb, var(--habitat-accent) 36%, transparent);
+              background-color: var(--habitat-raised-surface);
+              border-color: var(--habitat-divider);
               backdrop-filter: none;
             }
             """)
@@ -508,8 +540,8 @@ struct ThemeCompiler {
         if let selectedNavigation = profile.selectors.selectedNavigation {
             rules.append("""
             \(root) \(selectedNavigation) {
-              background-color: color-mix(in srgb, var(--habitat-panel-alt) 88%, transparent);
-              box-shadow: inset 3px 0 0 var(--habitat-accent);
+              background-color: var(--habitat-selection-surface);
+              box-shadow: inset 0 0 0 1px var(--habitat-divider);
             }
             """)
         }
@@ -543,7 +575,7 @@ struct ThemeCompiler {
         if let stickyBand = profile.selectors.stickyBand {
             rules.append("""
             \(root) \(stickyBand) {
-              background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-content-opacity), transparent);
+              background-color: color-mix(in srgb, var(--habitat-raised-surface) var(--habitat-task-content-opacity), transparent);
             }
             """)
         }
@@ -828,7 +860,7 @@ struct ThemeCompiler {
         let root = "html[data-codex-habitat-theme=\"1\"]"
         let recipe = family.surfaceRecipe
         let declarations = (
-            sidebar: "",
+            sidebar: styleSidebar(for: recipe),
             composer: styleComposer(for: recipe),
             reading: styleReadingSurface(for: recipe)
         )
@@ -838,13 +870,14 @@ struct ThemeCompiler {
             profile.selectors.threadScroll,
             profile.selectors.taskTranscript,
         ].compactMap { $0 }
-        let contentSurfaces = [
-            profile.selectors.userMessageSurface,
-            profile.selectors.messageSurface,
-            profile.selectors.codeSurface,
+        let requestSurfaces = [profile.selectors.userMessageSurface].compactMap { $0 }
+        let responseSurfaces = [profile.selectors.messageSurface].compactMap { $0 }
+        let insetSurfaces = [profile.selectors.codeSurface].compactMap { $0 }
+            + (profile.selectors.toolSurfaces ?? [])
+        let floatingSurfaces = [
             profile.selectors.stickyBand,
             profile.selectors.popover,
-        ].compactMap { $0 } + (profile.selectors.toolSurfaces ?? [])
+        ].compactMap { $0 }
         let composerSurfaces = [profile.selectors.composer]
         let composerContextFallback = profile.selectors.composerContext.map { context in
             "\(context):focus-within:not(:has(\(profile.selectors.composer):focus-within))"
@@ -952,8 +985,32 @@ struct ThemeCompiler {
           scrollbar-color: var(--habitat-accent) color-mix(in srgb, var(--habitat-panel-alt) 44%, transparent);
         }
 
-        /* habitat-surface: content */
-        \(scopedSelectors(contentSurfaces, root: root)) { \(declarations.reading) }
+        /* habitat-surface: request */
+        \(scopedSelectors(requestSurfaces, root: root)) {
+          background-color: var(--habitat-control-surface);
+          \(declarations.reading)
+        }
+
+        /* habitat-surface: response */
+        \(scopedSelectors(responseSurfaces, root: root)) {
+          background-color: transparent;
+          border-color: transparent;
+          border-radius: 0;
+          box-shadow: none;
+          backdrop-filter: none;
+        }
+
+        /* habitat-surface: inset-content */
+        \(scopedSelectors(insetSurfaces, root: root)) {
+          background-color: var(--habitat-raised-surface);
+          \(declarations.reading)
+        }
+
+        /* habitat-surface: floating-content */
+        \(scopedSelectors(floatingSurfaces, root: root)) {
+          background-color: color-mix(in srgb, var(--habitat-raised-surface) 96%, transparent);
+          \(declarations.reading)
+        }
 
         \(homeActionRule)
         \(homeActionTransitionRule)
@@ -975,7 +1032,7 @@ struct ThemeCompiler {
         \(interruptionRule)
 
         /* habitat-semantic-state: primary */
-        \(root) button[type="submit"] { \(declarations.composer) }
+        \(root) button[type="submit"] { \(stylePrimaryControl(for: recipe)) }
 
         /* habitat-semantic-state: interactive */
         \(root) \(sidebarActionSelector) {
@@ -987,14 +1044,14 @@ struct ThemeCompiler {
         @media (hover: hover) and (pointer: fine) {
           \(homeHoverRule)
           \(root) \(sidebarHoverSelector) {
-            background-color: color-mix(in srgb, var(--habitat-panel-alt) 54%, transparent);
+            background-color: color-mix(in srgb, var(--habitat-selection-surface) 54%, transparent);
           }
         }
 
         \(homeActiveRule)
         \(root) \(sidebarActiveSelector) {
-          background-color: color-mix(in srgb, var(--habitat-panel-alt) 68%, transparent);
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--habitat-accent) 72%, transparent);
+          background-color: color-mix(in srgb, var(--habitat-selection-surface) 74%, transparent);
+          box-shadow: inset 0 0 0 1px var(--habitat-divider);
         }
 
         \(scopedSelectors(composerFocusSurfaces, root: root)) {
@@ -1063,12 +1120,27 @@ struct ThemeCompiler {
         }
     }
 
+    private static func styleSidebar(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        switch recipe.materialStyle {
+        case .messengerGlass:
+            "box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);"
+        case .desktopRaised:
+            "box-shadow: inset 1px 0 0 color-mix(in srgb, white 24%, transparent);"
+        case .arcadeSignal, .energyStripe:
+            "box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
+        case .fantasyOrnate:
+            "box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
+        case .chatUtility, .cinematicShade, .cozySoft, .pixelHard:
+            "box-shadow: none;"
+        }
+    }
+
     private static func styleStage() -> String { "" }
 
     private static func styleReadingSurface(
         for recipe: HabitatThemeSurfaceRecipe
     ) -> String {
-        let shared = "border-radius: \(cssNumber(recipe.readingRadius))px; border-width: \(cssNumber(recipe.readingEdgeWidth))px; border-style: \(lineStyle(recipe.readingLineStyle)); border-color: color-mix(in srgb, var(--habitat-accent) 24%, transparent);"
+        let shared = "border-radius: \(cssNumber(recipe.readingRadius))px; border-width: \(cssNumber(recipe.readingEdgeWidth))px; border-style: \(lineStyle(recipe.readingLineStyle)); border-color: var(--habitat-divider);"
         return recipe.materialStyle == .pixelHard
             ? "\(shared) image-rendering: pixelated;"
             : shared
@@ -1081,7 +1153,12 @@ struct ThemeCompiler {
             ? ", 0 2px \(cssNumber(recipe.composerShadowRadius))px color-mix(in srgb, var(--habitat-surface) 10%, transparent)"
             : ""
         let rendering = recipe.materialStyle == .pixelHard ? " image-rendering: pixelated;" : ""
-        return "border: \(edge)px solid color-mix(in srgb, var(--habitat-accent) 28%, transparent); border-radius: \(radius)px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) \(recipe.innerHighlightPercent)%, transparent)\(shadow);\(rendering)"
+        return "background-color: color-mix(in srgb, var(--habitat-control-surface) var(--habitat-composer-opacity), transparent); border: \(edge)px solid var(--habitat-divider); border-radius: \(radius)px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) \(recipe.innerHighlightPercent)%, transparent)\(shadow);\(rendering)"
+    }
+
+    private static func stylePrimaryControl(for recipe: HabitatThemeSurfaceRecipe) -> String {
+        let rendering = recipe.materialStyle == .pixelHard ? " image-rendering: pixelated;" : ""
+        return "border: 1px solid color-mix(in srgb, var(--habitat-highlight) 46%, transparent); border-radius: 999px; box-shadow: 0 1px 2px color-mix(in srgb, black 16%, transparent);\(rendering)"
     }
 
     private static func styleSelected(for recipe: HabitatThemeSurfaceRecipe) -> String {
@@ -1107,30 +1184,30 @@ struct ThemeCompiler {
         case .chatUtility, .desktopRaised, .cozySoft:
             ""
         }
-        return "box-shadow: inset \(cssNumber(recipe.selectedEdgeWidth))px 0 0 \(edgeColor)\(secondaryShadow); border-radius: \(cssNumber(recipe.selectedRadius))px;"
+        return "box-shadow: inset 0 0 0 1px \(edgeColor)\(secondaryShadow); border-radius: \(cssNumber(recipe.selectedRadius))px;"
     }
 
     private static func styleHomeAction(for recipe: HabitatThemeSurfaceRecipe) -> String {
-        let shared = "border: \(cssNumber(recipe.actionEdgeWidth))px solid color-mix(in srgb, var(--habitat-accent) 24%, transparent); border-style: \(lineStyle(recipe.actionLineStyle)); border-radius: \(cssNumber(recipe.actionRadius))px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) \(recipe.innerHighlightPercent)%, transparent);"
+        let shared = "border: \(cssNumber(recipe.actionEdgeWidth))px solid var(--habitat-divider); border-style: \(lineStyle(recipe.actionLineStyle)); border-radius: \(cssNumber(recipe.actionRadius))px;"
         return switch recipe.materialStyle {
         case .arcadeSignal:
-            "\(shared) border-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
+            "\(shared) box-shadow: inset 0 2px 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
         case .messengerGlass:
-            "\(shared) border-top-color: color-mix(in srgb, white 24%, var(--habitat-accent));"
+            "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);"
         case .chatUtility:
-            "\(shared) border-inline-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
+            "\(shared) box-shadow: inset 2px 0 0 color-mix(in srgb, var(--habitat-secondary) 10%, transparent);"
         case .desktopRaised:
-            shared
+            "\(shared) box-shadow: inset 1px 1px 0 color-mix(in srgb, white 18%, transparent), inset -1px -1px 0 color-mix(in srgb, black 12%, transparent);"
         case .cinematicShade:
-            "\(shared) border-color: color-mix(in srgb, var(--habitat-highlight) 28%, var(--habitat-accent));"
+            "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, var(--habitat-highlight) 8%, transparent);"
         case .cozySoft:
-            "\(shared) border-color: color-mix(in srgb, white 18%, var(--habitat-accent));"
+            "\(shared) box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);"
         case .energyStripe:
-            shared
+            "\(shared) box-shadow: inset 0 2px 0 color-mix(in srgb, var(--habitat-highlight) 10%, transparent);"
         case .fantasyOrnate:
-            "\(shared) border-bottom-color: color-mix(in srgb, var(--habitat-secondary) 26%, var(--habitat-accent));"
+            "\(shared) box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--habitat-secondary) 8%, transparent);"
         case .pixelHard:
-            "\(shared) image-rendering: pixelated;"
+            "\(shared) box-shadow: 2px 2px 0 color-mix(in srgb, black 12%, transparent); image-rendering: pixelated;"
         }
     }
 
@@ -1334,6 +1411,21 @@ struct ThemeCompiler {
 
     private static func visibleOpaqueColor(_ foreground: String, over background: String) -> String {
         composite(rgbaColor(foreground), over: rgbaColor(background).opaque).opaqueHex
+    }
+
+    private static func mixedOpaqueColor(
+        _ foreground: String,
+        weight: Double,
+        over background: String
+    ) -> String {
+        let color = rgbaColor(foreground)
+        let weighted = RGBAColor(
+            red: color.red,
+            green: color.green,
+            blue: color.blue,
+            alpha: min(max(weight, 0), 1)
+        )
+        return composite(weighted, over: rgbaColor(background).opaque).opaqueHex
     }
 
     private static func contrastRatio(_ first: RGBAColor, _ second: RGBAColor) -> Double {

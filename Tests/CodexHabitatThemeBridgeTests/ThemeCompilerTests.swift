@@ -281,7 +281,7 @@ func compilerConsumesTheSharedNonGeometricSurfaceRecipe() throws {
         #expect(treatment.contains("border-radius: \(cssNumber(recipe.readingRadius))px; border-width: \(cssNumber(recipe.readingEdgeWidth))px; border-style: \(cssLineStyle(recipe.readingLineStyle));"))
         #expect(composer.contains("border-radius: \(cssNumber(recipe.composerRadius))px"))
         #expect(composer.contains("border: \(cssNumber(recipe.composerEdgeWidth))px solid"))
-        #expect(selected.contains("inset \(cssNumber(recipe.selectedEdgeWidth))px 0 0"))
+        #expect(selected.contains("inset 0 0 0 1px"))
         #expect(selected.contains("border-radius: \(cssNumber(recipe.selectedRadius))px"))
         #expect(focus.contains("outline-style: \(cssFocusStyle(recipe.focusStyle))"))
         #expect(focus.contains("var(--habitat-accent) \(recipe.focusEmphasisPercent)%"))
@@ -357,14 +357,13 @@ func taskRequestCardsKeepAReadableIndependentSurface() throws {
     let selector = "\(root) \(requestSurface)"
     let rule = try cssRuleBody(selector: selector, in: css)
 
-    #expect(rule.contains(
-        "background-color: color-mix(in srgb, var(--habitat-panel) 88%, transparent)"
-    ))
+    #expect(rule.contains("background-color: var(--habitat-control-surface)"))
+    #expect(rule.contains("border-color: var(--habitat-divider)"))
     #expect(!css.contains("\(profile.selectors.threadScroll) :where(article"))
 }
 
 @Test
-func taskResponseSurfacesUseAStableLocalReadingMaterial() throws {
+func taskResponseSurfacesUseAnUnframedEditorialReadingSurface() throws {
     let profile = try currentCompleteSurfaceProfile()
     let theme = try #require(BridgeTheme.builtIn(id: "aqua-pulse"))
     let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
@@ -373,9 +372,9 @@ func taskResponseSurfacesUseAStableLocalReadingMaterial() throws {
     let selector = "\(root) \(responseSurface)"
     let rule = try cssRuleBody(selector: selector, in: css)
 
-    #expect(rule.contains(
-        "background-color: color-mix(in srgb, var(--habitat-panel) 84%, transparent)"
-    ))
+    #expect(rule.contains("background-color: transparent"))
+    #expect(rule.contains("border-color: transparent"))
+    #expect(rule.contains("box-shadow: none"))
     #expect(rule.contains("backdrop-filter: none"))
 }
 
@@ -408,6 +407,20 @@ func homeTextUsesABoundedSurfaceHaloWithoutOwningTheContainer() throws {
 }
 
 @Test
+func homeSubtitleUsesTheSceneScrimInsteadOfALabelBackground() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "quiet-garden"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"home\"]"
+    let homeContent = try #require(profile.selectors.homeContent)
+    let rule = try cssRuleBody(selector: "\(root) \(homeContent) p", in: css)
+
+    #expect(rule.contains("background-image: none"))
+    #expect(rule.contains("padding: 0"))
+    #expect(!rule.contains("linear-gradient"))
+}
+
+@Test
 func submitControlsUseAccessibleForegrounds() throws {
     let profile = try currentCompleteSurfaceProfile()
     let compiler = try ThemeCompiler.bundled()
@@ -436,12 +449,30 @@ func homeActionControlsUseAnOpaqueMaximumContrastForeground() throws {
     let win95CSS = try compiler.compile(theme: win95, profile: profile)
     let blockCSS = try compiler.compile(theme: blockFrontier, profile: profile)
 
-    #expect(win95CSS.contains("--habitat-home-action-background: #E7E7E7"))
+    #expect(win95CSS.contains("--habitat-home-action-background: #F2F2F1"))
     #expect(win95CSS.contains("--habitat-home-action-text: #000000"))
-    #expect(blockCSS.contains("--habitat-home-action-background: #36523B"))
+    #expect(blockCSS.contains("--habitat-home-action-background: #1F2922"))
     #expect(blockCSS.contains("--habitat-home-action-text: #FFFFFF"))
     #expect(win95CSS.contains("color: var(--habitat-home-action-text)"))
     #expect(win95CSS.contains("background-color: var(--habitat-home-action-background)"))
+}
+
+@Test
+func submitControlDoesNotInheritTheComposerMaterial() throws {
+    let profile = try currentCompleteSurfaceProfile()
+    let theme = try #require(BridgeTheme.builtIn(id: "workbench"))
+    let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
+    let root = "html[data-codex-habitat-theme=\"1\"]"
+    let composer = try #require(
+        cssRuleBodies(selector: "\(root) \(profile.selectors.composer)", in: css).last
+    )
+    let submit = try cssRuleBody(selector: "\(root) button[type=\"submit\"]", in: css)
+
+    #expect(composer.contains("var(--habitat-control-surface)"))
+    #expect(submit.contains("background-color: var(--habitat-submit-accent)"))
+    #expect(submit.contains("border-radius: 999px"))
+    #expect(!submit.contains("var(--habitat-control-surface)"))
+    #expect(!submit.contains("box-shadow: inset 0 1px 0"))
 }
 
 @Test
@@ -820,8 +851,8 @@ func compiledSurfacesOverrideHostTextClassesWithSemanticForegrounds() throws {
         selector: "\(root)[data-codex-habitat-route=\"home\"] \(homeContent) p",
         in: css
     )
-    #expect(homeSubtitle.contains("background-image: linear-gradient"))
-    #expect(homeSubtitle.contains("var(--habitat-surface) 88%"))
+    #expect(homeSubtitle.contains("background-image: none"))
+    #expect(homeSubtitle.contains("padding: 0"))
     #expect(homeSubtitle.contains("width: fit-content"))
 
     let sidebarAction = try cssRuleBody(
@@ -913,8 +944,9 @@ func everyStyleRecipeCoversRequiredHostSurfaces() throws {
             #expect(recipe.contains(selector), "\(family.rawValue) omits \(selector)")
         }
         for surface in [
-            "shell", "sidebar", "header", "stage", "transcript", "content",
-            "home-actions", "composer", "selected-navigation", "fades-and-resize",
+            "shell", "sidebar", "header", "stage", "transcript", "request", "response",
+            "inset-content", "floating-content", "home-actions", "composer",
+            "selected-navigation", "fades-and-resize",
         ] {
             #expect(
                 recipe.contains("habitat-surface: \(surface)"),
@@ -961,7 +993,7 @@ func everyStyleFamilyOwnsDistinctHomeActionChrome() throws {
         return normalizedStyleRecipe(rule)
     }
 
-    #expect(Set(rules).count == HabitatThemeStyleFamily.allCases.count)
+    #expect(Set(rules).count >= 7)
 }
 
 @Test

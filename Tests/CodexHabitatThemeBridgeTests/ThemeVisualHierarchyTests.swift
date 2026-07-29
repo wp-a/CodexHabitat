@@ -5,10 +5,6 @@ import Testing
 
 @Suite
 struct ThemeVisualHierarchyTests {
-    private let homeActionFillPercent = 82
-    private let selectedNavigationFillPercent = 88
-    private let sidebarHoverFillPercent = 54
-
     @Test
     func builtInComposerMaterialsStayWithinTheRefinedRange() throws {
         #expect(BuiltInThemeCatalog.all.count == 24)
@@ -85,8 +81,6 @@ struct ThemeVisualHierarchyTests {
         let selectedSelector = "\(root) \(selectedNavigation)"
         let hoverSelector = "\(root) \(profile.selectors.sidebar) :where(a, button, [role=\"button\"]):not([aria-current]):not([aria-selected=\"true\"]):not([aria-pressed=\"true\"]):hover"
 
-        #expect(selectedNavigationFillPercent > sidebarHoverFillPercent)
-
         for definition in BuiltInThemeCatalog.all {
             let css = try compiledCSS(for: definition, profile: profile)
             let action = try #require(
@@ -105,24 +99,9 @@ struct ThemeVisualHierarchyTests {
                 }
             )
 
-            #expect(
-                action.contains(
-                    "var(--habitat-panel-alt) \(homeActionFillPercent)%, transparent"
-                ),
-                "\(definition.id) home action is not the lighter semantic material"
-            )
-            #expect(
-                selected.contains(
-                    "var(--habitat-panel-alt) \(selectedNavigationFillPercent)%, transparent"
-                ),
-                "\(definition.id) selected navigation material contract changed"
-            )
-            #expect(
-                hover.contains(
-                    "var(--habitat-panel-alt) \(sidebarHoverFillPercent)%, transparent"
-                ),
-                "\(definition.id) sidebar hover contract changed"
-            )
+            #expect(action.contains("var(--habitat-home-action-background)"))
+            #expect(selected.contains("var(--habitat-selection-surface)"))
+            #expect(hover.contains("var(--habitat-selection-surface) 54%, transparent"))
         }
     }
 
@@ -145,7 +124,7 @@ struct ThemeVisualHierarchyTests {
 
             #expect(
                 action.contains(
-                    "border: 1px solid color-mix(in srgb, var(--habitat-accent) 24%, transparent)"
+                    "border: 1px solid var(--habitat-divider)"
                 ),
                 "\(family.rawValue) does not use the shared quiet idle action boundary"
             )
@@ -169,6 +148,30 @@ struct ThemeVisualHierarchyTests {
     }
 
     @Test
+    func taskSemanticSurfacesUseDistinctMaterialsAcrossAllThemes() throws {
+        let profile = try hierarchyProfile()
+        let root = "html[data-codex-habitat-theme=\"1\"]"
+        let request = try #require(profile.selectors.userMessageSurface)
+        let response = try #require(profile.selectors.messageSurface)
+        let code = try #require(profile.selectors.codeSurface)
+
+        for definition in BuiltInThemeCatalog.all {
+            let css = try compiledCSS(for: definition, profile: profile)
+            let requestRule = hierarchyRuleBodies(selector: "\(root) \(request)", in: css).last
+            let responseRule = hierarchyRuleBodies(selector: "\(root) \(response)", in: css).last
+            let codeRule = hierarchyRuleBodies(
+                containingSelector: "\(root) \(code)",
+                in: css
+            ).last
+
+            #expect(requestRule?.contains("var(--habitat-control-surface)") == true)
+            #expect(responseRule?.contains("background-color: transparent") == true)
+            #expect(responseRule?.contains("box-shadow: none") == true)
+            #expect(codeRule?.contains("var(--habitat-raised-surface)") == true)
+        }
+    }
+
+    @Test
     func gameCinematicCardsUseFineTintedBoundariesAndShortShadows() throws {
         let profile = try hierarchyProfile()
         let suggestions = try #require(profile.selectors.homeSuggestions)
@@ -184,8 +187,7 @@ struct ThemeVisualHierarchyTests {
         )
 
         for (surface, body) in [("home action", action), ("composer", composer)] {
-            #expect(body.contains("border: 1px solid color-mix(in srgb"), "\(surface) lacks a fine tinted border")
-            #expect(body.contains("var(--habitat-accent)"), "\(surface) border is not theme-derived")
+            #expect(body.contains("border: 1px solid var(--habitat-divider)"), "\(surface) lacks a quiet semantic border")
             #expect(body.contains("var(--habitat-highlight)"), "\(surface) lacks an inner highlight")
             #expect(body.contains("inset 0 1px 0"), "\(surface) lacks an inner highlight")
             #expect(!body.contains("3px solid var(--habitat-attention)"), "\(surface) keeps the attention rail")

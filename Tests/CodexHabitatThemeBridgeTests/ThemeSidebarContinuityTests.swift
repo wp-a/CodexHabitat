@@ -28,10 +28,14 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
         let homeBackgroundRules = homeRules.filter(\.declaresBackground)
         let taskBackgroundRules = taskRules.filter(\.declaresBackground)
         let baseWash = try #require(baseRules.first { rule in
-            rule.declarations["background-image"]?.hasPrefix("linear-gradient(") == true
+            rule.declarations["background-color"]?.contains(
+                "var(--habitat-sidebar-opacity)"
+            ) == true
         })
         let taskWash = try #require(taskRules.first { rule in
-            rule.declarations["background-image"]?.hasPrefix("linear-gradient(") == true
+            rule.declarations["background-color"]?.contains(
+                "var(--habitat-task-sidebar-opacity)"
+            ) == true
         })
 
         #expect(
@@ -48,29 +52,29 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
             #expect(!body.contains("var(--habitat-task-sidebar-opacity)"))
         }
         #expect(
-            baseWash.declarations["background-color"] == "transparent",
-            "\(definition.id) sidebar base must not cover the scene with a flat color"
+            baseWash.declarations["background-image"] == "none",
+            "\(definition.id) sidebar base must not add a directional color gradient"
         )
         #expect(
             baseWash.declarations["backdrop-filter"] == "none",
             "\(definition.id) sidebar base must not blur the scene"
         )
         #expect(
-            baseWash.declarations["background-image"]?.contains(
+            baseWash.declarations["background-color"]?.contains(
                 "var(--habitat-sidebar-opacity)"
             ) == true,
             "\(definition.id) home/base sidebar must use the home opacity token"
         )
         #expect(
-            taskWash.declarations["background-color"] == "transparent",
-            "\(definition.id) task sidebar must remain translucent"
+            taskWash.declarations["background-image"] == "none",
+            "\(definition.id) task sidebar must not add a directional color gradient"
         )
         #expect(
             taskWash.declarations["backdrop-filter"] == "none",
             "\(definition.id) task sidebar must not blur the scene"
         )
         #expect(
-            taskWash.declarations["background-image"]?.contains(
+            taskWash.declarations["background-color"]?.contains(
                 "var(--habitat-task-sidebar-opacity)"
             ) == true,
             "\(definition.id) task sidebar must use the stronger task opacity token"
@@ -84,12 +88,12 @@ func everyThemeKeepsTheSceneVisibleThroughRouteAwareSidebarWashes() throws {
                 !body.contains("var(--habitat-art-background)"),
                 "\(definition.id) sidebar must not consume the scene bitmap"
             )
-            if let backgroundImage = rule.declarations["background-image"] {
-                #expect(
-                    occurrenceCount(of: "linear-gradient(", in: backgroundImage) == 1,
-                    "\(definition.id) sidebar must draw one wash, not layered artwork"
-                )
-            }
+            #expect(
+                rule.declarations["background-image"] != nil
+                    ? rule.declarations["background-image"] == "none"
+                    : true,
+                "\(definition.id) sidebar must not draw decorative image layers"
+            )
         }
     }
 }

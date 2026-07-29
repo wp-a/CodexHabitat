@@ -765,10 +765,11 @@ function requireSceneContinuity(continuity, artworkZones, transmissionZones, con
       && continuity.titlebarBackgroundAlpha <= 0.18 + 1 / 255,
     `${context} titlebar background alpha is ${continuity.titlebarBackgroundAlpha}`,
   );
-  requireApproximateAlpha(
-    continuity.sidebarBackgroundAlpha,
-    0,
-    `${context} sidebar background alpha`,
+  requireMetrics(
+    Number.isFinite(continuity.sidebarBackgroundAlpha)
+      && continuity.sidebarBackgroundAlpha >= 0.87 - 1 / 255
+      && continuity.sidebarBackgroundAlpha <= 0.90 + 1 / 255,
+    `${context} sidebar background alpha is ${continuity.sidebarBackgroundAlpha}`,
   );
   requireApproximateAlpha(
     continuity.mainBackgroundAlpha,

@@ -518,7 +518,7 @@ function representativeMetrics() {
     },
     sceneContinuity: {
       titlebarBackgroundAlpha: 0.16,
-      sidebarBackgroundAlpha: 0,
+      sidebarBackgroundAlpha: 0.88,
       mainBackgroundAlpha: 0,
       titlebarHasIndependentArtwork: false,
       sidebarHasIndependentArtwork: false,

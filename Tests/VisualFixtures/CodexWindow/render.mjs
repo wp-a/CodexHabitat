@@ -600,21 +600,40 @@ async function inspectFixturePage(
       `task reading surface has only ${taskReadingLayerCount} gradient layer(s)`,
     );
   }
-  const messageCardOpacity = routeName === "task"
-    ? await page.locator('[data-fixture-surface="message"]').evaluate((node) => {
-      const color = getComputedStyle(node).backgroundColor;
-      const slashAlpha = color.match(/\/\s*([0-9.]+)\s*\)$/);
-      if (slashAlpha) return Number.parseFloat(slashAlpha[1]);
-      const legacyAlpha = color.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)$/);
-      if (legacyAlpha) return Number.parseFloat(legacyAlpha[1]);
-      return color === "transparent" ? 0 : null;
-    })
+  const taskSurfaceOpacity = routeName === "task"
+    ? await page.evaluate((profileSelectors) => {
+      const request = document.querySelector(profileSelectors.userMessageSurface);
+      const response = document.querySelector(profileSelectors.messageSurface);
+      const code = document.querySelector(profileSelectors.codeSurface);
+      const tool = document.querySelector(profileSelectors.toolSurfaces[0]);
+      if (![request, response, code, tool].every((node) => node instanceof HTMLElement)) {
+        throw new Error("task semantic surface is missing");
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) throw new Error("unable to inspect task surface alpha");
+      const alpha = (node) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = getComputedStyle(node).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        return context.getImageData(0, 0, 1, 1).data[3] / 255;
+      };
+      return {
+        request: alpha(request),
+        response: alpha(response),
+        code: alpha(code),
+        tool: alpha(tool),
+      };
+    }, selectors)
     : null;
   if (routeName === "task") {
-    assert(
-      messageCardOpacity !== null && Math.abs(messageCardOpacity - 0.88) <= 0.001,
-      `task message card opacity is ${messageCardOpacity}`,
-    );
+    assert(taskSurfaceOpacity !== null, "task surface opacity is missing");
+    assert(taskSurfaceOpacity.request >= 0.99, `task request opacity is ${taskSurfaceOpacity.request}`);
+    assert(taskSurfaceOpacity.response <= 0.01, `task response opacity is ${taskSurfaceOpacity.response}`);
+    assert(taskSurfaceOpacity.code >= 0.99, `task code opacity is ${taskSurfaceOpacity.code}`);
+    assert(taskSurfaceOpacity.tool >= 0.99, `task tool opacity is ${taskSurfaceOpacity.tool}`);
   }
   const materialHierarchy = await page.evaluate(({ profileSelectors, activeRoute }) => {
     const appShell = document.querySelector(profileSelectors.appShell);
@@ -741,7 +760,10 @@ async function inspectFixturePage(
     taskReadingScrimValid,
     sceneOverlayLayerCount,
     taskReadingLayerCount,
-    messageCardOpacity,
+    messageCardOpacity: taskSurfaceOpacity?.request ?? null,
+    responseSurfaceOpacity: taskSurfaceOpacity?.response ?? null,
+    codeSurfaceOpacity: taskSurfaceOpacity?.code ?? null,
+    toolSurfaceOpacity: taskSurfaceOpacity?.tool ?? null,
     taskCanScroll,
     finalScrollTop,
     artworkOpacity: scene.artworkOpacity,

@@ -5,6 +5,11 @@ html[data-codex-habitat-theme="1"] {
   --habitat-text: {{text}};
   --habitat-muted-text: {{muted-text}};
   --habitat-readable-muted: color-mix(in srgb, var(--habitat-muted-text) 30%, var(--habitat-text));
+  --habitat-chrome-surface: {{chrome-surface}};
+  --habitat-control-surface: {{control-surface}};
+  --habitat-raised-surface: {{raised-surface}};
+  --habitat-selection-surface: {{selection-surface}};
+  --habitat-divider: {{divider}};
   --habitat-home-action-background: {{home-action-background}};
   --habitat-home-action-text: {{home-action-text}};
   --habitat-on-accent: {{on-accent}};
@@ -83,27 +88,23 @@ html[data-codex-habitat-theme="1"] {{app-shell}}::after {
 
 html[data-codex-habitat-theme="1"] {{sidebar}} {
   color: var(--habitat-text);
-  background-color: transparent;
-  background-image: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--habitat-panel) var(--habitat-sidebar-opacity), transparent) 0%,
-    color-mix(in srgb, var(--habitat-panel) var(--habitat-sidebar-opacity), transparent) 64%,
-    color-mix(in srgb, var(--habitat-panel-alt) var(--habitat-sidebar-opacity), transparent) 84%,
-    color-mix(in srgb, color-mix(in srgb, var(--habitat-panel-alt) var(--habitat-sidebar-opacity), transparent) 36%, transparent) 100%
+  background-color: color-mix(
+    in srgb,
+    var(--habitat-chrome-surface) calc(var(--habitat-sidebar-opacity) + 16%),
+    transparent
   );
+  background-image: none;
   backdrop-filter: none;
-  border-right-color: color-mix(in srgb, var(--habitat-accent) 40%, transparent);
+  border-right-color: var(--habitat-divider);
 }
 
 html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{sidebar}} {
-  background-color: transparent;
-  background-image: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--habitat-panel) var(--habitat-task-sidebar-opacity), transparent) 0%,
-    color-mix(in srgb, var(--habitat-panel) var(--habitat-task-sidebar-opacity), transparent) 64%,
-    color-mix(in srgb, var(--habitat-panel-alt) var(--habitat-task-sidebar-opacity), transparent) 84%,
-    color-mix(in srgb, color-mix(in srgb, var(--habitat-panel-alt) var(--habitat-task-sidebar-opacity), transparent) 36%, transparent) 100%
+  background-color: color-mix(
+    in srgb,
+    var(--habitat-chrome-surface) calc(var(--habitat-task-sidebar-opacity) + 8%),
+    transparent
   );
+  background-image: none;
   backdrop-filter: none;
 }
 
@@ -116,20 +117,24 @@ html[data-codex-habitat-theme="1"] {{main}} {
 
 html[data-codex-habitat-theme="1"] {{header}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-header-opacity), transparent);
-  border-bottom-color: color-mix(in srgb, var(--habitat-accent) 28%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-chrome-surface) 78%, transparent);
+  border-bottom-color: var(--habitat-divider);
 }
 
 html[data-codex-habitat-theme="1"][data-codex-habitat-route="task"] {{header}} {
-  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-task-header-opacity), transparent);
+  background-color: color-mix(in srgb, var(--habitat-chrome-surface) 90%, transparent);
 }
 
 html[data-codex-habitat-theme="1"] {{composer}},
 html[data-codex-habitat-theme="1"] {{popover}} {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-panel) var(--habitat-composer-opacity), transparent);
-  border-color: color-mix(in srgb, var(--habitat-accent) 46%, transparent);
-  box-shadow: 0 12px 34px color-mix(in srgb, var(--habitat-surface) 28%, transparent);
+  background-color: color-mix(in srgb, var(--habitat-control-surface) var(--habitat-composer-opacity), transparent);
+  border-color: var(--habitat-divider);
+  box-shadow: 0 8px 24px color-mix(in srgb, black 14%, transparent);
+}
+
+html[data-codex-habitat-theme="1"] {{popover}} {
+  background-color: color-mix(in srgb, var(--habitat-raised-surface) 96%, transparent);
 }
 
 html[data-codex-habitat-theme="1"] {{popover}} > * {
@@ -155,13 +160,15 @@ html[data-codex-habitat-theme="1"] button[type="submit"] {
   color: var(--habitat-on-accent);
   background-color: var(--habitat-submit-accent);
   border-color: var(--habitat-highlight);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px color-mix(in srgb, black 16%, transparent);
 }
 
 html[data-codex-habitat-theme="1"] [aria-selected="true"],
 html[data-codex-habitat-theme="1"] [aria-current],
 html[data-codex-habitat-theme="1"] [aria-pressed="true"] {
   color: var(--habitat-text);
-  background-color: color-mix(in srgb, var(--habitat-panel-alt) 88%, transparent);
+  background-color: var(--habitat-selection-surface);
   outline-color: var(--habitat-attention);
 }
 
