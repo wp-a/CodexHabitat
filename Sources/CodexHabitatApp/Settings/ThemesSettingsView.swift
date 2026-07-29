@@ -121,7 +121,10 @@ enum ThemeGalleryLayout {
     static let minimumCardWidth = 168.0
     static let spacing = 12.0
     static let maximumColumns = 3
-    static let inspectorBreakpoint = 720.0
+    static let inspectorWidth = 360.0
+    static let inspectorPreviewHeight = 216.0
+    static let cardRadius = HabitatDesignMetrics.cardRadius
+    static let inspectorBreakpoint = 760.0
 
     static func columnCount(availableWidth: Double) -> Int {
         let fitting = Int((max(0, availableWidth) + spacing) / (minimumCardWidth + spacing))
@@ -203,7 +206,7 @@ struct ThemesSettingsView: View {
                             gallery
                             Divider()
                             themeInspector
-                                .frame(width: 316)
+                                .frame(width: ThemeGalleryLayout.inspectorWidth)
                                 .background { HabitatSurface(role: .inspector) }
                         }
                     } else {
@@ -448,33 +451,56 @@ struct ThemesSettingsView: View {
     }
 
     private var themeInspector: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.text(selectedTheme.name))
-                        .font(.system(size: 17, weight: .semibold))
-                        .lineLimit(1)
-                    Text(L10n.text(selectedTheme.styleFamily.libraryTitle))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button(action: { model.toggleThemeFavorite(selectedTheme.id) }) {
-                    Image(systemName: isSelectedThemeFavorite ? "star.fill" : "star")
+        VStack(spacing: 0) {
+            inspectorHeader
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            Divider()
+            ScrollView {
+                inspectorContent
+                    .padding(16)
+            }
+            .scrollIndicators(.automatic)
+            Divider()
+            inspectorActions
+                .padding(12)
+                .background { HabitatSurface(role: .toolbar) }
+        }
+        .accessibilityIdentifier("themes.inspector")
+    }
+
+    private var inspectorHeader: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.text(selectedTheme.name))
+                    .font(.system(size: 17, weight: .semibold))
+                    .lineLimit(1)
+                Text(L10n.text(selectedTheme.styleFamily.libraryTitle))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(action: { model.toggleThemeFavorite(selectedTheme.id) }) {
+                Image(systemName: isSelectedThemeFavorite ? "star.fill" : "star")
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.borderless)
+            .help(L10n.text(isSelectedThemeFavorite ? "Remove from Favorites" : "Add to Favorites"))
+            .accessibilityLabel(L10n.text(isSelectedThemeFavorite ? "Remove from Favorites" : "Add to Favorites"))
+            if model.isThemeStudioEditableTheme(selectedTheme.id) {
+                Button(action: { openThemeStudio(editingThemeID: selectedTheme.id) }) {
+                    Image(systemName: "pencil")
+                        .frame(width: 22, height: 22)
                 }
                 .buttonStyle(.borderless)
-                .help(L10n.text(isSelectedThemeFavorite ? "Remove from Favorites" : "Add to Favorites"))
-                .accessibilityLabel(L10n.text(isSelectedThemeFavorite ? "Remove from Favorites" : "Add to Favorites"))
-                if model.isThemeStudioEditableTheme(selectedTheme.id) {
-                    Button(action: { openThemeStudio(editingThemeID: selectedTheme.id) }) {
-                        Image(systemName: "pencil")
-                    }
-                    .buttonStyle(.borderless)
-                    .help(L10n.text("Edit theme"))
-                    .accessibilityLabel(L10n.text("Edit theme"))
-                }
+                .help(L10n.text("Edit theme"))
+                .accessibilityLabel(L10n.text("Edit theme"))
             }
+        }
+    }
 
+    private var inspectorContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
             Picker(L10n.text("Preview route"), selection: $libraryState.previewRoute) {
                 Text(L10n.text("Home")).tag(ThemeTreatmentPreviewRoute.home)
                 Text(L10n.text("Task")).tag(ThemeTreatmentPreviewRoute.task)
@@ -487,7 +513,7 @@ struct ThemesSettingsView: View {
                 imageURL: selectedTheme.previewURL,
                 symbol: selectedTheme.symbol,
                 route: libraryState.previewRoute,
-                height: 180,
+                height: ThemeGalleryLayout.inspectorPreviewHeight,
                 showsRetryControl: true
             )
 
@@ -501,81 +527,93 @@ struct ThemesSettingsView: View {
             }
             .accessibilityHidden(true)
 
-            Divider()
-            inspectorStatusRow(
-                "Theme family",
-                value: selectedTheme.styleFamily.libraryTitle,
-                symbol: "square.3.layers.3d"
-            )
-            inspectorStatusRow(
-                "Codex compatibility",
-                value: selectedThemeSupportsBridge ? "Supported" : "Habitat only",
-                symbol: selectedThemeSupportsBridge ? "checkmark.shield" : "macwindow"
-            )
-            inspectorStatusRow(
-                "Bridge status",
-                value: bridge.statusText,
-                symbol: bridge.state == .failed ? "exclamationmark.triangle" : "point.3.connected.trianglepath.dotted"
-            )
-            if bridge.canRestore {
-                inspectorStatusRow(
-                    "Restore",
-                    value: "Restore available",
-                    symbol: "arrow.uturn.backward"
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 12, alignment: .topLeading),
+                    GridItem(.flexible(), spacing: 12, alignment: .topLeading),
+                ],
+                alignment: .leading,
+                spacing: 14
+            ) {
+                inspectorStatusCell(
+                    "Theme family",
+                    value: selectedTheme.styleFamily.libraryTitle,
+                    symbol: "square.3.layers.3d"
                 )
-            }
-            if isSelectedThemeActive {
-                Label(L10n.text("Active in Codex"), systemImage: "checkmark.seal.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.green)
-                    .accessibilityIdentifier("themes.inspector.active")
-            }
-            if isSelectedThemeActiveInHabitat {
-                Label(L10n.text("Active in Habitat"), systemImage: "macwindow.badge.checkmark")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("themes.inspector.habitat-active")
-            }
-
-            Spacer(minLength: 0)
-            VStack(spacing: 8) {
-                Button(action: useSelectedThemeInHabitat) {
-                    Label(
-                        L10n.text(isSelectedThemeActiveInHabitat ? "Active in Habitat" : "Use in Habitat"),
-                        systemImage: "macwindow"
+                inspectorStatusCell(
+                    "Codex compatibility",
+                    value: selectedThemeSupportsBridge ? "Supported" : "Habitat only",
+                    symbol: selectedThemeSupportsBridge ? "checkmark.shield" : "macwindow"
+                )
+                inspectorStatusCell(
+                    "Bridge status",
+                    value: bridge.statusText,
+                    symbol: bridge.state == .failed
+                        ? "exclamationmark.triangle"
+                        : "point.3.connected.trianglepath.dotted"
+                )
+                if bridge.canRestore {
+                    inspectorStatusCell(
+                        "Restore",
+                        value: "Restore available",
+                        symbol: "arrow.uturn.backward"
                     )
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .disabled(isSelectedThemeActiveInHabitat)
-                .accessibilityIdentifier("themes.use-in-habitat")
+            }
 
-                Button(action: requestInspectorApply) {
-                    Label(L10n.text(isSelectedThemeActive ? "Active in Codex" : "Apply to Codex"), systemImage: "paintbrush")
-                        .frame(maxWidth: .infinity)
+            if isSelectedThemeActive || isSelectedThemeActiveInHabitat {
+                HStack(spacing: 12) {
+                    if isSelectedThemeActive {
+                        Label(L10n.text("Active in Codex"), systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                            .accessibilityIdentifier("themes.inspector.active")
+                    }
+                    if isSelectedThemeActiveInHabitat {
+                        Label(L10n.text("Active in Habitat"), systemImage: "macwindow.badge.checkmark")
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("themes.inspector.habitat-active")
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canApplySelectedTheme)
-                .accessibilityIdentifier("themes.apply-to-codex")
+                .font(.caption.weight(.semibold))
             }
         }
-        .padding(16)
-        .accessibilityIdentifier("themes.inspector")
     }
 
-    private func inspectorStatusRow(_ title: String, value: String, symbol: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: symbol)
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(L10n.text(title))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(L10n.text(value))
-                    .font(.caption.weight(.medium))
-                    .lineLimit(1)
+    private var inspectorActions: some View {
+        VStack(spacing: 8) {
+            Button(action: requestInspectorApply) {
+                Label(
+                    L10n.text(isSelectedThemeActive ? "Active in Codex" : "Apply to Codex"),
+                    systemImage: "paintbrush"
+                )
+                .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.borderedProminent)
+            .disabled(!canApplySelectedTheme)
+            .accessibilityIdentifier("themes.apply-to-codex")
+
+            Button(action: useSelectedThemeInHabitat) {
+                Label(
+                    L10n.text(isSelectedThemeActiveInHabitat ? "Active in Habitat" : "Use in Habitat"),
+                    systemImage: "macwindow"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isSelectedThemeActiveInHabitat)
+            .accessibilityIdentifier("themes.use-in-habitat")
+        }
+    }
+
+    private func inspectorStatusCell(_ title: String, value: String, symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(L10n.text(title), systemImage: symbol)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(L10n.text(value))
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
         }
     }
 
@@ -785,6 +823,16 @@ struct StaticThemeThumbnail: View {
     }
 }
 
+enum ThemeChoiceCardVisualState {
+    static func showsFavoriteControl(
+        isFavorite: Bool,
+        isPreviewed: Bool,
+        isHovered: Bool
+    ) -> Bool {
+        isFavorite || isPreviewed || isHovered
+    }
+}
+
 struct ThemeChoiceCard: View {
     let theme: HabitatThemeDescriptor
     let isPreviewed: Bool
@@ -795,6 +843,7 @@ struct ThemeChoiceCard: View {
     let favoriteAction: (() -> Void)?
     @State private var previewRetryAvailable = false
     @State private var previewReloadGeneration = 0
+    @State private var isHovered = false
 
     init(
         theme: HabitatThemeDescriptor,
@@ -833,35 +882,37 @@ struct ThemeChoiceCard: View {
                                 .font(.system(size: 13, weight: .semibold))
                                 .lineLimit(2)
                                 .frame(height: 28, alignment: .topLeading)
-                            Text(L10n.text(theme.styleFamily.libraryTitle))
-                                .font(.system(size: 9))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                            HStack(spacing: 5) {
+                                Text(L10n.text(theme.styleFamily.libraryTitle))
+                                    .lineLimit(1)
+                                if isActiveInHabitat {
+                                    Image(systemName: "macwindow")
+                                        .help(L10n.text("Active in Habitat"))
+                                }
+                                if isActiveInCodex {
+                                    Image(systemName: "paintbrush.fill")
+                                        .help(L10n.text("Active in Codex"))
+                                }
+                            }
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if isPreviewed {
-                            Image(systemName: "eye.fill")
-                                .foregroundStyle(.tint)
-                                .accessibilityHidden(true)
-                        }
                     }
                     .padding(.horizontal, 10)
                     .frame(height: 46)
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                .background(Color.primary.opacity(isPreviewed ? 0.07 : 0.035))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: ThemeGalleryLayout.cardRadius))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(
-                            isPreviewed
-                                ? Color(habitatHex: theme.accentHex)
-                                : Color.primary.opacity(0.10),
-                            lineWidth: isPreviewed ? 2 : 1
-                        )
+                    RoundedRectangle(cornerRadius: ThemeGalleryLayout.cardRadius)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HabitatPressButtonStyle(radius: ThemeGalleryLayout.cardRadius))
+            .habitatHoverStyle(radius: ThemeGalleryLayout.cardRadius)
+            .habitatSelectedStyle(isPreviewed, radius: ThemeGalleryLayout.cardRadius)
             .accessibilityLabel(L10n.text(theme.name))
             .accessibilityValue(accessibilityValue)
             .accessibilityIdentifier("themes.choice.\(theme.id)")
@@ -880,7 +931,12 @@ struct ThemeChoiceCard: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if let favoriteAction {
+            if let favoriteAction,
+               ThemeChoiceCardVisualState.showsFavoriteControl(
+                   isFavorite: isFavorite,
+                   isPreviewed: isPreviewed,
+                   isHovered: isHovered
+               ) {
                 Button(action: favoriteAction) {
                     Image(systemName: isFavorite ? "star.fill" : "star")
                         .frame(width: 24, height: 24)
@@ -892,20 +948,7 @@ struct ThemeChoiceCard: View {
                 .padding(7)
             }
         }
-        .overlay(alignment: .topLeading) {
-            if isActiveInHabitat || isActiveInCodex {
-                HStack(spacing: 4) {
-                    if isActiveInHabitat {
-                        statusBadge("Habitat", systemImage: "macwindow")
-                    }
-                    if isActiveInCodex {
-                        statusBadge("Codex", systemImage: "paintbrush.fill")
-                    }
-                }
-                    .padding(7)
-                    .allowsHitTesting(false)
-            }
-        }
+        .onHover { isHovered = $0 }
         .frame(maxWidth: .infinity, minHeight: 150, alignment: .top)
     }
 
@@ -916,14 +959,6 @@ struct ThemeChoiceCard: View {
             L10n.text(isActiveInCodex ? "Active in Codex" : "Inactive in Codex"),
             L10n.text(isFavorite ? "Favorite" : "Not favorite"),
         ].joined(separator: ", ")
-    }
-
-    private func statusBadge(_ title: String, systemImage: String) -> some View {
-        Label(L10n.text(title), systemImage: systemImage)
-            .font(.system(size: 9, weight: .semibold))
-            .padding(.horizontal, 6)
-            .frame(height: 22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
     }
 
     private var retryAccessibilityLabel: String {

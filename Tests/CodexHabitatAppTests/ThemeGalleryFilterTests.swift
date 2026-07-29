@@ -98,6 +98,32 @@ func galleryLayoutFillsItsPaneWithTwoOrThreeBalancedColumns() {
     #expect(ThemeGalleryLayout.columnCount(availableWidth: 1_200) == 3)
     #expect(ThemeGalleryLayout.cardWidth(availableWidth: 520) == 254)
     #expect(ThemeGalleryLayout.cardWidth(availableWidth: 690) == 222)
-    #expect(!ThemeGalleryLayout.showsInlineInspector(availableWidth: 719))
-    #expect(ThemeGalleryLayout.showsInlineInspector(availableWidth: 720))
+    #expect(ThemeGalleryLayout.inspectorWidth == 360)
+    #expect(ThemeGalleryLayout.inspectorPreviewHeight == 216)
+    #expect(!ThemeGalleryLayout.showsInlineInspector(availableWidth: 759))
+    #expect(ThemeGalleryLayout.showsInlineInspector(availableWidth: 760))
+}
+
+@Test
+func themeCardRevealsSecondaryFavoriteControlOnlyWhenRelevant() {
+    #expect(!ThemeChoiceCardVisualState.showsFavoriteControl(
+        isFavorite: false,
+        isPreviewed: false,
+        isHovered: false
+    ))
+    #expect(ThemeChoiceCardVisualState.showsFavoriteControl(
+        isFavorite: true,
+        isPreviewed: false,
+        isHovered: false
+    ))
+    #expect(ThemeChoiceCardVisualState.showsFavoriteControl(
+        isFavorite: false,
+        isPreviewed: true,
+        isHovered: false
+    ))
+    #expect(ThemeChoiceCardVisualState.showsFavoriteControl(
+        isFavorite: false,
+        isPreviewed: false,
+        isHovered: true
+    ))
 }

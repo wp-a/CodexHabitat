@@ -199,6 +199,28 @@ func galleryPlansUseOnlyStaticPackagedPreviewsWithoutBackdropMaterial() throws {
 }
 
 @Test
+func themeInspectorUsesScrollableDetailsAndAPinnedActionBar() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appending(
+            path: "Sources/CodexHabitatApp/Settings/ThemesSettingsView.swift"
+        ),
+        encoding: .utf8
+    )
+    let inspectorStart = try #require(source.range(of: "private var themeInspector"))
+    let selectedThemeStart = try #require(source.range(of: "private var selectedTheme"))
+    let inspectorSource = source[inspectorStart.lowerBound..<selectedThemeStart.lowerBound]
+
+    #expect(inspectorSource.contains("ScrollView"))
+    #expect(inspectorSource.contains("inspectorContent"))
+    #expect(inspectorSource.contains("inspectorActions"))
+    #expect(!inspectorSource.contains("Spacer(minLength: 0)"))
+}
+
+@Test
 func treatmentPreviewUsesRequestStateToClearFailedReplacementImages() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
