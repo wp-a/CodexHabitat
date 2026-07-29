@@ -1,13 +1,13 @@
 # macOS v1 QA Checklist
 
-Last updated: 2026-07-27 on macOS 26.4, arm64, Xcode 26.6.
+Last updated: 2026-07-29 on macOS 26.4, arm64, Xcode 26.6.
 
 Legend: `[x]` verified, `[ ]` still requires release hardware, credentials, or
 explicit user action.
 
 ## Automated and packaged
 
-- [x] Full committed Swift test suite passes: 486 tests in 6 suites, including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, strict single-frame image-container validation, thumbnail cache invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, complete explicit localization-key coverage, gated visual-QA launch controls, lifecycle, performance budgets, protected-product display-name checks, Home action viewport insets, computed Task reading scrims, independently readable request cards, and monotonic release-build verification.
+- [x] Full committed Swift test suite passes: 543 tests in 6 suites, including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, strict single-frame image-container validation, bounded thumbnail-cache eviction and invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, complete explicit localization-key coverage, gated visual-QA launch controls, lifecycle, performance budgets, protected-product display-name checks, Home action viewport insets, computed Task reading scrims, independently readable request cards, and monotonic release-build verification.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final Build 15 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0` build 15, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `d18fb78cf85019e5520b841ed8077cd230b9d09fbc2b24b8cedb0a56ee130863`.
+- [x] Final Build 16 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0` build 16, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `daf9dcc68fea8ecaa16cc9f8538bf0122399151728760229bdb59fd619f48ad5`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -56,7 +56,7 @@ explicit user action.
 - [x] Sprite frames are cropped once and reused by subsequent redraws.
 - [x] Pet sprites decode only the requested thumbnail frame off the main thread and cache both successful and missing results.
 - [x] Selecting a different pet builds and precrops its immutable renderer off the main actor through one serial worker, keeps the current pet visible until publication, prevents overlapping decodes during rapid switching, and discards cancelled stale results.
-- [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results, and invalidate when local file size or modification time changes.
+- [x] Theme previews downsample to at most 480 px off the main thread, cache successful and missing results within a 96 MiB / 128-entry LRU budget, and invalidate when local file size or modification time changes.
 - [x] Build 6 native Settings runs measured Integrations -> Themes at 0.145-0.156 s after removing the appearance-time full resource refresh; theme-card clicks measured 0.168-0.225 s, and a concurrent sample contained zero pet asset resolution or sprite-frame precropping stacks.
 - [x] Build 7 prototype gallery and narrow Theme Studio QA emitted zero “Publishing changes from within view updates”, AttributeGraph-cycle, or layout-recursion warnings.
 - [x] Build 8 isolated native QA measured Themes -> Pets at 305.6 ms and Pets -> Themes at 306.1 ms including accessibility automation overhead; repeated navigation showed no multi-second stall. The final complete 96-scene offline route check measured a 0.20 ms maximum internal route mutation.
