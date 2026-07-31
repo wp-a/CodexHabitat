@@ -168,7 +168,7 @@ func testAndVisualQAExitsNeverRestoreCodexAppearance() {
 }
 
 @Test
-func mainBundleConfigurationDeclaresAStandardVisibleBuildSixteenApp() throws {
+func mainBundleConfigurationDeclaresAStandardVisibleBuildSeventeenApp() throws {
     let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -179,7 +179,7 @@ func mainBundleConfigurationDeclaresAStandardVisibleBuildSixteenApp() throws {
     )
 
     #expect(plist["LSUIElement"] == nil)
-    #expect(plist["CFBundleVersion"] as? String == "16")
+    #expect(plist["CFBundleVersion"] as? String == "17")
 }
 
 @Test

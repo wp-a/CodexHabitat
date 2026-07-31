@@ -129,7 +129,7 @@ test("routes and viewports are deterministic and release-independent", () => {
   );
 });
 
-test("Build 16 requires stronger contrast and complete interaction and family crop coverage", () => {
+test("Build 17 requires stronger contrast and complete interaction and family crop coverage", () => {
   assert.deepEqual(fixtureContract.CONTRAST_THRESHOLDS, {
     normalText: 5,
     largeText: 3,

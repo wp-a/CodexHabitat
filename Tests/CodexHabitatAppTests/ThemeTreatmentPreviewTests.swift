@@ -212,8 +212,14 @@ func previewRecipesAreDistinctAcrossHostOwnedStyleFamilies() {
     #expect(Set(recipes.map(\.signature)).count == recipes.count)
     #expect(HabitatThemeStyleFamily.classicDesktop.surfaceRecipe.composerRadius == 0)
     #expect(HabitatThemeStyleFamily.retroMessenger.surfaceRecipe.headerEdgeWidth == 1)
-    #expect(HabitatThemeStyleFamily.greenChat.surfaceRecipe.headerEdgeWidth == 4)
-    #expect(HabitatThemeStyleFamily.animeEnergy.surfaceRecipe.headerEdgeWidth == 3)
+    #expect(HabitatThemeStyleFamily.greenChat.surfaceRecipe.headerEdgeWidth == 1)
+    #expect(HabitatThemeStyleFamily.greenChat.surfaceRecipe.materialStyle == .chatUtility)
+    #expect(HabitatThemeStyleFamily.animeEnergy.surfaceRecipe.headerEdgeWidth == 1)
+    #expect(HabitatThemeStyleFamily.animeEnergy.surfaceRecipe.materialStyle == .energyStripe)
+    #expect(
+        HabitatThemeStyleFamily.greenChat.surfaceRecipe.actionRadius
+            != HabitatThemeStyleFamily.animeEnergy.surfaceRecipe.actionRadius
+    )
 }
 
 @Test

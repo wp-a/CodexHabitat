@@ -116,8 +116,16 @@ test(
     assert.ok(
       result.scenes
         .filter(({ route }) => route === "task")
-        .every(({ messageCardOpacity }) =>
-          messageCardOpacity !== null && Math.abs(messageCardOpacity - 0.88) <= 0.001),
+        .every(({
+          messageCardOpacity,
+          responseSurfaceOpacity,
+          codeSurfaceOpacity,
+          toolSurfaceOpacity,
+        }) =>
+          Math.abs(messageCardOpacity - 1) <= 0.001
+          && Math.abs(responseSurfaceOpacity) <= 0.001
+          && Math.abs(codeSurfaceOpacity - 1) <= 0.001
+          && Math.abs(toolSurfaceOpacity - 1) <= 0.001),
     );
   },
 );

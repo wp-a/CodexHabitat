@@ -1,13 +1,13 @@
 # macOS v1 QA Checklist
 
-Last updated: 2026-07-29 on macOS 26.4, arm64, Xcode 26.6.
+Last updated: 2026-08-01 on macOS 26.4, arm64, Xcode 26.6.
 
 Legend: `[x]` verified, `[ ]` still requires release hardware, credentials, or
 explicit user action.
 
 ## Automated and packaged
 
-- [x] Full committed Swift test suite passes: 543 tests in 6 suites, including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, strict single-frame image-container validation, bounded thumbnail-cache eviction and invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, complete explicit localization-key coverage, gated visual-QA launch controls, lifecycle, performance budgets, protected-product display-name checks, Home action viewport insets, computed Task reading scrims, independently readable request cards, and monotonic release-build verification.
+- [x] Full committed Swift test suite passes: 549 tests in 6 suites, including versioned CDP profiles, fail-closed target validation, bounded route-aware theme updates and complete bootstrap cleanup, pre-injection main-renderer health filtering, theme protocol, strict single-frame image-container validation, bounded thumbnail-cache eviction and invalidation, theme-navigation resource isolation, serialized off-main pet renderer construction, future-settings-schema read-only behavior, complete explicit localization-key coverage, gated visual-QA launch controls, lifecycle, performance budgets, protected-product display-name checks, Home action viewport insets, computed Task reading scrims, independently readable request cards, shared refined preview recipes, and monotonic release-build verification.
 - [x] Production Swift build completes without warnings.
 - [x] Ad-hoc `.app` passes strict/deep signature and hardened-runtime checks.
 - [x] Sparkle 2.9.4 framework, XPC services, updater, and autoupdate signatures validate.
@@ -17,7 +17,7 @@ explicit user action.
 - [x] Standard `Contents/Resources` load works without `.build` fallback.
 - [x] Packaged `en` and `zh-Hans` localization catalogs are declared and copied into the main app resources.
 - [x] DMG mounts read-only, contains the app and `/Applications` link, and runs the packaged version command.
-- [x] Final Build 16 `Codex-Habitat-0.1.0.dmg` mounts with both media and volume read-only flags, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0` build 16, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `daf9dcc68fea8ecaa16cc9f8538bf0122399151728760229bdb59fd619f48ad5`.
+- [x] Final Build 17 `Codex-Habitat-0.1.0.dmg` mounts with `Writable=false`, `WritableMedia=false`, and `WritableVolume=false`, contains the app and `/Applications` link, reports `Codex Habitat 0.1.0` build 17, and passes mounted-bundle `verify-release` plus strict/deep signature checks; SHA-256 is `6d5ace41c1f366e0ba82fd8b0656bc2abc8210b730bcc1f80867167743fa01a5`.
 - [x] Ad-hoc builds disable network updates and use a local-only library-validation exception.
 - [ ] Developer ID build, Apple notarization, stapling, and Gatekeeper acceptance with production credentials.
 
@@ -29,7 +29,7 @@ explicit user action.
 - [x] Integrations apply confirmation shows restart, debugging-port, and unsaved-text risk.
 - [x] Privacy diagnostics upper and lower regions fit without clipping.
 - [x] All 24 bundled theme packages have unique IDs and hashes, 800 x 500 previews, and nine materially distinct host-owned style families. Cathedral Foundry, Retro Messenger 2007, Arcade Signal, and Quiet Garden use validated 2560 x 1440 prototype backgrounds; the other twenty retain validated 1600 x 1000 backgrounds.
-- [x] The exact supported Codex profile renders all 24 themes across home/task and wide/narrow/compact states in 144 offline full-window scenes. The production resolver, compiler, and installer were used with zero external requests; every scene passed route mutation, semantic foreground, computed reading-material, request-card, interaction-state, reduced-motion, control-bound, hit-target, popover, overflow, artwork-decode, visible-art, and centering checks. Minimum measured body contrast is 4.502:1 and minimum control contrast is 3.207:1. This is offline evidence and not live Codex acceptance.
+- [x] The exact supported Codex profile renders all 24 themes across home/task and wide/narrow/compact states in 144 offline full-window scenes. The production resolver, compiler, and installer were used with zero external requests; every scene passed route mutation, semantic foreground, computed reading-material, request-card, interaction-state, reduced-motion, control-bound, hit-target, popover, overflow, artwork-decode, visible-art, and centering checks. Minimum measured body contrast is 6.0615:1 and minimum control contrast is 4.5224:1. Six contact sheets and eight original-resolution representative scenes were reviewed; evidence is in `docs/qa/screenshots/2026-07-30-premium-codex-themes/`. This is offline evidence and not live Codex acceptance.
 - [x] All, Nostalgia, Anime, and Custom gallery filters plus Theme Studio at narrow and wide settings widths pass native screenshot review without blank previews, clipping, or overlap.
 - [x] Installed Pets and Themes pages pass native screenshot review with decoded thumbnails/previews, stable card geometry, and no blank or overlapping content.
 - [x] Theme Studio accepts only local single-frame PNG/JPEG/WebP input (including uppercase extensions) and typed controls, including home/task treatment, safe side, chrome material, independent route strength, and sidebar/header/composer opacity; installed custom themes reopen as complete typed drafts, optional pet pairings persist, and slug collisions require explicit replacement confirmation.
