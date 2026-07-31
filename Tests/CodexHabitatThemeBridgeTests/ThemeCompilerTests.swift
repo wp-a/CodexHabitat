@@ -51,6 +51,7 @@ func everyBuiltInThemeCompilesTheSharedSemanticMaterialShell() throws {
         "--habitat-task-sidebar-chrome:",
         "--habitat-header-chrome:",
         "--habitat-task-header-chrome:",
+        "--habitat-task-response-scrim:",
         "--habitat-action-fill:",
         "--habitat-composer-fill:",
         "--habitat-popover-fill:",
@@ -425,11 +426,20 @@ func taskResponseSurfacesUseAnUnframedEditorialReadingSurface() throws {
     let theme = try #require(BridgeTheme.builtIn(id: "aqua-pulse"))
     let css = try ThemeCompiler.bundled().compile(theme: theme, profile: profile)
     let root = "html[data-codex-habitat-theme=\"1\"][data-codex-habitat-route=\"task\"]"
+    let themeRoot = try cssRuleBody(
+        selector: "html[data-codex-habitat-theme=\"1\"]",
+        in: css
+    )
+    let responseScrim = try cssDeclarationValue("--habitat-task-response-scrim", in: themeRoot)
     let responseSurface = try #require(profile.selectors.messageSurface)
     let selector = "\(root) \(responseSurface)"
     let rule = try cssRuleBody(selector: selector, in: css)
 
+    #expect(responseScrim.contains("var(--habitat-task-content-opacity)"))
+    #expect(responseScrim.contains("var(--habitat-localized-scrim-strength)"))
+    #expect(!responseScrim.contains("transparent 0%"))
     #expect(rule.contains("background-color: transparent"))
+    #expect(rule.contains("background-image: var(--habitat-task-response-scrim)"))
     #expect(rule.contains("border-color: transparent"))
     #expect(rule.contains("box-shadow: none"))
     #expect(rule.contains("backdrop-filter: none"))
@@ -598,6 +608,7 @@ func taskModesUseRouteSpecificReadingScrimsInsteadOfOneOpaqueTranscriptSlab() th
     )
     let ambientRules = try cssRuleBodies(selector: selector, in: ambientCSS)
     #expect(ambientCSS.contains("--habitat-task-reading-scrim:"))
+    #expect(ambientCSS.contains("--habitat-task-response-scrim: linear-gradient(to right"))
     #expect(ambientRules.contains { rule in
         rule.contains("background-color: transparent")
             && rule.contains("background-image: var(--habitat-task-reading-scrim)")
@@ -732,6 +743,12 @@ func homeSafeScrimUsesContentOpacityForTheReadingWash() throws {
         if let vignetteStop {
             #expect(scrim.contains("var(--habitat-localized-scrim-strength)"))
             #expect(scrim.contains(vignetteStop), "\(safeSide.rawValue) loses its vignette falloff")
+            if safeSide == .leading || safeSide == .trailing {
+                #expect(
+                    scrim.contains("radial-gradient(ellipse at center"),
+                    "\(safeSide.rawValue) does not protect the host-centered home copy"
+                )
+            }
         } else {
             #expect(!scrim.contains("var(--habitat-localized-scrim-strength)"))
         }

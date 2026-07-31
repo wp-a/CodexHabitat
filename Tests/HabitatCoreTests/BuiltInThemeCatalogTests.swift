@@ -55,6 +55,20 @@ func fourPrototypeThemesHaveMateriallyDifferentRouteTreatments() throws {
     #expect(quietGarden.palette.panel == "#F9FFF8")
     #expect(quietGarden.palette.panelAlt == "#DCEFD9")
     #expect(quietGarden.palette.text == "#193525")
+    #expect(quietGarden.appearance(background: "background.jpg").safeSide == .leading)
+    #expect(
+        quietGarden.appearance(background: "background.jpg").resolvedLocalizedScrimStrength == 0.70
+    )
+}
+
+@Test
+func lightDesktopThemesProtectCenteredHomeCopyBeyondTheirMinimalVignettes() throws {
+    for id in ["green-chat-desk", "win95-workbench"] {
+        let definition = try #require(BuiltInThemeCatalog.definition(id: id))
+        let appearance = definition.appearance(background: "background.jpg")
+
+        #expect(appearance.resolvedLocalizedScrimStrength == 0.64, "\(id) reading wash")
+    }
 }
 
 @Test

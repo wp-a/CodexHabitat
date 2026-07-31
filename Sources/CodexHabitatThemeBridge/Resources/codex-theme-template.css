@@ -14,6 +14,7 @@ html[data-codex-habitat-theme="1"] {
   --habitat-task-sidebar-chrome: {{task-sidebar-chrome}};
   --habitat-header-chrome: {{header-chrome}};
   --habitat-task-header-chrome: {{task-header-chrome}};
+  --habitat-task-response-scrim: {{task-response-scrim}};
   --habitat-action-fill: {{action-fill}};
   --habitat-composer-fill: {{composer-fill}};
   --habitat-popover-fill: {{popover-fill}};

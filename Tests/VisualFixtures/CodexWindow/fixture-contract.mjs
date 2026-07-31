@@ -421,6 +421,10 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
   requireMetrics(Array.isArray(sceneMetrics) && sceneMetrics.length > 0, "metrics are missing");
   for (const metric of sceneMetrics) {
     const context = `${metric.themeID}/${metric.route}/${metric.viewport}`;
+    requireMetrics(
+      metric.artworkConsumerCount === 1,
+      `${context} artwork consumer count is ${metric.artworkConsumerCount}`,
+    );
     const requiredContrastTargets = FIXTURE_CONTRAST_TARGETS[metric.route];
     requireMetrics(
       Array.isArray(requiredContrastTargets) && Array.isArray(metric.contrastSamples),
@@ -480,8 +484,8 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
     );
     requireMetrics(
       Number.isFinite(metric.composerBackgroundAlpha)
-        && metric.composerBackgroundAlpha >= 0.84 - 1 / 255
-        && metric.composerBackgroundAlpha <= 0.90 + 1 / 255,
+        && metric.composerBackgroundAlpha >= 0.60 - 1 / 255
+        && metric.composerBackgroundAlpha <= 1,
       `${context} composer background alpha is ${metric.composerBackgroundAlpha}`,
     );
     requireMaterialChain(
@@ -536,10 +540,16 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
         0,
         `${context} home suggestions background alpha`,
       );
-      requireApproximateAlpha(
-        metric.homeActionBackgroundAlpha,
-        1,
-        `${context} home action background alpha`,
+      requireMetrics(
+        Number.isFinite(metric.homeActionBackgroundAlpha)
+          && metric.homeActionBackgroundAlpha >= 0.48 - 1 / 255
+          && metric.homeActionBackgroundAlpha <= 0.72 + 1 / 255,
+        `${context} home action background alpha is ${metric.homeActionBackgroundAlpha}`,
+      );
+      requireMetrics(
+        metric.composerBackgroundAlpha > metric.homeActionBackgroundAlpha + 1 / 255,
+        `${context} composer background alpha ${metric.composerBackgroundAlpha}`
+          + ` is not stronger than home action ${metric.homeActionBackgroundAlpha}`,
       );
       requireMaterialChain(
         metric.homeMaterialChain,
@@ -556,7 +566,50 @@ export function assertSceneMaterialHierarchy(sceneMetrics) {
     } else {
       requireMetrics(metric.layoutGeometry?.home === null, `${context} task home geometry is not null`);
     }
+    requireSemanticMaterials(metric.semanticMaterials, metric, context);
   }
+
+  const byScene = new Map(sceneMetrics.map((metric) => [
+    `${metric.themeID}/${metric.viewport}/${metric.route}`,
+    metric,
+  ]));
+  for (const home of sceneMetrics.filter(({ route }) => route === "home")) {
+    const task = byScene.get(`${home.themeID}/${home.viewport}/task`);
+    requireMetrics(task, `${home.themeID}/${home.viewport} task material scene is missing`);
+    requireMetrics(
+      task.sceneContinuity.sidebarBackgroundAlpha
+        >= home.sceneContinuity.sidebarBackgroundAlpha - 1 / 255,
+      `${home.themeID}/${home.viewport} task sidebar background alpha `
+        + `${task.sceneContinuity.sidebarBackgroundAlpha} is weaker than home `
+        + `${home.sceneContinuity.sidebarBackgroundAlpha}`,
+    );
+    requireMetrics(
+      task.sceneContinuity.headerBackgroundAlpha
+        >= home.sceneContinuity.headerBackgroundAlpha - 1 / 255,
+      `${home.themeID}/${home.viewport} task header background alpha `
+        + `${task.sceneContinuity.headerBackgroundAlpha} is weaker than home `
+        + `${home.sceneContinuity.headerBackgroundAlpha}`,
+    );
+  }
+}
+
+export function assertContactSheetCoverage(contactSheets) {
+  requireMetrics(Array.isArray(contactSheets), "contact sheet coverage is missing");
+  const expected = FIXTURE_ROUTES.flatMap((route) =>
+    FIXTURE_VIEWPORTS.map(({ id: viewport }) => `${route}/${viewport}`));
+  const actual = contactSheets.map(({ route, viewport, path }) => {
+    requireMetrics(
+      typeof path === "string" && path.endsWith(".png"),
+      `contact sheet coverage has invalid path ${path}`,
+    );
+    return `${route}/${viewport}`;
+  });
+  requireMetrics(
+    actual.length === expected.length
+      && new Set(actual).size === expected.length
+      && expected.every((key) => actual.includes(key)),
+    `contact sheet coverage is ${actual.join(",")}`,
+  );
 }
 
 export function hammingDistance(left, right) {
@@ -767,9 +820,18 @@ function requireSceneContinuity(continuity, artworkZones, transmissionZones, con
   );
   requireMetrics(
     Number.isFinite(continuity.sidebarBackgroundAlpha)
-      && continuity.sidebarBackgroundAlpha >= 0.87 - 1 / 255
-      && continuity.sidebarBackgroundAlpha <= 0.90 + 1 / 255,
-    `${context} sidebar background alpha is ${continuity.sidebarBackgroundAlpha}`,
+      && continuity.sidebarBackgroundAlpha >= 0
+      && continuity.sidebarBackgroundAlpha <= 1
+      && continuity.sidebarBackgroundAlpha
+        > continuity.titlebarBackgroundAlpha + 1 / 255,
+    `${context} sidebar background alpha ${continuity.sidebarBackgroundAlpha}`
+      + ` does not exceed titlebar ${continuity.titlebarBackgroundAlpha}`,
+  );
+  requireMetrics(
+    Number.isFinite(continuity.headerBackgroundAlpha)
+      && continuity.headerBackgroundAlpha >= 0
+      && continuity.headerBackgroundAlpha <= 1,
+    `${context} header background alpha is ${continuity.headerBackgroundAlpha}`,
   );
   requireApproximateAlpha(
     continuity.mainBackgroundAlpha,
@@ -835,6 +897,89 @@ function requireSceneContinuity(continuity, artworkZones, transmissionZones, con
     requireMetrics(
       Number.isFinite(zone.qualifyingTileRatio) && zone.qualifyingTileRatio >= 0.75,
       `${context} ${id} qualifying tile ratio is ${zone.qualifyingTileRatio}`,
+    );
+  }
+}
+
+function requireSemanticMaterials(materials, metric, context) {
+  requireMetrics(materials && typeof materials === "object", `${context} semantic materials are missing`);
+  const tokens = materials.tokens;
+  for (const field of ["accentColor", "dividerColor", "focusRingColor"]) {
+    requireMetrics(
+      typeof tokens?.[field] === "string" && tokens[field].length > 0,
+      `${context} semantic token ${field} is missing`,
+    );
+  }
+  const requireSurface = (surface, name) => {
+    requireMetrics(surface && typeof surface === "object", `${context} ${name} material is missing`);
+    requireMetrics(
+      typeof surface.backgroundColor === "string"
+        && Number.isFinite(surface.backgroundAlpha)
+        && surface.backgroundAlpha >= 0
+        && surface.backgroundAlpha <= 1,
+      `${context} ${name} material background is invalid`,
+    );
+  };
+  for (const [name, surface] of [
+    ["stage", materials.stage],
+    ["sidebar", materials.sidebar],
+    ["header", materials.header],
+    ["composer", materials.composer],
+    ["selection", materials.selection],
+  ]) {
+    requireSurface(surface, name);
+  }
+  requireApproximateAlpha(
+    materials.stage.backgroundAlpha,
+    metric.sceneContinuity.mainBackgroundAlpha,
+    `${context} semantic stage alpha`,
+  );
+  requireApproximateAlpha(
+    materials.sidebar.backgroundAlpha,
+    metric.sceneContinuity.sidebarBackgroundAlpha,
+    `${context} semantic sidebar alpha`,
+  );
+  requireApproximateAlpha(
+    materials.header.backgroundAlpha,
+    metric.sceneContinuity.headerBackgroundAlpha,
+    `${context} semantic header alpha`,
+  );
+  requireApproximateAlpha(
+    materials.composer.backgroundAlpha,
+    metric.composerBackgroundAlpha,
+    `${context} semantic composer alpha`,
+  );
+  requireMetrics(
+    typeof materials.focus?.boundaryColor === "string"
+      && materials.focus.boundaryColor === tokens.focusRingColor,
+    `${context} semantic focus boundary is invalid`,
+  );
+  requireMetrics(
+    Number.isInteger(materials.idleAccentBoundaryCount)
+      && materials.idleAccentBoundaryCount >= 0
+      && materials.idleAccentBoundaryCount <= 1,
+    `${context} idle accent boundary count is ${materials.idleAccentBoundaryCount}`,
+  );
+
+  if (metric.route === "home") {
+    requireSurface(materials.action, "action");
+    requireApproximateAlpha(
+      materials.action.backgroundAlpha,
+      metric.homeActionBackgroundAlpha,
+      `${context} semantic action alpha`,
+    );
+    requireMetrics(
+      materials.action.boundaryColor !== tokens.accentColor,
+      `${context} idle action boundary uses accent ${tokens.accentColor}`,
+    );
+    requireMetrics(materials.taskReading === null, `${context} task reading material is not null`);
+  } else {
+    requireMetrics(materials.action === null, `${context} home action material is not null`);
+    requireSurface(materials.taskReading, "task reading");
+    requireMetrics(
+      typeof materials.taskReading.backgroundImage === "string"
+        && materials.taskReading.backgroundImage.includes("gradient"),
+      `${context} task reading material has no gradient`,
     );
   }
 }

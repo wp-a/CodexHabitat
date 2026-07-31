@@ -115,6 +115,18 @@ test("routes and viewports are deterministic and release-independent", () => {
     EXPECTED_SURFACE_ANNOTATIONS.find(({ selectorKey }) => selectorKey === "threadScroll"),
     { selectorKey: "threadScroll", surface: "task-transcript" },
   );
+
+  const contactSheets = FIXTURE_ROUTES.flatMap((route) =>
+    FIXTURE_VIEWPORTS.map((viewport) => ({
+      route,
+      viewport: viewport.id,
+      path: `/tmp/${route}-${viewport.id}.png`,
+    })));
+  assert.doesNotThrow(() => fixtureContract.assertContactSheetCoverage(contactSheets));
+  assert.throws(
+    () => fixtureContract.assertContactSheetCoverage(contactSheets.slice(1)),
+    /contact sheet coverage/,
+  );
 });
 
 test("Build 16 requires stronger contrast and complete interaction and family crop coverage", () => {
@@ -240,6 +252,44 @@ test("scene material checks enforce one computed background layer on real DOM pa
   ]) {
     const invalid = structuredClone(healthy);
     invalid.find(({ route }) => route === "home")[field] = value;
+    assert.throws(() => assertSceneMaterialHierarchy(invalid), expected);
+  }
+
+  for (const [mutate, expected] of [
+    [(metrics) => { metrics[0].artworkConsumerCount = 2; }, /artwork consumer count/],
+    [(metrics) => {
+      metrics[0].sceneContinuity.sidebarBackgroundAlpha =
+        metrics[0].sceneContinuity.titlebarBackgroundAlpha;
+    }, /sidebar background alpha.*titlebar/],
+    [(metrics) => {
+      metrics[1].sceneContinuity.sidebarBackgroundAlpha =
+        metrics[0].sceneContinuity.sidebarBackgroundAlpha - 0.01;
+      metrics[1].semanticMaterials.sidebar.backgroundAlpha =
+        metrics[1].sceneContinuity.sidebarBackgroundAlpha;
+    }, /task sidebar background alpha/],
+    [(metrics) => {
+      metrics[1].sceneContinuity.headerBackgroundAlpha =
+        metrics[0].sceneContinuity.headerBackgroundAlpha - 0.01;
+      metrics[1].semanticMaterials.header.backgroundAlpha =
+        metrics[1].sceneContinuity.headerBackgroundAlpha;
+    }, /task header background alpha/],
+    [(metrics) => {
+      metrics[0].homeActionBackgroundAlpha = 0.70;
+      metrics[0].homeMaterialChain[0].backgroundAlpha = 0.70;
+      metrics[0].semanticMaterials.action.backgroundAlpha = 0.70;
+      metrics[0].composerBackgroundAlpha = 0.70;
+      metrics[0].composerMaterialChain[0].backgroundAlpha = 0.70;
+      metrics[0].semanticMaterials.composer.backgroundAlpha = 0.70;
+    }, /composer background alpha.*home action/],
+    [(metrics) => {
+      metrics[0].semanticMaterials.action.boundaryColor =
+        metrics[0].semanticMaterials.tokens.accentColor;
+      metrics[0].semanticMaterials.idleAccentBoundaryCount = 1;
+    }, /idle action boundary.*accent/],
+    [(metrics) => { metrics[0].semanticMaterials.idleAccentBoundaryCount = 2; }, /idle accent boundary count/],
+  ]) {
+    const invalid = structuredClone(healthy);
+    mutate(invalid);
     assert.throws(() => assertSceneMaterialHierarchy(invalid), expected);
   }
 
@@ -482,7 +532,7 @@ function representativeMetrics() {
     taskReadingTileCount: index % 2 === 0 ? null : 12,
     homeContentBackgroundAlpha: index % 2 === 0 ? 0 : null,
     homeSuggestionsBackgroundAlpha: index % 2 === 0 ? 0 : null,
-    homeActionBackgroundAlpha: index % 2 === 0 ? 1 : null,
+    homeActionBackgroundAlpha: index % 2 === 0 ? 0.56 : null,
     composerContextBackgroundAlpha: 0,
     composerBackgroundAlpha: 0.86,
     layoutGeometry: {
@@ -518,7 +568,8 @@ function representativeMetrics() {
     },
     sceneContinuity: {
       titlebarBackgroundAlpha: 0.16,
-      sidebarBackgroundAlpha: 0.88,
+      sidebarBackgroundAlpha: index % 2 === 0 ? 0.72 : 0.82,
+      headerBackgroundAlpha: index % 2 === 0 ? 0.18 : 0.66,
       mainBackgroundAlpha: 0,
       titlebarHasIndependentArtwork: false,
       sidebarHasIndependentArtwork: false,
@@ -527,6 +578,8 @@ function representativeMetrics() {
       sidebarBoundaryWidth: 1,
       mainLeftBoundaryWidth: 0,
     },
+    artworkConsumerCount: 1,
+    semanticMaterials: representativeSemanticMaterials(index % 2 === 0 ? "home" : "task"),
     sceneTransmissionZones: ["titlebar", "sidebar", "main"].map((id) => ({
       id,
       tileCount: 12,
@@ -547,7 +600,7 @@ function representativeMetrics() {
       ? representativeInteractionStates()
       : representativeTaskInteractionStates(),
     homeMaterialChain: index % 2 === 0 ? [
-      { surface: "home-action", backgroundAlpha: 1 },
+      { surface: "home-action", backgroundAlpha: 0.56 },
       { surface: "home-suggestions", backgroundAlpha: 0 },
       { surface: "home-content", backgroundAlpha: 0 },
       { surface: "main-surface", backgroundAlpha: 0 },
@@ -560,6 +613,52 @@ function representativeMetrics() {
       { surface: "app-shell", backgroundAlpha: 1 },
     ],
   }));
+}
+
+function representativeSemanticMaterials(route) {
+  const accentColor = "rgb(64, 144, 240)";
+  const dividerColor = "rgb(91, 102, 113)";
+  return {
+    tokens: {
+      accentColor,
+      dividerColor,
+      focusRingColor: accentColor,
+    },
+    stage: { backgroundColor: "rgba(0, 0, 0, 0)", backgroundAlpha: 0, boundaryColor: null },
+    sidebar: {
+      backgroundColor: route === "home" ? "rgba(30, 36, 42, 0.72)" : "rgba(30, 36, 42, 0.82)",
+      backgroundAlpha: route === "home" ? 0.72 : 0.82,
+      boundaryColor: dividerColor,
+    },
+    header: {
+      backgroundColor: route === "home" ? "rgba(30, 36, 42, 0.18)" : "rgba(30, 36, 42, 0.66)",
+      backgroundAlpha: route === "home" ? 0.18 : 0.66,
+      boundaryColor: dividerColor,
+    },
+    action: route === "home" ? {
+      backgroundColor: "rgba(40, 48, 56, 0.56)",
+      backgroundAlpha: 0.56,
+      boundaryColor: dividerColor,
+    } : null,
+    taskReading: route === "task" ? {
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      backgroundAlpha: 0,
+      boundaryColor: null,
+      backgroundImage: "linear-gradient(rgba(20, 24, 28, 0.8), transparent)",
+    } : null,
+    composer: {
+      backgroundColor: "rgba(40, 48, 56, 0.86)",
+      backgroundAlpha: 0.86,
+      boundaryColor: dividerColor,
+    },
+    selection: {
+      backgroundColor: "rgba(50, 60, 70, 0.92)",
+      backgroundAlpha: 0.92,
+      boundaryColor: dividerColor,
+    },
+    focus: { boundaryColor: accentColor },
+    idleAccentBoundaryCount: 0,
+  };
 }
 
 function representativeInteractionStates() {

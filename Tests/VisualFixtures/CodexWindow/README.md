@@ -7,7 +7,8 @@ launch, inspect, restart, or modify Codex, and it rejects all network protocols.
 The renderer consumes only the debug-only Swift exporter payload. It exercises
 the real bundled resolver, latest compatibility profile, compiler, and installer
 expression against a fixed representative DOM. It renders all 24 built-in
-themes on home and task routes at 1512 x 982 and 1180 x 820, for 96 checks total.
+themes on home and task routes at 1512 x 982, 1180 x 820, and 860 x 720, for
+144 checks total.
 
 The browser is isolated from all network protocols. Before rendering, it
 independently verifies the exported profile, template, artwork, source, and CSS
@@ -30,8 +31,8 @@ Run contract and headless-browser checks:
 ../../../scripts/render-codex-theme-fixtures.sh --check
 ```
 
-Write the 96 full-resolution captures, four contact sheets, the four primary
-prototype review sets, and `metrics.json` to a local directory:
+Write the 144 full-resolution captures, six contact sheets, eight primary
+captures for the four prototype themes, and `metrics.json` to a local directory:
 
 ```bash
 ../../../scripts/render-codex-theme-fixtures.sh --write /tmp/habitat-offline-fixture

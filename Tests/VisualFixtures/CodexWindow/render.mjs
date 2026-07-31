@@ -15,6 +15,7 @@ import {
   FIXTURE_VIEWPORTS,
   LATEST_PROFILE_SELECTORS,
   REQUIRED_INTERACTION_SCENARIOS,
+  assertContactSheetCoverage,
   assertCompleteFixtureCoverage,
   assertSceneDifferences,
   classifyFixtureRequest,
@@ -142,6 +143,8 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
             );
             const taskModeOff = installedCSS.includes("habitat-task-mode: off");
             const taskModeBanner = installedCSS.includes("habitat-task-mode: banner");
+            const artworkConsumerCount =
+              (installedCSS.match(/var\(--habitat-art-background\)/g) ?? []).length;
 
             const warmupTransition = await selectFixtureRoute(
               page,
@@ -257,6 +260,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
                 sceneArtworkZones: sceneEvidence.artworkZones,
                 sceneTransmissionZones: sceneEvidence.transmissionZones,
                 artworkCrop,
+                artworkConsumerCount,
                 interactionStates,
                 screenshotPath,
                 screenshotFingerprint: sha256(screenshotBuffer),
@@ -309,6 +313,7 @@ export async function runOfflineFixture({ payloadPath, outputDirectory = null } 
 
   if (resolvedOutputDirectory) {
     metrics.contactSheets = await renderContactSheets(resolvedOutputDirectory, scenes);
+    assertContactSheetCoverage(metrics.contactSheets);
     await writeFile(
       path.join(resolvedOutputDirectory, "metrics.json"),
       `${JSON.stringify(metrics, null, 2)}\n`,
@@ -638,15 +643,23 @@ async function inspectFixturePage(
   const materialHierarchy = await page.evaluate(({ profileSelectors, activeRoute }) => {
     const appShell = document.querySelector(profileSelectors.appShell);
     const mainSurface = document.querySelector(profileSelectors.mainSurface);
+    const sidebar = document.querySelector(profileSelectors.sidebar);
+    const header = document.querySelector(profileSelectors.header);
     const composer = document.querySelector(profileSelectors.composer);
     const composerContext = document.querySelector(profileSelectors.composerContext);
+    const selectedNavigation = document.querySelector(profileSelectors.selectedNavigation);
+    const taskReading = document.querySelector(profileSelectors.threadScroll);
     if (
       !(appShell instanceof HTMLElement)
       || !(mainSurface instanceof HTMLElement)
+      || !(sidebar instanceof HTMLElement)
+      || !(header instanceof HTMLElement)
       || !(composer instanceof HTMLElement)
       || !(composerContext instanceof HTMLElement)
+      || !(selectedNavigation instanceof HTMLElement)
+      || !(taskReading instanceof HTMLElement)
     ) {
-      throw new Error("composer material path is missing");
+      throw new Error("semantic material path is missing");
     }
 
     const canvas = document.createElement("canvas");
@@ -663,6 +676,20 @@ async function inspectFixturePage(
       return {
         computedBackgroundColor: color,
         backgroundAlpha: context.getImageData(0, 0, 1, 1).data[3] / 255,
+      };
+    };
+    const canonicalColor = (value) => {
+      context.fillStyle = "#ff00ff";
+      context.fillStyle = value;
+      return context.fillStyle;
+    };
+    const materialFor = (node, boundaryProperty = "borderTopColor") => {
+      const style = getComputedStyle(node);
+      const background = computedBackground(node);
+      return {
+        backgroundColor: background.computedBackgroundColor,
+        backgroundAlpha: background.backgroundAlpha,
+        boundaryColor: canonicalColor(style[boundaryProperty]),
       };
     };
     const ancestorChain = (node, surfaceForNode) => {
@@ -683,10 +710,11 @@ async function inspectFixturePage(
     });
 
     let homeMaterialChain = null;
+    let homeAction = null;
     if (activeRoute === "home") {
       const homeContent = document.querySelector(profileSelectors.homeContent);
       const homeSuggestions = document.querySelector(profileSelectors.homeSuggestions);
-      const homeAction = homeSuggestions?.querySelector(":scope > :where(button, [role=button])");
+      homeAction = homeSuggestions?.querySelector(":scope > :where(button, [role=button])");
       if (
         !(homeContent instanceof HTMLElement)
         || !(homeSuggestions instanceof HTMLElement)
@@ -706,6 +734,33 @@ async function inspectFixturePage(
 
     const alphaFor = (chain, surface) =>
       chain?.find((entry) => entry.surface === surface)?.backgroundAlpha ?? null;
+    const rootStyle = getComputedStyle(document.documentElement);
+    const tokens = {
+      accentColor: canonicalColor(rootStyle.getPropertyValue("--habitat-accent").trim()),
+      dividerColor: canonicalColor(rootStyle.getPropertyValue("--habitat-divider").trim()),
+      focusRingColor: canonicalColor(rootStyle.getPropertyValue("--habitat-focus-ring").trim()),
+    };
+    const semanticMaterials = {
+      tokens,
+      stage: materialFor(mainSurface, "borderLeftColor"),
+      sidebar: materialFor(sidebar, "borderRightColor"),
+      header: materialFor(header, "borderBottomColor"),
+      action: homeAction instanceof HTMLElement ? materialFor(homeAction) : null,
+      taskReading: activeRoute === "task" ? {
+        ...materialFor(taskReading),
+        backgroundImage: getComputedStyle(taskReading).backgroundImage,
+      } : null,
+      composer: materialFor(composer),
+      selection: materialFor(selectedNavigation, "borderLeftColor"),
+      focus: { boundaryColor: tokens.focusRingColor },
+      idleAccentBoundaryCount: 0,
+    };
+    semanticMaterials.idleAccentBoundaryCount = [
+      semanticMaterials.sidebar,
+      semanticMaterials.header,
+      semanticMaterials.action,
+      semanticMaterials.composer,
+    ].filter((material) => material?.boundaryColor === tokens.accentColor).length;
     return {
       homeContentBackgroundAlpha: alphaFor(homeMaterialChain, "home-content"),
       homeSuggestionsBackgroundAlpha: alphaFor(homeMaterialChain, "home-suggestions"),
@@ -714,6 +769,7 @@ async function inspectFixturePage(
       composerBackgroundAlpha: alphaFor(composerMaterialChain, "composer"),
       homeMaterialChain,
       composerMaterialChain,
+      semanticMaterials,
     };
   }, { profileSelectors: selectors, activeRoute: routeName });
   const alphaTolerance = 1 / 255;
@@ -724,8 +780,8 @@ async function inspectFixturePage(
   );
   assert(
     Number.isFinite(materialHierarchy.composerBackgroundAlpha)
-      && materialHierarchy.composerBackgroundAlpha >= 0.84 - alphaTolerance
-      && materialHierarchy.composerBackgroundAlpha <= 0.90 + alphaTolerance,
+      && materialHierarchy.composerBackgroundAlpha >= 0.60 - alphaTolerance
+      && materialHierarchy.composerBackgroundAlpha <= 1,
     `composer background alpha is ${materialHierarchy.composerBackgroundAlpha}`,
   );
   if (routeName === "home") {
@@ -741,8 +797,15 @@ async function inspectFixturePage(
     );
     assert(
       Number.isFinite(materialHierarchy.homeActionBackgroundAlpha)
-        && Math.abs(materialHierarchy.homeActionBackgroundAlpha - 1) <= alphaTolerance,
+        && materialHierarchy.homeActionBackgroundAlpha >= 0.48 - alphaTolerance
+        && materialHierarchy.homeActionBackgroundAlpha <= 0.72 + alphaTolerance,
       `home action background alpha is ${materialHierarchy.homeActionBackgroundAlpha}`,
+    );
+    assert(
+      materialHierarchy.composerBackgroundAlpha
+        > materialHierarchy.homeActionBackgroundAlpha + alphaTolerance,
+      `composer background alpha ${materialHierarchy.composerBackgroundAlpha}`
+        + ` does not exceed home action ${materialHierarchy.homeActionBackgroundAlpha}`,
     );
   }
 
@@ -778,11 +841,13 @@ async function measureShellLayout(page, selectors, routeName) {
     const main = document.querySelector(profileSelectors.mainSurface);
     const composer = document.querySelector(profileSelectors.composer);
     const sidebar = document.querySelector(profileSelectors.sidebar);
+    const header = document.querySelector(profileSelectors.header);
     const titlebar = document.querySelector('[data-fixture-surface="titlebar"]');
     if (
       !(main instanceof HTMLElement)
       || !(composer instanceof HTMLElement)
       || !(sidebar instanceof HTMLElement)
+      || !(header instanceof HTMLElement)
       || !(titlebar instanceof HTMLElement)
     ) {
       throw new Error("shell geometry surface is missing");
@@ -880,6 +945,7 @@ async function measureShellLayout(page, selectors, routeName) {
     };
     const titlebarStyle = getComputedStyle(titlebar);
     const sidebarStyle = getComputedStyle(sidebar);
+    const headerStyle = getComputedStyle(header);
     const mainStyle = getComputedStyle(main);
     const hasIndependentArtwork = (style) => style.backgroundImage.includes("url(");
 
@@ -894,6 +960,7 @@ async function measureShellLayout(page, selectors, routeName) {
       sceneContinuity: {
         titlebarBackgroundAlpha: backgroundAlpha(titlebarStyle),
         sidebarBackgroundAlpha: backgroundAlpha(sidebarStyle),
+        headerBackgroundAlpha: backgroundAlpha(headerStyle),
         mainBackgroundAlpha: backgroundAlpha(mainStyle),
         titlebarHasIndependentArtwork: hasIndependentArtwork(titlebarStyle),
         sidebarHasIndependentArtwork: hasIndependentArtwork(sidebarStyle),

@@ -257,7 +257,8 @@ public enum BuiltInThemeCatalog {
                 taskSidebar: 0.88, taskHeader: 0.86,
                 homeContent: 0.72, taskContent: 0.84,
                 composer: 0.88, contentWidth: 0.62, vignette: 0.10,
-                blur: 16, density: .comfortable
+                blur: 16, density: .comfortable,
+                localizedScrimStrength: 0.70
             )
         ),
         theme(
@@ -291,7 +292,8 @@ public enum BuiltInThemeCatalog {
                 taskSidebar: 0.90, taskHeader: 0.88,
                 homeContent: 0.72, taskContent: 0.84,
                 composer: 0.88, contentWidth: 0.60, vignette: 0.06,
-                blur: 6, density: .compact
+                blur: 6, density: .compact,
+                localizedScrimStrength: 0.64
             )
         ),
         theme(
@@ -359,7 +361,8 @@ public enum BuiltInThemeCatalog {
                 taskSidebar: 0.86, taskHeader: 0.84,
                 homeContent: 0.76, taskContent: 0.82,
                 composer: 0.90, contentWidth: 0.56, vignette: 0.04,
-                blur: 0, density: .compact
+                blur: 0, density: .compact,
+                localizedScrimStrength: 0.64
             )
         ),
         theme(

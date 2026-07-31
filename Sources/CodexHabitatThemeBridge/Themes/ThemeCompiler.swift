@@ -470,6 +470,7 @@ struct ThemeCompiler {
             "safe-scrim": Self.safeScrim(for: theme.appearance.safeSide),
             "task-safe-scrim": Self.taskSafeScrim(for: theme.appearance.safeSide),
             "task-reading-scrim": Self.taskReadingScrim(for: theme.appearance.safeSide),
+            "task-response-scrim": Self.taskResponseScrim(),
             "blur-radius": Self.cssNumber(theme.appearance.blurRadius) + "px",
             "tinted-blur-radius": Self.cssNumber(theme.appearance.blurRadius * 0.55) + "px",
             "density-spacing": densitySpacing,
@@ -582,6 +583,9 @@ struct ThemeCompiler {
             \(root)[data-codex-habitat-route="task"] \(message) {
               color: var(--habitat-text);
               background-color: transparent;
+              background-image: var(--habitat-task-response-scrim);
+              background-repeat: no-repeat;
+              background-size: 100% 100%;
               border-color: transparent;
               box-shadow: none;
               backdrop-filter: none;
@@ -1057,6 +1061,9 @@ struct ThemeCompiler {
         /* habitat-surface: response */
         \(scopedSelectors(responseSurfaces, root: root)) {
           background-color: transparent;
+          background-image: var(--habitat-task-response-scrim);
+          background-repeat: no-repeat;
+          background-size: 100% 100%;
           border-color: transparent;
           border-radius: 0;
           box-shadow: none;
@@ -1355,6 +1362,7 @@ struct ThemeCompiler {
 
     private static func safeScrim(for safeSide: HabitatThemeSafeSide) -> String {
         let chromeWash = "linear-gradient(to bottom, color-mix(in srgb, var(--habitat-surface) 22%, transparent) 0%, transparent 14% 78%, color-mix(in srgb, var(--habitat-surface) 30%, transparent) 100%)"
+        let centeredReadingWash = "radial-gradient(ellipse at center, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-localized-scrim-strength), transparent) 56%, transparent 82%)"
         let directional = switch safeSide {
         case .leading:
             "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent) 0 24%, color-mix(in srgb, var(--habitat-surface) var(--habitat-localized-scrim-strength), transparent) 52%, transparent 78%)"
@@ -1365,7 +1373,12 @@ struct ThemeCompiler {
         case .none:
             "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-home-content-opacity), transparent))"
         }
-        return "\(chromeWash), \(directional)"
+        return switch safeSide {
+        case .leading, .trailing:
+            "\(chromeWash), \(centeredReadingWash), \(directional)"
+        case .center, .none:
+            "\(chromeWash), \(directional)"
+        }
     }
 
     private static func taskSafeScrim(for safeSide: HabitatThemeSafeSide) -> String {
@@ -1396,6 +1409,10 @@ struct ThemeCompiler {
             "linear-gradient(color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent), color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent))"
         }
         return "\(chromeWash), \(directional)"
+    }
+
+    private static func taskResponseScrim() -> String {
+        "linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-task-content-opacity), transparent) 0% 100%), linear-gradient(to right, color-mix(in srgb, var(--habitat-surface) var(--habitat-localized-scrim-strength), transparent) 0% 100%)"
     }
 
     private static func scopedSelectors(_ selectors: [String], root: String) -> String {
