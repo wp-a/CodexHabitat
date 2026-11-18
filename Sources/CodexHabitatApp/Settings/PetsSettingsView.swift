@@ -275,6 +275,7 @@ struct PetsSettingsView: View {
                             Divider()
                             PetPreviewPane(
                                 pet: selectedPet,
+                                theme: model.selectedTheme,
                                 rendererError: rendererRecoveryState.inlineMessage,
                                 onRetry: recoverPet
                             )
@@ -326,6 +327,7 @@ struct PetsSettingsView: View {
             Divider()
             PetPreviewPane(
                 pet: selectedPet,
+                theme: model.selectedTheme,
                 rendererError: rendererRecoveryState.inlineMessage,
                 onRetry: recoverPet
             )
@@ -411,10 +413,10 @@ private struct PetResourceRow: View {
                 PetThumbnail(pet: pet)
                     .frame(width: 46, height: 46)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(pet.manifest?.displayName ?? pet.packageURL.lastPathComponent)
+                    Text(L10n.text(pet.manifest?.displayName ?? pet.packageURL.lastPathComponent))
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
-                    Text(pet.manifest?.description ?? "")
+                    Text(L10n.text(pet.manifest?.description ?? ""))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -438,33 +440,121 @@ private struct PetResourceRow: View {
     }
 }
 
+private enum PetPreviewAnimationPreset: String, CaseIterable, Identifiable {
+    case idle
+    case working
+    case waving
+    case jumping
+    case complete
+    case alert
+
+    var id: String { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .idle: "Idle"
+        case .working: "Working"
+        case .waving: "Wave"
+        case .jumping: "Jump"
+        case .complete: "Complete"
+        case .alert: "Needs attention"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .idle: "moon.stars.fill"
+        case .working: "bolt.fill"
+        case .waving: "hand.wave.fill"
+        case .jumping: "arrow.up.forward.circle.fill"
+        case .complete: "crown.fill"
+        case .alert: "exclamationmark.triangle.fill"
+        }
+    }
+
+    var activity: AgentActivity {
+        switch self {
+        case .idle, .waving, .jumping: .resting
+        case .working: .working
+        case .complete: .succeeded
+        case .alert: .failed
+        }
+    }
+
+    var requestedAnimation: PetAnimation? {
+        switch self {
+        case .idle: .idle
+        case .working: .running
+        case .waving: .waving
+        case .jumping: .jumping
+        case .complete: .review
+        case .alert: .failed
+        }
+    }
+}
+
 private struct PetPreviewPane: View {
     let pet: PetLibraryEntry?
+    let theme: HabitatThemeDescriptor
     let rendererError: String?
     let onRetry: (PetLibraryEntry) async -> Void
     @State private var presentation = PetPreviewPresentationState()
+    @State private var liveRenderer: SpriteSheetRenderer?
+    @State private var availableRows: Set<Int> = Set(0..<9)
+    @State private var selectedPreset = PetPreviewAnimationPreset.working
     @State private var retryGeneration = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let surface = Color(habitatHex: theme.surfaceHex)
+        let panel = Color(habitatHex: theme.panelHex)
+        let accent = Color(habitatHex: theme.accentHex)
+
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceL) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(pet?.manifest?.displayName ?? L10n.text("Preview"))
+                Text(L10n.text(pet?.manifest?.displayName ?? "Preview"))
                     .font(.title2.weight(.semibold))
-                Text(pet?.manifest?.description ?? "")
+                Text(L10n.text(pet?.manifest?.description ?? ""))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
 
             ZStack {
-                RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius)
-                    .fill(.quaternary.opacity(0.45))
-                if let image = presentation.displayedImage {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [surface, panel],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                RadialGradient(
+                    colors: [accent.opacity(0.26), .clear],
+                    center: .center,
+                    startRadius: 10,
+                    endRadius: 160
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if let liveRenderer {
+                    PetSpriteView(
+                        activity: selectedPreset.activity,
+                        requestedAnimation: selectedPreset.requestedAnimation,
+                        renderer: liveRenderer,
+                        renderMode: .pixelated,
+                        pixelArtHint: true,
+                        clock: SystemAnimationClock(),
+                        availableRows: availableRows,
+                        reduceMotion: reduceMotion
+                    )
+                    .frame(width: 156, height: 164)
+                } else if let image = presentation.displayedImage {
                     Image(decorative: image, scale: 1, orientation: .up)
                         .resizable()
                         .interpolation(.none)
                         .aspectRatio(contentMode: .fit)
-                        .padding(HabitatDesignMetrics.spaceXXL)
+                        .frame(width: 148, height: 156)
                 } else if presentation.status == .loading {
                     ProgressView()
                         .controlSize(.large)
@@ -474,8 +564,11 @@ private struct PetPreviewPane: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .aspectRatio(1.45, contentMode: .fit)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 210, maxHeight: 260)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(accent.opacity(0.34), lineWidth: 1)
+            }
             .overlay(alignment: .bottom) {
                 if presentation.status == .loading, presentation.displayedImage != nil {
                     ProgressView(L10n.text("Loading pet artwork…"))
@@ -485,6 +578,42 @@ private struct PetPreviewPane: View {
                         .padding()
                 }
             }
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6),
+                ],
+                spacing: 6
+            ) {
+                ForEach(PetPreviewAnimationPreset.allCases) { preset in
+                    let isSelected = preset == selectedPreset
+                    Button {
+                        selectedPreset = preset
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: preset.symbol)
+                                .font(.system(size: 10, weight: .bold))
+                            Text(L10n.text(preset.titleKey))
+                                .font(.system(size: 11, weight: .semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.82)
+                        }
+                        .foregroundStyle(isSelected ? Color.black : .primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 6)
+                        .background(
+                            isSelected ? accent : Color.primary.opacity(0.07),
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Spacer(minLength: 0)
 
             if presentation.status == .failed || rendererError != nil, let pet {
                 HStack(spacing: HabitatDesignMetrics.spaceS) {
@@ -508,11 +637,24 @@ private struct PetPreviewPane: View {
         }
         .padding(HabitatDesignMetrics.spaceXL)
         .task(id: requestID) {
-            guard let pet, let petID = pet.manifest?.id else { return }
+            guard let pet, let petID = pet.manifest?.id else {
+                liveRenderer = nil
+                return
+            }
             let request = presentation.select(petID: petID)
             let image = await PetThumbnailStore.shared.image(for: pet)
             guard !Task.isCancelled else { return }
             presentation.complete(petID: petID, request: request, image: image)
+            if let spritesheetURL = pet.spritesheetURL, let atlas = pet.atlas {
+                let loaded = await Task.detached(priority: .userInitiated) {
+                    SpriteSheetRenderer(contentsOf: spritesheetURL, atlas: atlas)
+                }.value
+                guard !Task.isCancelled else { return }
+                liveRenderer = loaded.isRenderable ? loaded : nil
+                availableRows = Set(0..<min(atlas.rows, 9))
+            } else {
+                liveRenderer = nil
+            }
         }
     }
 
@@ -552,18 +694,22 @@ private struct PetBehaviorInspector: View {
                     .accessibilityValue(scaleAccessibilityValue)
                 }
 
-                Picker(
-                    L10n.text("Motion"),
-                    selection: Binding(
-                        get: { model.settings.reduceMotion },
-                        set: { model.setReduceMotion($0) }
-                    )
-                ) {
-                    Text(L10n.text("System")).tag(ReduceMotionPreference.system)
-                    Text(L10n.text("Reduced")).tag(ReduceMotionPreference.reduce)
-                    Text(L10n.text("Full")).tag(ReduceMotionPreference.full)
+                VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceS) {
+                    Text(L10n.text("Motion"))
+                    Picker(
+                        L10n.text("Motion"),
+                        selection: Binding(
+                            get: { model.settings.reduceMotion },
+                            set: { model.setReduceMotion($0) }
+                        )
+                    ) {
+                        Text(L10n.text("System")).tag(ReduceMotionPreference.system)
+                        Text(L10n.text("Reduced")).tag(ReduceMotionPreference.reduce)
+                        Text(L10n.text("Full")).tag(ReduceMotionPreference.full)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
-                .pickerStyle(.segmented)
 
                 Toggle(
                     L10n.text("Click through the overlay"),
@@ -626,24 +772,31 @@ struct PetChoiceCard: View {
             VStack(spacing: 8) {
                 PetThumbnail(pet: pet)
                     .frame(height: 82)
-                Text(pet.manifest?.displayName ?? pet.packageURL.lastPathComponent)
+                Text(L10n.text(pet.manifest?.displayName ?? pet.packageURL.lastPathComponent))
                     .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .multilineTextAlignment(.center)
+                if let desc = pet.manifest?.description, !desc.isEmpty {
+                    Text(L10n.text(desc))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .padding(10)
-            .frame(maxWidth: .infinity, minHeight: 124)
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 142)
             .background(
-                isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.035),
-                in: RoundedRectangle(cornerRadius: 8)
+                isSelected ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.04),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(isSelected ? Color.accentColor : Color.primary.opacity(0.09), lineWidth: 1.5)
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(pet.manifest?.displayName ?? L10n.text("Pet"))
+        .accessibilityLabel(L10n.text(pet.manifest?.displayName ?? "Pet"))
         .accessibilityValue(L10n.text(isSelected ? "Selected" : "Not selected"))
         .accessibilityIdentifier("pets.choice.\(pet.manifest?.id ?? "unknown")")
     }

@@ -293,11 +293,22 @@ private struct HabitatMenuBarView: View {
 
             connectionRow
 
+            telemetrySummarySection
+
             usageSection
 
             Toggle(L10n.text("Show Habitat"), isOn: $model.isHabitatVisible)
                 .toggleStyle(.switch)
                 .accessibilityIdentifier("menu.show-habitat")
+
+            if desktopController.isVisible {
+                Button(action: desktopController.patPet) {
+                    Label(L10n.text("Pat Companion"), systemImage: "hand.wave.fill")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("menu.pat-companion")
+            }
 
             Button(action: toggleMoveMode) {
                 let moveMode = HabitatMoveModePresentation(
@@ -367,6 +378,42 @@ private struct HabitatMenuBarView: View {
         } else {
             desktopController.beginTemporaryMoveMode()
         }
+    }
+
+    @ViewBuilder
+    private var telemetrySummarySection: some View {
+        if let metrics = desktopController.currentSnapshot.tokenMetrics {
+            HStack(spacing: 8) {
+                menuMetricPill(
+                    title: L10n.text("Latest request"),
+                    value: metrics.latestRequestTokens.map(WidgetRailView.compactCount) ?? "--"
+                )
+                menuMetricPill(
+                    title: L10n.text("Context"),
+                    value: metrics.contextUsedPercent.map { "\(Int($0.rounded()))%" } ?? "--"
+                )
+                menuMetricPill(
+                    title: L10n.text("Task cumulative"),
+                    value: WidgetRailView.compactCount(metrics.taskCumulativeTokens)
+                )
+            }
+        }
+    }
+
+    private func menuMetricPill(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 9.5, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     @ViewBuilder

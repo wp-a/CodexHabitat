@@ -22,7 +22,22 @@ private final class OverlayPreviewCoordinator: NSObject {
     private let widgetModel = WidgetRailModel(snapshot: HabitatSnapshot(
         activity: .working,
         connectionHealth: .online,
-        primaryRateLimit: RateLimitSummary(usedPercent: 37, resetAt: nil)
+        primaryRateLimit: RateLimitSummary(
+            usedPercent: 37,
+            resetAt: Date().addingTimeInterval(7_200)
+        ),
+        tokenMetrics: TokenMetricsSummary(
+            inputTokens: 84_200,
+            cachedInputTokens: 61_000,
+            outputTokens: 6_400,
+            reasoningOutputTokens: 1_200,
+            totalTokens: 90_600,
+            lastInputTokens: 42_000,
+            lastOutputTokens: 1_850,
+            modelContextWindow: 200_000,
+            recentOutputTokens: 1_420,
+            updatedAt: Date()
+        )
     ))
     private let petAsset: OverlayPreviewPetAsset?
     private let petModel: HabitatOverlayModel
@@ -32,7 +47,7 @@ private final class OverlayPreviewCoordinator: NSObject {
     private var widgetItem: NSMenuItem?
 
     init(themeID: String?) {
-        let petAsset = themeID == nil ? Self.loadPetAsset() : nil
+        let petAsset = Self.loadPetAsset()
         self.petAsset = petAsset
         theme = HabitatThemeDescriptor.builtIn.first(where: { $0.id == themeID })
             ?? HabitatThemeDescriptor.builtIn[0]
@@ -117,11 +132,11 @@ private final class OverlayPreviewCoordinator: NSObject {
     }
 
     private static func loadPetAsset() -> OverlayPreviewPetAsset? {
-        guard let entry = try? PetLibrary(root: PetLibrary.petRoot())
-            .discover()
-            .first(where: { $0.status == .valid }),
-            let spritesheetURL = entry.spritesheetURL,
-            let atlas = entry.atlas
+        let localEntry = (try? PetLibrary(root: PetLibrary.petRoot()).discover())?
+            .first(where: { $0.status == .valid })
+        guard let entry = localEntry ?? BundledPetCatalog.discover().first,
+              let spritesheetURL = entry.spritesheetURL,
+              let atlas = entry.atlas
         else {
             return nil
         }

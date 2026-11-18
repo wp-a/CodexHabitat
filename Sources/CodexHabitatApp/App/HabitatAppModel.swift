@@ -199,6 +199,31 @@ struct HabitatPetPresentation: Equatable, Sendable {
     let scale: Double
 }
 
+enum BundledPetCatalog {
+    static let ids = [
+        "cyber-neko",
+        "nebula-mochi",
+        "pixel-kitsune",
+        "mecha-owl",
+    ]
+
+    static func discover() -> [PetLibraryEntry] {
+        guard let root = PackagedResourceLocator.directoryURL(
+            subdirectory: "Resources/Pets",
+            packageBundleName: "CodexHabitat_CodexHabitatApp.bundle"
+        ) else {
+            return []
+        }
+        let validator = PetValidator()
+        return ids.compactMap { id in
+            let entry = validator.validate(
+                directory: root.appending(path: id, directoryHint: .isDirectory)
+            )
+            return entry.status == .valid ? entry : nil
+        }
+    }
+}
+
 enum ResourceLibraryOperationState: Equatable, Sendable {
     case idle
     case importing
@@ -233,6 +258,7 @@ final class HabitatAppModel: ObservableObject {
     private let petRoot: URL
     private let resourceLibraryRoot: URL?
     private let launchAtLoginController: any HabitatLaunchAtLoginControlling
+    private let includeBundledPets: Bool
     private var saveTask: Task<Void, Never>?
     private var settingsPersistenceEnabled = true
 
@@ -256,12 +282,14 @@ final class HabitatAppModel: ObservableObject {
         settingsStore: SettingsStore,
         petRoot: URL,
         resourceLibraryRoot: URL? = nil,
-        launchAtLoginController: any HabitatLaunchAtLoginControlling = InMemoryHabitatLaunchAtLoginController()
+        launchAtLoginController: any HabitatLaunchAtLoginControlling = InMemoryHabitatLaunchAtLoginController(),
+        includeBundledPets: Bool = false
     ) {
         self.settingsStore = settingsStore
         self.petRoot = petRoot
         self.resourceLibraryRoot = resourceLibraryRoot
         self.launchAtLoginController = launchAtLoginController
+        self.includeBundledPets = includeBundledPets
         launchAtLoginStatus = launchAtLoginController.status
     }
 
@@ -285,7 +313,8 @@ final class HabitatAppModel: ObservableObject {
             settingsStore: SettingsStore(root: root),
             petRoot: PetLibrary.petRoot(),
             resourceLibraryRoot: root.appending(path: "Library", directoryHint: .isDirectory),
-            launchAtLoginController: SystemHabitatLaunchAtLoginController()
+            launchAtLoginController: SystemHabitatLaunchAtLoginController(),
+            includeBundledPets: true
         )
     }
 
@@ -764,29 +793,45 @@ final class HabitatAppModel: ObservableObject {
             result.append(entry)
         }
 
-        guard let resourceLibraryRoot else { return (result, presentations) }
-        let packages = InstalledPackageLibrary(
-            root: resourceLibraryRoot,
-            runtimeVersion: "1.0.0"
-        ).currentPackages()
-        let validator = PetValidator()
-        for package in packages {
-            for adapter in package.manifest.pets {
-                let directory = package.url.appending(
-                    path: adapter.path,
-                    directoryHint: .isDirectory
-                )
-                let entry = validator.validate(directory: directory)
-                guard entry.status == .valid,
-                      entry.manifest?.id == adapter.id,
-                      identifiers.insert(adapter.id).inserted
+        if let resourceLibraryRoot {
+            let packages = InstalledPackageLibrary(
+                root: resourceLibraryRoot,
+                runtimeVersion: "1.0.0"
+            ).currentPackages()
+            let validator = PetValidator()
+            for package in packages {
+                for adapter in package.manifest.pets {
+                    let directory = package.url.appending(
+                        path: adapter.path,
+                        directoryHint: .isDirectory
+                    )
+                    let entry = validator.validate(directory: directory)
+                    guard entry.status == .valid,
+                          entry.manifest?.id == adapter.id,
+                          identifiers.insert(adapter.id).inserted
+                    else {
+                        continue
+                    }
+                    result.append(entry)
+                    presentations[adapter.id] = HabitatPetPresentation(
+                        renderMode: adapter.rendering.petRenderMode,
+                        scale: adapter.scale
+                    )
+                }
+            }
+        }
+
+        if includeBundledPets {
+            for bundled in BundledPetCatalog.discover() {
+                guard let id = bundled.manifest?.id,
+                      identifiers.insert(id).inserted
                 else {
                     continue
                 }
-                result.append(entry)
-                presentations[adapter.id] = HabitatPetPresentation(
-                    renderMode: adapter.rendering.petRenderMode,
-                    scale: adapter.scale
+                result.append(bundled)
+                presentations[id] = HabitatPetPresentation(
+                    renderMode: .pixelated,
+                    scale: 1
                 )
             }
         }

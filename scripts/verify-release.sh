@@ -68,6 +68,19 @@ if find "$THEME_ROOT" -type f \( \
 fi
 pass "twenty-four bounded theme resource sets"
 
+PET_ROOT="$APP/Contents/Resources/Resources/Pets"
+EXPECTED_PETS=(cyber-neko nebula-mochi pixel-kitsune mecha-owl)
+[[ -d "$PET_ROOT" ]] || fail "bundled pet library missing"
+for pet_id in "${EXPECTED_PETS[@]}"; do
+    pet_directory="$PET_ROOT/$pet_id"
+    [[ -d "$pet_directory" ]] || fail "bundled pet directory missing: $pet_id"
+    for filename in pet.json spritesheet.png LICENSE; do
+        [[ -f "$pet_directory/$filename" ]] \
+            || fail "bundled pet resource missing: $pet_id/$filename"
+    done
+done
+pass "four bundled companion pet sets"
+
 app_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
 build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"

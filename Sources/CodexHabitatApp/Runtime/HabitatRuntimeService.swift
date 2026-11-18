@@ -16,10 +16,12 @@ extension CodexControlClient: CodexRuntimeClient {}
 
 protocol CodexTokenMetricsMonitoring: Sendable {
     func sample(at date: Date) async -> TokenMetricsSummary?
+    func latestRateLimits() async -> CodexRateLimitUpdate?
     func selectThread(idHash: String?) async
 }
 
 extension CodexTokenMetricsMonitoring {
+    func latestRateLimits() async -> CodexRateLimitUpdate? { nil }
     func selectThread(idHash _: String?) async {}
 }
 
@@ -377,8 +379,12 @@ actor HabitatRuntimeService {
         metricsTask = Task { [weak self] in
             while !Task.isCancelled {
                 let metrics = await metricsMonitor.sample(at: Date())
+                let localRateLimits = await metricsMonitor.latestRateLimits()
                 guard let self else { return }
                 await self.state.setTokenMetrics(metrics)
+                if !(await self.primaryOnline), let localRateLimits {
+                    await self.apply(HabitatRuntimeEventMapper.rateLimitAction(localRateLimits))
+                }
                 let activity = await self.state.currentSnapshot().activity
                 let interval: Duration = switch activity {
                 case .working, .attention:

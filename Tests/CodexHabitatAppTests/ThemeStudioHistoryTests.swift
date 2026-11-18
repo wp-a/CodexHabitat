@@ -342,6 +342,21 @@ func studioValidationFailurePreservesDraftAndHistory() async {
     }
 }
 
+@Test @MainActor
+func studioMoodPresetsApplyCohesiveSettingsInASingleUndoStep() {
+    let model = makeHistoryModel()
+    let initial = model.draft
+
+    model.applyMoodPreset(.cyberNeon)
+    #expect(model.styleFamily == .arcade)
+    #expect(model.chromeMaterial == .glass)
+    #expect(model.canUndo)
+
+    model.undo()
+    #expect(model.draft == initial)
+    #expect(!model.canUndo)
+}
+
 private func requireSendable<T: Sendable>(_ value: T) {}
 
 @MainActor

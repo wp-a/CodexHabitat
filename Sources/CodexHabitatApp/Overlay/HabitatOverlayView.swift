@@ -8,10 +8,13 @@ import SwiftUI
 final class HabitatOverlayModel: ObservableObject {
     @Published private(set) var snapshot: HabitatSnapshot
     @Published private(set) var isAnimationActive = true
+    @Published private(set) var reactionAnimation: PetAnimation?
+    @Published private(set) var reactionBurstID = 0
     let clock: any AnimationClock
     let availableRows: Set<Int>
     let overlaySize = CGSize(width: 136, height: 144)
     let reduceMotion: Bool
+    private var reactionResetTask: Task<Void, Never>?
 
     init(
         clock: any AnimationClock = SystemAnimationClock(),
@@ -25,12 +28,33 @@ final class HabitatOverlayModel: ObservableObject {
         self.reduceMotion = reduceMotion
     }
 
+    deinit {
+        reactionResetTask?.cancel()
+    }
+
     func apply(_ snapshot: HabitatSnapshot) {
         self.snapshot = snapshot
     }
 
     func setAnimationActive(_ active: Bool) {
         isAnimationActive = active
+        if !active {
+            reactionResetTask?.cancel()
+            reactionResetTask = nil
+            reactionAnimation = nil
+        }
+    }
+
+    func triggerReaction(_ animation: PetAnimation = .waving, durationMilliseconds: UInt64 = 1_350) {
+        reactionResetTask?.cancel()
+        reactionBurstID &+= 1
+        guard !reduceMotion, isAnimationActive else { return }
+        reactionAnimation = animation
+        reactionResetTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(durationMilliseconds))
+            guard !Task.isCancelled else { return }
+            self?.reactionAnimation = nil
+        }
     }
 }
 

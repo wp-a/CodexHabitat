@@ -8,6 +8,7 @@ import SwiftUI
 final class PetAnimationDriver {
     private var animator: PetAnimator
     private(set) var activity: AgentActivity
+    private(set) var overrideAnimation: PetAnimation?
     let reduceMotion: Bool
 
     init(
@@ -27,10 +28,27 @@ final class PetAnimationDriver {
     }
 
     var refreshInterval: TimeInterval? {
-        PetRefreshPolicy.interval(activity: activity, reduceMotion: reduceMotion)
+        if overrideAnimation != nil {
+            return reduceMotion ? nil : 0.125
+        }
+        return PetRefreshPolicy.interval(activity: activity, reduceMotion: reduceMotion)
     }
 
-    func update(activity: AgentActivity) {
+    func update(activity: AgentActivity, overrideAnimation: PetAnimation? = nil) {
+        let previousOverride = self.overrideAnimation
+        self.overrideAnimation = overrideAnimation
+        if let overrideAnimation {
+            self.activity = activity
+            if previousOverride != overrideAnimation {
+                _ = animator.transition(to: overrideAnimation)
+            }
+            return
+        }
+        if previousOverride != nil {
+            self.activity = activity
+            _ = animator.transition(to: Self.baseAnimation(for: activity))
+            return
+        }
         self.activity = activity
         _ = animator.update(activity: activity)
     }
@@ -38,10 +56,21 @@ final class PetAnimationDriver {
     func currentFrame() -> PetFrame {
         animator.currentFrame()
     }
+
+    private static func baseAnimation(for activity: AgentActivity) -> PetAnimation {
+        switch activity {
+        case .resting, .offline: .idle
+        case .working: .running
+        case .attention: .waiting
+        case .succeeded: .review
+        case .failed: .failed
+        }
+    }
 }
 
 struct PetSpriteView: NSViewRepresentable {
     let activity: AgentActivity
+    var requestedAnimation: PetAnimation? = nil
     let renderer: SpriteSheetRenderer
     let renderMode: PetRenderMode
     let pixelArtHint: Bool
@@ -53,6 +82,7 @@ struct PetSpriteView: NSViewRepresentable {
         let view = PetSpriteNSView()
         view.configure(
             activity: activity,
+            requestedAnimation: requestedAnimation,
             renderer: renderer,
             interpolation: interpolation,
             clock: clock,
@@ -65,6 +95,7 @@ struct PetSpriteView: NSViewRepresentable {
     func updateNSView(_ view: PetSpriteNSView, context _: Context) {
         view.configure(
             activity: activity,
+            requestedAnimation: requestedAnimation,
             renderer: renderer,
             interpolation: interpolation,
             clock: clock,
@@ -175,6 +206,7 @@ final class PetSpriteNSView: NSView {
 
     func configure(
         activity: AgentActivity,
+        requestedAnimation: PetAnimation? = nil,
         renderer: SpriteSheetRenderer,
         interpolation: CALayerContentsFilter,
         clock: any AnimationClock,
@@ -193,14 +225,18 @@ final class PetSpriteNSView: NSView {
             reduceMotion: reduceMotion
         )
         if let driver, playbackIdentity == nextIdentity {
-            driver.update(activity: activity)
+            driver.update(activity: activity, overrideAnimation: requestedAnimation)
         } else {
-            driver = PetAnimationDriver(
+            let newDriver = PetAnimationDriver(
                 clock: clock,
                 initialActivity: activity,
                 availableRows: availableRows,
                 reduceMotion: reduceMotion
             )
+            if let requestedAnimation {
+                newDriver.update(activity: activity, overrideAnimation: requestedAnimation)
+            }
+            driver = newDriver
             playbackIdentity = nextIdentity
             animationDriverBuildCount += 1
         }

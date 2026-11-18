@@ -2,6 +2,7 @@ import AppKit
 import HabitatCore
 import ResourceKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum ThemeStudioLayoutMetrics {
     static let inspectorMinimumWidth = 352.0
@@ -65,6 +66,7 @@ struct ThemeStudioView: View {
     @State private var previewRoute = ThemeTreatmentPreviewRoute.home
     @State private var showsSafeArea = false
     @State private var isDraggingFocus = false
+    @State private var isDropTargeted = false
     @State private var pendingReplacementThemeID: String?
 
     var body: some View {
@@ -202,6 +204,10 @@ struct ThemeStudioView: View {
                 if presentation.rendersHostShell {
                     artworkEditor(size: canvasSize)
                 }
+                if presentation.showsArtworkPrompt || isDropTargeted {
+                    dropArtworkBanner
+                        .frame(width: canvasSize.width, height: canvasSize.height)
+                }
                 if presentation.showsArtworkPrompt {
                     emptyArtwork
                         .padding(12)
@@ -212,6 +218,7 @@ struct ThemeStudioView: View {
         }
         .aspectRatio(16.0 / 10.0, contentMode: .fit)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDroppedFiles)
         .accessibilityIdentifier("theme-studio.canvas")
     }
 
@@ -503,6 +510,39 @@ struct ThemeStudioView: View {
 
     private var sceneControls: some View {
         VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceM) {
+            VStack(alignment: .leading, spacing: HabitatDesignMetrics.spaceXS) {
+                Text(L10n.text("Mood Presets"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LazyVGrid(
+                    columns: [GridItem(.flexible()), GridItem(.flexible())],
+                    spacing: 6
+                ) {
+                    ForEach(ThemeStudioMoodPreset.allCases) { preset in
+                        Button {
+                            model.applyMoodPreset(preset)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(Color(habitatHex: preset.accentHex))
+                                    .frame(width: 8, height: 8)
+                                Text(L10n.text(preset.titleKey))
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(
+                                .quaternary.opacity(0.45),
+                                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
             Picker(L10n.text("Style"), selection: Binding(
                 get: { model.styleFamily },
                 set: { model.setStyleFamily($0) }
@@ -948,9 +988,63 @@ struct ThemeStudioView: View {
         }
     }
 
+    private var dropArtworkBanner: some View {
+        ZStack(alignment: isDropTargeted ? .center : .top) {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: HabitatDesignMetrics.previewRadius)
+                    .fill(accentColor.opacity(0.20))
+            }
+            HStack(spacing: 8) {
+                Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "photo.on.rectangle.angled")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(accentColor)
+                Text(L10n.text(isDropTargeted ? "Drop image to extract palette" : "Drop a PNG, JPEG, or WebP wallpaper here"))
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(.regularMaterial, in: Capsule())
+            .padding(.top, isDropTargeted ? 0 : 34)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isDropTargeted ? .center : .top)
+        .allowsHitTesting(false)
+    }
+
     private func chooseImage() {
         guard let url = ResourcePackPanels.chooseThemeImage() else { return }
-        Task { try? await model.selectImage(url) }
+        loadStudioImage(url)
+    }
+
+    private func loadStudioImage(_ url: URL) {
+        Task {
+            if (try? await model.selectImage(url)) != nil {
+                expandedGroups.insert(.appearance)
+            }
+        }
+    }
+
+    private func handleDroppedFiles(_ providers: [NSItemProvider]) -> Bool {
+        guard !model.isSelectingImage, model.state != .saving,
+              let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) })
+        else {
+            return false
+        }
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+            let resolvedURL: URL?
+            if let data = item as? Data {
+                resolvedURL = URL(dataRepresentation: data, relativeTo: nil)
+            } else if let url = item as? URL {
+                resolvedURL = url
+            } else {
+                resolvedURL = nil
+            }
+            guard let resolvedURL, resolvedURL.isFileURL else { return }
+            Task { @MainActor in
+                loadStudioImage(resolvedURL)
+            }
+        }
+        return true
     }
 
     private func saveLocally() {

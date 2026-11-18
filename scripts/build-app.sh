@@ -55,7 +55,7 @@ BIN_DIR="$(swift build \
     || { echo "build-app: Sparkle framework missing" >&2; exit 1; }
 
 if [[ -e "$APP" ]]; then
-    rm -r "$APP"
+    rm -rf "$APP"
 fi
 mkdir -p \
     "$APP/Contents/MacOS" \

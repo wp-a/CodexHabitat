@@ -113,7 +113,9 @@ final class HabitatDesktopController: ObservableObject {
     @Published private(set) var currentSnapshot = HabitatSnapshot()
     @Published private(set) var isTemporaryMoveMode = false
     @Published private(set) var petLoadFailure: PetRendererFailure?
+    @Published private(set) var activePetAsset: HabitatPetAsset?
     private var petModel: HabitatOverlayModel?
+    private var patCount = 0
     private var cancellable: AnyCancellable?
     private weak var boundModel: HabitatAppModel?
     private var renderedPetID: String?
@@ -139,6 +141,7 @@ final class HabitatDesktopController: ObservableObject {
     @Published private(set) var isVisible = false
     var currentThemeID: String? { renderedThemeID }
     var currentSelectedPetID: String? { presentation.selectedPetID }
+    var isWidgetRailExpanded: Bool { presentation.isWidgetRailExpanded }
     var petLoadError: String? { petLoadFailure?.message }
     var onOpenSettings: (() -> Void)?
 
@@ -293,6 +296,7 @@ final class HabitatDesktopController: ObservableObject {
                 theme: theme,
                 scale: scale,
                 onToggleWidgets: { [weak self] in self?.toggleWidgetRailExpansion() },
+                onPatPet: { [weak self] in self?.patPet() },
                 onSelectPet: { [weak self] id in self?.boundModel?.selectPet(id) },
                 onTogglePositionLock: { [weak self] in
                     guard let model = self?.boundModel else { return }
@@ -346,6 +350,16 @@ final class HabitatDesktopController: ObservableObject {
         guard presentation.isWidgetRailExpanded != expanded else { return }
         presentation.isWidgetRailExpanded = expanded
         animatePanelExpansion(to: expanded)
+    }
+
+    func toggleWidgetRail() {
+        toggleWidgetRailExpansion()
+    }
+
+    func patPet() {
+        patCount &+= 1
+        let animation: PetAnimation = patCount.isMultiple(of: 2) ? .jumping : .waving
+        petModel?.triggerReaction(animation)
     }
 
     func handlePrimaryDragStart() {
@@ -478,6 +492,7 @@ final class HabitatDesktopController: ObservableObject {
             cancelPendingPetAssetLoad()
             cachedPetAssetSource = nil
             cachedPetAsset = nil
+            activePetAsset = nil
             cachedPetFileSignature = nil
             return nil
         }
@@ -552,12 +567,14 @@ final class HabitatDesktopController: ObservableObject {
                 }
                 self.cachedPetFileSignature = signature
                 self.cachedPetAssetSource = source
-                self.cachedPetAsset = HabitatPetAsset(
+                let loadedAsset = HabitatPetAsset(
                     id: id,
                     renderer: renderer,
                     availableRows: Set(0..<min(atlas.rows, 9)),
                     presentation: source.presentation
                 )
+                self.cachedPetAsset = loadedAsset
+                self.activePetAsset = loadedAsset
             }
             guard self.cachedPetAssetSource == source else {
                 self.petLoadFailure = PetRendererFailure(
@@ -706,6 +723,7 @@ private struct HabitatDesktopView: View {
     let theme: HabitatThemeDescriptor
     let scale: Double
     let onToggleWidgets: () -> Void
+    let onPatPet: () -> Void
     let onSelectPet: (String) -> Void
     let onTogglePositionLock: () -> Void
     let onHide: () -> Void
@@ -763,6 +781,20 @@ private struct HabitatDesktopView: View {
                 ))
                 .contentShape(Rectangle())
                 .contextMenu {
+                    Button(action: onPatPet) {
+                        Label(L10n.text("Pat Companion"), systemImage: "hand.wave.fill")
+                    }
+                    Button(action: onToggleWidgets) {
+                        Label(
+                            L10n.text(
+                                presentation.isWidgetRailExpanded ? "Collapse Widgets" : "Expand Widgets"
+                            ),
+                            systemImage: presentation.isWidgetRailExpanded
+                                ? "sidebar.right"
+                                : "sidebar.left"
+                        )
+                    }
+                    Divider()
                     if !petChoices.isEmpty {
                         Menu(L10n.text("Pet")) {
                             ForEach(petChoices) { pet in
@@ -815,25 +847,91 @@ private struct HabitatDesktopView: View {
 
     @ViewBuilder
     private var petView: some View {
-        if let petAsset {
-            PetView(
-                model: petModel,
-                renderer: petAsset.renderer,
-                renderMode: petAsset.presentation.renderMode,
-                pixelArtHint: true
-            )
-            .scaleEffect(petAsset.presentation.scale)
-            .frame(
-                width: HabitatOverlayLayout.petSize.width,
-                height: HabitatOverlayLayout.petSize.height
-            )
-            .clipped()
-        } else {
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 44, weight: .medium))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel(L10n.text("Codex Habitat pet unavailable"))
+        ZStack(alignment: .bottom) {
+            if let petAsset {
+                PetView(
+                    model: petModel,
+                    renderer: petAsset.renderer,
+                    renderMode: petAsset.presentation.renderMode,
+                    pixelArtHint: true,
+                    accentColor: Color(habitatHex: theme.accentHex)
+                )
+                .scaleEffect(petAsset.presentation.scale)
+                .frame(
+                    width: HabitatOverlayLayout.petSize.width,
+                    height: HabitatOverlayLayout.petSize.height
+                )
+                .clipped()
+            } else {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel(L10n.text("Codex Habitat pet unavailable"))
+            }
+
+            if !presentation.isWidgetRailExpanded {
+                collapsedStatusCapsule
+                    .padding(.bottom, 5)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private var collapsedStatusCapsule: some View {
+        let accent = Color(habitatHex: theme.accentHex)
+        let panel = Color(habitatHex: theme.panelHex)
+        let text = Color(habitatHex: theme.textHex)
+        let dotColor: Color = switch widgetModel.snapshot.activity {
+        case .working: accent
+        case .succeeded: .green
+        case .attention: Color(habitatHex: theme.attentionHex)
+        case .failed: Color(habitatHex: theme.errorHex)
+        case .resting: accent.opacity(0.75)
+        case .offline: text.opacity(0.45)
+        }
+        let summaryText: String = {
+            if widgetModel.pomodoroSnapshot.isRunning {
+                let secs = widgetModel.pomodoroSnapshot.remainingSeconds
+                return String(format: "%02d:%02d", secs / 60, secs % 60)
+            }
+            if let latest = widgetModel.snapshot.tokenMetrics?.latestRequestTokens {
+                return WidgetRailView.recentOutputText(latest)
+            }
+            return L10n.text(collapsedActivityKey)
+        }()
+
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(dotColor)
+                .frame(width: 6, height: 6)
+                .shadow(color: dotColor.opacity(0.7), radius: 3)
+            Text(summaryText)
+                .font(.system(size: 9.5, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(text.opacity(0.92))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background {
+            Capsule(style: .continuous)
+                .fill(panel.opacity(0.88))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(accent.opacity(0.32), lineWidth: 0.8)
+                }
+        }
+        .shadow(color: .black.opacity(0.28), radius: 4, y: 2)
+    }
+
+    private var collapsedActivityKey: String {
+        switch widgetModel.snapshot.activity {
+        case .resting: "Resting"
+        case .working: "Working"
+        case .attention: "Review"
+        case .succeeded: "Complete"
+        case .failed: "Needs attention"
+        case .offline: "Offline"
         }
     }
 }

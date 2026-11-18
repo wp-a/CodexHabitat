@@ -1,0 +1,7 @@
+{
+  "id": "mecha-owl",
+  "displayName": "Mecha Owl",
+  "description": "Hovering tactical owl drone with expressive emerald LED optics and wing thrusters.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

@@ -224,7 +224,10 @@ struct ThemeTreatmentPreview: View {
         }
         .task(id: previewLoadIdentity) {
             let requestID = presentationState.beginRequest()
-            let loadedImage = await ThemePreviewStore.shared.image(at: imageURL)
+            let loadedImage = await ThemePreviewStore.shared.image(
+                at: imageURL,
+                maximumPixelSize: height > 180 ? 960 : 480
+            )
             guard !Task.isCancelled else { return }
             switch presentationState.complete(
                 requestID: requestID,
@@ -279,6 +282,18 @@ struct ThemeTreatmentPreview: View {
             if artStrength > 0 {
                 readabilityScrim
                     .opacity(model.localizedScrimStrength)
+                if model.vignetteStrength > 0 {
+                    RadialGradient(
+                        colors: [
+                            .clear,
+                            Color.black.opacity(model.vignetteStrength * 0.42),
+                            Color(habitatHex: model.surfaceHex).opacity(model.vignetteStrength * 0.88),
+                        ],
+                        center: .center,
+                        startRadius: min(size.width, size.height) * 0.24,
+                        endRadius: max(size.width, size.height) * 0.78
+                    )
+                }
             }
         }
     }

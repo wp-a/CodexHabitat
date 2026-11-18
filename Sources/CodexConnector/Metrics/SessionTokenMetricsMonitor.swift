@@ -15,6 +15,7 @@ public actor SessionTokenMetricsMonitor {
     private let maximumReadBytes: Int
     private let recentOutputWindow: TimeInterval
     private let metricsFreshnessWindow: TimeInterval
+    private let lookbackDays: Int
     private let threadIDHasher: (@Sendable (String) -> String)?
 
     private var currentFile: URL?
@@ -23,6 +24,8 @@ public actor SessionTokenMetricsMonitor {
     private var discardLeadingPartialLine = false
     private var outputPoints: [OutputPoint] = []
     private var latestMetrics: TokenMetricsSummary?
+    private var latestSessionRateLimits: CodexRateLimitUpdate?
+    private var lastKnownContextWindow: Int?
     private var preferredThreadIDHash: String?
     private var preferredFile: URL?
 
@@ -34,6 +37,7 @@ public actor SessionTokenMetricsMonitor {
         maximumReadBytes: Int = 1_048_576,
         recentOutputWindow: TimeInterval = 60,
         metricsFreshnessWindow: TimeInterval = 300,
+        lookbackDays: Int = 1,
         threadIDHasher: (@Sendable (String) -> String)? = nil
     ) {
         self.sessionsRoot = sessionsRoot
@@ -45,6 +49,7 @@ public actor SessionTokenMetricsMonitor {
         self.metricsFreshnessWindow = metricsFreshnessWindow.isFinite
             ? max(0, metricsFreshnessWindow)
             : 300
+        self.lookbackDays = max(0, min(lookbackDays, 60))
         self.threadIDHasher = threadIDHasher
     }
 
@@ -63,8 +68,14 @@ public actor SessionTokenMetricsMonitor {
         }
         return SessionTokenMetricsMonitor(
             sessionsRoot: codexHome.appending(path: "sessions", directoryHint: .isDirectory),
+            metricsFreshnessWindow: 7 * 86_400,
+            lookbackDays: 14,
             threadIDHasher: threadIDHasher
         )
+    }
+
+    public func latestRateLimits() -> CodexRateLimitUpdate? {
+        latestSessionRateLimits
     }
 
     public func selectThread(idHash: String?) {
@@ -143,6 +154,8 @@ public actor SessionTokenMetricsMonitor {
         discardLeadingPartialLine = offset > 0
         outputPoints.removeAll(keepingCapacity: true)
         latestMetrics = nil
+        latestSessionRateLimits = nil
+        lastKnownContextWindow = nil
     }
 
     private func readAvailableBytes(from file: URL, fileSize: UInt64) {
@@ -202,7 +215,26 @@ public actor SessionTokenMetricsMonitor {
         if outputPoints.count > 64 {
             outputPoints.removeFirst(outputPoints.count - 64)
         }
-        latestMetrics = event.metrics.withRecentOutputTokens(recentOutput(at: event.timestamp))
+        if let contextWindow = event.metrics.modelContextWindow, contextWindow > 0 {
+            lastKnownContextWindow = contextWindow
+        }
+        if let rateLimits = event.rateLimits {
+            latestSessionRateLimits = rateLimits
+        }
+        let resolvedContextWindow = event.metrics.modelContextWindow ?? lastKnownContextWindow
+        let resolvedSummary = TokenMetricsSummary(
+            inputTokens: event.metrics.inputTokens,
+            cachedInputTokens: event.metrics.cachedInputTokens,
+            outputTokens: event.metrics.outputTokens,
+            reasoningOutputTokens: event.metrics.reasoningOutputTokens,
+            totalTokens: event.metrics.totalTokens,
+            lastInputTokens: event.metrics.lastInputTokens,
+            lastOutputTokens: event.metrics.lastOutputTokens,
+            modelContextWindow: resolvedContextWindow,
+            recentOutputTokens: recentOutput(at: event.timestamp),
+            updatedAt: event.metrics.updatedAt
+        )
+        latestMetrics = resolvedSummary
     }
 
     private func recentOutput(at now: Date) -> Int? {
@@ -228,6 +260,7 @@ public actor SessionTokenMetricsMonitor {
         let age = now.timeIntervalSince(latestMetrics.updatedAt)
         guard age < 0 || age <= metricsFreshnessWindow else {
             self.latestMetrics = nil
+            self.latestSessionRateLimits = nil
             outputPoints.removeAll(keepingCapacity: true)
             return
         }
@@ -245,7 +278,9 @@ public actor SessionTokenMetricsMonitor {
     }
 
     private func latestSessionFile(at date: Date) -> URL? {
-        let dates = [date, calendar.date(byAdding: .day, value: -1, to: date)].compactMap { $0 }
+        let dates = (0...lookbackDays).compactMap { offset in
+            offset == 0 ? date : calendar.date(byAdding: .day, value: -offset, to: date)
+        }
         var candidates: [(url: URL, modifiedAt: Date)] = []
         for date in dates {
             let components = calendar.dateComponents([.year, .month, .day], from: date)

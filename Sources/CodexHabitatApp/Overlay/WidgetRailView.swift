@@ -41,6 +41,7 @@ final class WidgetRailModel: ObservableObject {
     @Published private(set) var snapshot: HabitatSnapshot
     @Published private(set) var pomodoroSnapshot: PomodoroSnapshot
     @Published private(set) var countdownSnapshot: CountdownSnapshot
+    let pomodoroConfiguration: PomodoroConfiguration
 
     private var pomodoro: PomodoroTimer
     private var countdown: CountdownTimer
@@ -54,6 +55,7 @@ final class WidgetRailModel: ObservableObject {
         timerClock: any TimerClock = SystemTimerClock()
     ) {
         self.snapshot = snapshot
+        pomodoroConfiguration = configuration
         do {
             var timer = try PomodoroTimer(configuration: configuration, clock: timerClock)
             pomodoroSnapshot = timer.snapshot()
@@ -157,6 +159,7 @@ struct WidgetRailView: View {
     @ObservedObject var model: WidgetRailModel
     let enabledWidgets: [WidgetIdentifier]
     let theme: HabitatThemeDescriptor
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     init(
         model: WidgetRailModel,
@@ -172,7 +175,7 @@ struct WidgetRailView: View {
         Group {
             if Self.requiresScrolling(for: resolvedWidgets) {
                 ScrollView(.vertical) { rows }
-                    .scrollIndicators(.visible)
+                    .scrollIndicators(.hidden)
             } else {
                 rows
             }
@@ -185,20 +188,50 @@ struct WidgetRailView: View {
         )
         .foregroundStyle(textColor)
         .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(panelColor.opacity(0.96))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(panelAltColor.opacity(0.06))
-                }
+            hudGlassBackground
         }
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(textColor.opacity(0.13), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.22),
+                            accentColor.opacity(0.36),
+                            textColor.opacity(0.11),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
                 .allowsHitTesting(false)
         }
+        .shadow(color: .black.opacity(0.26), radius: 5, y: 2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text("Habitat widgets"))
+    }
+
+    @ViewBuilder
+    private var hudGlassBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 13, style: .continuous)
+        ZStack {
+            if !reduceTransparency {
+                shape.fill(.ultraThinMaterial)
+            }
+            shape.fill(panelColor.opacity(reduceTransparency ? 0.98 : 0.86))
+            shape.fill(
+                LinearGradient(
+                    colors: [
+                        accentColor.opacity(0.13),
+                        panelAltColor.opacity(0.08),
+                        .clear,
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
     }
 
     private var rows: some View {
@@ -206,8 +239,10 @@ struct WidgetRailView: View {
             ForEach(Array(resolvedWidgets.enumerated()), id: \.element) { index, id in
                 row(for: id)
                 if index < resolvedWidgets.count - 1 {
-                    Divider()
-                        .overlay(textColor.opacity(0.13))
+                    Rectangle()
+                        .fill(textColor.opacity(0.09))
+                        .frame(height: 1)
+                        .padding(.leading, 22)
                 }
             }
         }
@@ -262,62 +297,95 @@ struct WidgetRailView: View {
     }
 
     private var statusRow: some View {
-        WidgetRow(systemImage: statusSymbol, tint: statusColor) {
+        WidgetRow(systemImage: statusSymbol, tint: statusColor, hoverTint: textColor) {
             Text(L10n.text(statusTitle))
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                 .lineLimit(1)
             Spacer(minLength: 4)
             if showsConnectionHealth {
-                Text(L10n.text(connectionBadgeTitle))
-                    .font(.system(size: 8, weight: .bold, design: .rounded))
-                    .foregroundStyle(connectionColor)
-                    .frame(width: 30, alignment: .trailing)
-                    .help(L10n.text(connectionTitle))
-                Circle()
-                    .fill(connectionColor)
-                    .frame(width: 7, height: 7)
-                    .accessibilityLabel(L10n.text(connectionTitle))
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(connectionColor)
+                        .frame(width: 5.5, height: 5.5)
+                        .shadow(color: connectionColor.opacity(0.75), radius: 2.5)
+                        .accessibilityLabel(L10n.text(connectionTitle))
+                    Text(L10n.text(connectionBadgeTitle))
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .foregroundStyle(connectionColor)
+                }
+                .padding(.horizontal, 5.5)
+                .padding(.vertical, 2)
+                .background(connectionColor.opacity(0.14), in: Capsule())
+                .help(L10n.text(connectionTitle))
             }
         }
     }
 
     private var usageRow: some View {
-        WidgetRow(systemImage: "gauge.with.dots.needle.50percent", tint: accentColor) {
+        WidgetRow(
+            systemImage: selectedRateLimit?.usedPercent != nil
+                ? "gauge.with.dots.needle.50percent"
+                : "sum",
+            tint: secondaryColor,
+            hoverTint: textColor
+        ) {
             if selectedRateLimit?.usedPercent != nil {
-                Gauge(value: usagePercent, in: 0...100) {
-                    EmptyView()
-                }
-                .gaugeStyle(.accessoryLinear)
-                .tint(accentColor)
+                HabitatMiniProgressBar(
+                    percent: usagePercent,
+                    normalTint: accentColor,
+                    secondaryTint: secondaryColor,
+                    warningTint: attentionColor,
+                    dangerTint: errorColor,
+                    trackTint: textColor.opacity(0.12)
+                )
                 .accessibilityLabel(L10n.text("Account quota"))
                 .accessibilityValue(usageValue)
+
+                Text(usageValue)
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(textColor.opacity(0.86))
+                    .contentTransition(.numericText())
+                    .frame(minWidth: 32, alignment: .trailing)
+            } else if let cumulative = model.snapshot.tokenMetrics?.taskCumulativeTokens {
+                Text(L10n.text("Task cumulative"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(mutedTextColor)
+                    .lineLimit(1)
+                Spacer(minLength: 2)
+                Text(Self.compactCount(cumulative))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(textColor.opacity(0.92))
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
             } else {
                 Text(L10n.text("Quota"))
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(textColor.opacity(0.62))
+                    .foregroundStyle(mutedTextColor)
                 Spacer(minLength: 2)
+                Text(usageValue)
+                    .font(.system(size: 10.5, weight: .medium, design: .rounded).monospacedDigit())
+                    .foregroundStyle(mutedTextColor)
+                    .frame(minWidth: 32, alignment: .trailing)
             }
-
-            Text(usageValue)
-                .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
-                .foregroundStyle(textColor.opacity(0.62))
-                .frame(minWidth: 32, alignment: .trailing)
         }
         .help(usageDetail)
         .accessibilityHint(usageDetail)
     }
 
     private var tokenRow: some View {
-        WidgetRow(systemImage: "number.square.fill", tint: accentColor) {
+        WidgetRow(systemImage: "sparkles.rectangle.stack.fill", tint: accentColor, hoverTint: textColor) {
             Text(L10n.text("Latest request"))
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(textColor.opacity(0.62))
+                .foregroundStyle(mutedTextColor)
+                .lineLimit(1)
             Spacer(minLength: 2)
             Text(tokenValue)
-                .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
+                .font(.system(size: 11.5, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(textColor.opacity(0.95))
+                .contentTransition(.numericText())
                 .lineLimit(1)
         }
-        .help(taskCumulativeDetail)
+        .help(tokenBreakdownDetail)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(L10n.text("Latest request"))
         .accessibilityValue(metricAccessibilityValue(tokenValue))
@@ -325,37 +393,48 @@ struct WidgetRailView: View {
     }
 
     private var contextRow: some View {
-        WidgetRow(systemImage: "chart.bar.fill", tint: attentionColor) {
+        WidgetRow(systemImage: "cpu.fill", tint: attentionColor, hoverTint: textColor) {
             if model.snapshot.tokenMetrics?.contextUsedPercent != nil {
-                Gauge(value: contextPercent, in: 0...100) {
-                    EmptyView()
-                }
-                .gaugeStyle(.accessoryLinear)
-                .tint(attentionColor)
+                HabitatMiniProgressBar(
+                    percent: contextPercent,
+                    normalTint: attentionColor,
+                    secondaryTint: accentColor,
+                    warningTint: attentionColor,
+                    dangerTint: errorColor,
+                    trackTint: textColor.opacity(0.12)
+                )
                 .accessibilityLabel(L10n.text("Context used"))
                 .accessibilityValue(contextValue)
             } else {
                 Text(L10n.text("Context"))
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(textColor.opacity(0.62))
+                    .foregroundStyle(mutedTextColor)
                 Spacer(minLength: 2)
             }
 
             Text(contextValue)
-                .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
-                .foregroundStyle(textColor.opacity(0.62))
+                .font(.system(size: 10.5, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(
+                    model.snapshot.tokenMetrics?.contextUsedPercent == nil
+                        ? mutedTextColor
+                        : textColor.opacity(0.88)
+                )
+                .contentTransition(.numericText())
                 .frame(width: 32, alignment: .trailing)
         }
     }
 
     private var speedRow: some View {
-        WidgetRow(systemImage: "clock.arrow.circlepath", tint: .green) {
+        WidgetRow(systemImage: "waveform.path.ecg", tint: .mint, hoverTint: textColor) {
             Text(L10n.text("Recent 60s output"))
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(textColor.opacity(0.62))
+                .foregroundStyle(mutedTextColor)
+                .lineLimit(1)
             Spacer(minLength: 2)
             Text(speedValue)
                 .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(speedValue == "--" ? mutedTextColor : .mint)
+                .contentTransition(.numericText())
                 .lineLimit(1)
         }
         .accessibilityElement(children: .ignore)
@@ -364,25 +443,39 @@ struct WidgetRailView: View {
     }
 
     private var clockRow: some View {
-        WidgetRow(systemImage: "clock.fill", tint: attentionColor) {
+        WidgetRow(systemImage: "clock.fill", tint: attentionColor, hoverTint: textColor) {
             HabitatClockText(uses24HourClock: uses24HourClock)
             Spacer(minLength: 0)
         }
     }
 
     private var pomodoroRow: some View {
-        HStack(spacing: 8) {
-            Image(systemName: model.pomodoroSnapshot.phase == .rest ? "cup.and.saucer.fill" : "timer")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(errorColor)
-                .frame(width: 18)
+        let isRest = model.pomodoroSnapshot.phase == .rest
+        let phaseTint = isRest ? secondaryColor : errorColor
+        return HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .stroke(textColor.opacity(0.12), lineWidth: 2.2)
+                Circle()
+                    .trim(from: 0, to: pomodoroProgress)
+                    .stroke(
+                        phaseTint,
+                        style: StrokeStyle(lineWidth: 2.2, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                Image(systemName: isRest ? "cup.and.saucer.fill" : "flame.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(phaseTint)
+            }
+            .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(L10n.text(model.pomodoroSnapshot.phase == .rest ? "REST" : "FOCUS"))
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(textColor.opacity(0.62))
+                Text(L10n.text(isRest ? "REST" : "FOCUS"))
+                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(phaseTint)
                 Text(formattedDuration(model.pomodoroSnapshot.remainingSeconds))
-                    .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded).monospacedDigit())
+                    .contentTransition(.numericText())
                     .lineLimit(1)
             }
 
@@ -392,12 +485,18 @@ struct WidgetRailView: View {
                 systemImage: model.pomodoroSnapshot.isRunning ? "pause.fill" : "play.fill",
                 label: model.pomodoroSnapshot.isRunning ? "Pause focus timer" : "Start focus timer",
                 identifier: "widgets.pomodoro.toggle",
+                size: 24,
+                isProminent: model.pomodoroSnapshot.isRunning,
+                tint: phaseTint,
                 action: model.togglePomodoro
             )
             timerButton(
                 systemImage: "arrow.counterclockwise",
                 label: "Reset focus timer",
                 identifier: "widgets.pomodoro.reset",
+                size: 24,
+                isProminent: false,
+                tint: textColor,
                 action: model.resetPomodoro
             )
         }
@@ -405,10 +504,11 @@ struct WidgetRailView: View {
     }
 
     private var countdownRow: some View {
-        WidgetRow(systemImage: "hourglass", tint: accentColor) {
+        WidgetRow(systemImage: "hourglass", tint: accentColor, hoverTint: textColor) {
             Text(formattedDuration(model.countdownSnapshot.remainingSeconds))
-                .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
+                .font(.system(size: 11.5, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(model.countdownSnapshot.isComplete ? errorColor : textColor)
+                .contentTransition(.numericText())
                 .accessibilityLabel(L10n.text("Countdown"))
                 .accessibilityValue(formattedDuration(model.countdownSnapshot.remainingSeconds))
             Spacer(minLength: 2)
@@ -416,12 +516,18 @@ struct WidgetRailView: View {
                 systemImage: model.countdownSnapshot.isRunning ? "pause.fill" : "play.fill",
                 label: model.countdownSnapshot.isRunning ? "Pause countdown" : "Start countdown",
                 identifier: "widgets.countdown.toggle",
+                size: 19,
+                isProminent: model.countdownSnapshot.isRunning,
+                tint: accentColor,
                 action: model.toggleCountdown
             )
             timerButton(
                 systemImage: "arrow.counterclockwise",
                 label: "Reset countdown",
                 identifier: "widgets.countdown.reset",
+                size: 19,
+                isProminent: false,
+                tint: textColor,
                 action: model.resetCountdown
             )
         }
@@ -431,19 +537,35 @@ struct WidgetRailView: View {
         systemImage: String,
         label: String,
         identifier: String,
+        size: CGFloat,
+        isProminent: Bool,
+        tint: Color,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 28, height: 28)
+                .font(.system(size: size <= 20 ? 9 : 10, weight: .bold))
+                .foregroundStyle(isProminent ? tint : textColor.opacity(0.86))
+                .frame(width: size, height: size)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(textColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+        .background(
+            isProminent ? tint.opacity(0.20) : textColor.opacity(0.09),
+            in: RoundedRectangle(cornerRadius: 5.5, style: .continuous)
+        )
         .help(L10n.text(label))
         .accessibilityLabel(L10n.text(label))
         .accessibilityIdentifier(identifier)
+    }
+
+    private var pomodoroProgress: Double {
+        let total = model.pomodoroSnapshot.phase == .rest
+            ? model.pomodoroConfiguration.restSeconds
+            : model.pomodoroConfiguration.focusSeconds
+        guard total > 0 else { return 0 }
+        let remaining = Double(min(max(model.pomodoroSnapshot.remainingSeconds, 0), total))
+        return remaining / Double(total)
     }
 
     static func quotaResetText(_ resetAt: Date?, now: Date = Date()) -> String? {
@@ -462,14 +584,17 @@ struct WidgetRailView: View {
     }
 
     private var usageDetail: String {
-        guard selectedRateLimit?.usedPercent != nil else {
-            return L10n.text("Account quota unavailable")
+        if selectedRateLimit?.usedPercent != nil {
+            let used = L10n.format("Account quota used: %@", usageValue)
+            guard let reset = Self.quotaResetText(selectedRateLimit?.resetAt) else {
+                return used
+            }
+            return "\(used) · \(reset)"
         }
-        let used = L10n.format("Account quota used: %@", usageValue)
-        guard let reset = Self.quotaResetText(selectedRateLimit?.resetAt) else {
-            return used
+        if model.snapshot.tokenMetrics != nil {
+            return taskCumulativeDetail
         }
-        return "\(used) · \(reset)"
+        return L10n.text("Account quota unavailable")
     }
 
     private var usagePercent: Double {
@@ -486,6 +611,20 @@ struct WidgetRailView: View {
     private var tokenValue: String {
         guard let tokens = model.snapshot.tokenMetrics?.latestRequestTokens else { return "--" }
         return Self.compactCount(tokens)
+    }
+
+    private var tokenBreakdownDetail: String {
+        guard let metrics = model.snapshot.tokenMetrics else {
+            return taskCumulativeDetail
+        }
+        let cumulative = L10n.format(
+            "Task cumulative: %@ Tokens",
+            Self.compactCount(metrics.taskCumulativeTokens)
+        )
+        let inputPart = Self.compactCount(metrics.inputTokens)
+        let outputPart = Self.compactCount(metrics.outputTokens)
+        let ioSummary = L10n.format("Input %@ · Output %@", inputPart, outputPart)
+        return "\(cumulative) (\(ioSummary))"
     }
 
     private var taskCumulativeDetail: String {
@@ -512,8 +651,11 @@ struct WidgetRailView: View {
         value == "--" ? L10n.text("Unavailable") : value
     }
 
-    private static func compactCount(_ value: Int) -> String {
+    static func compactCount(_ value: Int) -> String {
         let count = max(0, value)
+        if count >= 1_000_000_000 {
+            return String(format: "%.1fB", Double(count) / 1_000_000_000)
+        }
         if count >= 1_000_000 {
             return String(format: "%.1fM", Double(count) / 1_000_000)
         }
@@ -570,7 +712,7 @@ struct WidgetRailView: View {
 
     private var statusColor: Color {
         switch model.snapshot.activity {
-        case .resting: accentColor.opacity(0.72)
+        case .resting: accentColor.opacity(0.82)
         case .working: accentColor
         case .attention: attentionColor
         case .succeeded: .green
@@ -613,9 +755,68 @@ struct WidgetRailView: View {
     private var panelColor: Color { Color(habitatHex: theme.panelHex) }
     private var panelAltColor: Color { Color(habitatHex: theme.panelAltHex) }
     private var textColor: Color { Color(habitatHex: theme.textHex) }
+    private var mutedTextColor: Color { Color(habitatHex: theme.mutedTextHex).opacity(0.82) }
     private var accentColor: Color { Color(habitatHex: theme.accentHex) }
+    private var secondaryColor: Color { Color(habitatHex: theme.secondaryHex) }
     private var attentionColor: Color { Color(habitatHex: theme.attentionHex) }
     private var errorColor: Color { Color(habitatHex: theme.errorHex) }
+}
+
+private struct HabitatMiniProgressBar: View {
+    let percent: Double
+    let normalTint: Color
+    let secondaryTint: Color
+    let warningTint: Color
+    let dangerTint: Color
+    let trackTint: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            let clamped = min(max(percent, 0), 100) / 100
+            let fillWidth = max(clamped > 0 ? 5 : 0, proxy.size.width * clamped)
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(trackTint)
+                if fillWidth > 0 {
+                    Capsule(style: .continuous)
+                        .fill(barGradient)
+                        .frame(width: fillWidth)
+                        .shadow(color: activeTint.opacity(0.45), radius: 2.5)
+                }
+            }
+            .frame(height: 5.5)
+            .frame(maxHeight: .infinity, alignment: .center)
+        }
+        .frame(height: 12)
+    }
+
+    private var activeTint: Color {
+        if percent >= 90 { return dangerTint }
+        if percent >= 72 { return warningTint }
+        return normalTint
+    }
+
+    private var barGradient: LinearGradient {
+        if percent >= 90 {
+            return LinearGradient(
+                colors: [warningTint, dangerTint],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
+        if percent >= 72 {
+            return LinearGradient(
+                colors: [normalTint, warningTint],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
+        return LinearGradient(
+            colors: [normalTint, secondaryTint],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
 }
 
 private struct HabitatClockText: View {
@@ -630,7 +831,7 @@ private struct HabitatClockText: View {
                 Text(date, format: .dateTime.hour().minute())
             }
         }
-            .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
+            .font(.system(size: 11.5, weight: .semibold, design: .rounded).monospacedDigit())
             .lineLimit(1)
             .accessibilityLabel(L10n.text("Local time"))
             .task {
@@ -671,26 +872,43 @@ extension Color {
 private struct WidgetRow<Content: View>: View {
     let systemImage: String
     let tint: Color
+    let hoverTint: Color
     @ViewBuilder let content: Content
+    @State private var isHovered = false
 
     init(
         systemImage: String,
         tint: Color,
+        hoverTint: Color,
         @ViewBuilder content: () -> Content
     ) {
         self.systemImage = systemImage
         self.tint = tint
+        self.hoverTint = hoverTint
         self.content = content()
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 18)
+        HStack(spacing: 7) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 4.5, style: .continuous)
+                    .fill(tint.opacity(0.16))
+                    .frame(width: 16, height: 16)
+                Image(systemName: systemImage)
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(tint)
+            }
+            .frame(width: 17)
             content
         }
+        .padding(.horizontal, 3)
         .frame(height: WidgetRailView.compactRowHeight)
+        .background(
+            hoverTint.opacity(isHovered ? 0.06 : 0),
+            in: RoundedRectangle(cornerRadius: 5, style: .continuous)
+        )
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }

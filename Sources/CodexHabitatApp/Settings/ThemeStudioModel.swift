@@ -24,6 +24,33 @@ enum ThemePaletteRole: CaseIterable, Sendable {
     case error
 }
 
+enum ThemeStudioMoodPreset: String, CaseIterable, Identifiable, Sendable {
+    case obsidianGold
+    case cyberNeon
+    case frostedGlass
+    case warmAtelier
+
+    var id: String { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .obsidianGold: "Obsidian Gold"
+        case .cyberNeon: "Cyber Neon"
+        case .frostedGlass: "Frosted Glass"
+        case .warmAtelier: "Warm Atelier"
+        }
+    }
+
+    var accentHex: String {
+        switch self {
+        case .obsidianGold: "#E5B454"
+        case .cyberNeon: "#22E6FF"
+        case .frostedGlass: "#7DD3FC"
+        case .warmAtelier: "#E07A5F"
+        }
+    }
+}
+
 struct ThemeStudioPetOption: Identifiable, Equatable, Sendable {
     let id: String
     let name: String
@@ -530,6 +557,113 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
 
     func setVignetteStrength(_ value: Double) {
         setBounded(value, range: 0.00...0.70, keyPath: \ThemeStudioDraft.vignetteStrength)
+    }
+
+    func applyMoodPreset(_ preset: ThemeStudioMoodPreset) {
+        performEdit { draft in
+            switch preset {
+            case .obsidianGold:
+                draft.styleFamily = .gameCinematic
+                draft.chromeMaterial = .tinted
+                draft.homeMode = .immersive
+                draft.taskMode = .ambient
+                draft.blurRadius = 12
+                draft.homeStrength = 0.56
+                draft.taskStrength = 0.24
+                draft.vignetteStrength = 0.46
+                draft.sidebarOpacity = 0.88
+                draft.headerOpacity = 0.84
+                if let existing = draft.palette {
+                    draft.palette = HabitatThemePalette(
+                        surface: "#0E1117",
+                        panel: "#151A24",
+                        panelAlt: "#222938",
+                        text: "#F6F4EF",
+                        mutedText: "#B2B7C4",
+                        accent: "#E5B454",
+                        secondary: "#F59E0B",
+                        highlight: "#FDE68A",
+                        attention: existing.attention,
+                        error: existing.error
+                    )
+                }
+            case .cyberNeon:
+                draft.styleFamily = .arcade
+                draft.chromeMaterial = .glass
+                draft.homeMode = .immersive
+                draft.taskMode = .banner
+                draft.blurRadius = 16
+                draft.homeStrength = 0.64
+                draft.taskStrength = 0.34
+                draft.vignetteStrength = 0.50
+                draft.sidebarOpacity = 0.80
+                draft.headerOpacity = 0.78
+                if let existing = draft.palette {
+                    draft.palette = HabitatThemePalette(
+                        surface: "#090D18",
+                        panel: "#10182B",
+                        panelAlt: "#1B2845",
+                        text: "#F0FAFF",
+                        mutedText: "#9CB4CE",
+                        accent: "#22E6FF",
+                        secondary: "#FF4ECD",
+                        highlight: "#8AF8FF",
+                        attention: existing.attention,
+                        error: existing.error
+                    )
+                }
+            case .frostedGlass:
+                draft.styleFamily = .cozyWorld
+                draft.chromeMaterial = .glass
+                draft.homeMode = .framed
+                draft.taskMode = .ambient
+                draft.blurRadius = 20
+                draft.homeStrength = 0.48
+                draft.taskStrength = 0.20
+                draft.vignetteStrength = 0.22
+                draft.sidebarOpacity = 0.76
+                draft.headerOpacity = 0.72
+                if let existing = draft.palette {
+                    draft.palette = HabitatThemePalette(
+                        surface: "#111A26",
+                        panel: "#192638",
+                        panelAlt: "#253750",
+                        text: "#F4F9FF",
+                        mutedText: "#AFC2D8",
+                        accent: "#7DD3FC",
+                        secondary: "#34D399",
+                        highlight: "#BAE6FD",
+                        attention: existing.attention,
+                        error: existing.error
+                    )
+                }
+            case .warmAtelier:
+                draft.styleFamily = .classicDesktop
+                draft.chromeMaterial = .solid
+                draft.homeMode = .quiet
+                draft.taskMode = .ambient
+                draft.blurRadius = 6
+                draft.homeStrength = 0.38
+                draft.taskStrength = 0.16
+                draft.vignetteStrength = 0.28
+                draft.sidebarOpacity = 0.94
+                draft.headerOpacity = 0.92
+                if let existing = draft.palette {
+                    draft.palette = HabitatThemePalette(
+                        surface: "#1B1614",
+                        panel: "#261F1C",
+                        panelAlt: "#362C27",
+                        text: "#FAF3EB",
+                        mutedText: "#C7B8AA",
+                        accent: "#E07A5F",
+                        secondary: "#F2CC8F",
+                        highlight: "#F4A261",
+                        attention: existing.attention,
+                        error: existing.error
+                    )
+                }
+            }
+        }
     }
 
     func setArtFocus(x: Double, y: Double) {

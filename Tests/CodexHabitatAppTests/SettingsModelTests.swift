@@ -1,5 +1,6 @@
 import Foundation
 import HabitatCore
+import PetRuntime
 import Testing
 @testable import CodexHabitatApp
 
@@ -322,6 +323,28 @@ func duplicateResourceImportWaitsForExplicitReplacementApproval() async throws {
 
     #expect(model.pendingReplacementArchiveURL == nil)
     #expect(model.resourceOperationState == .imported("Resource Pet Pack"))
+}
+
+@Test @MainActor
+func bundledPetsAreValidAndSelectedOnFreshLiveConfiguration() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "CodexHabitatBundledPets-\(UUID().uuidString)", directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let model = HabitatAppModel(
+        settingsStore: SettingsStore(root: root.appending(path: "Settings")),
+        petRoot: root.appending(path: "EmptyPets"),
+        includeBundledPets: true
+    )
+    await model.load()
+
+    let ids = model.validPets.compactMap(\.manifest?.id)
+    #expect(ids == ["cyber-neko", "nebula-mochi", "pixel-kitsune", "mecha-owl"])
+    #expect(model.settings.selectedPetID == "cyber-neko")
+    for entry in model.validPets {
+        #expect(entry.status == .valid)
+        #expect(entry.atlas == PetAtlasMetadata(pixelWidth: 272, pixelHeight: 324, columns: 8, rows: 9))
+    }
 }
 
 private func installSettingsPetFixture(at petRoot: URL) throws {
