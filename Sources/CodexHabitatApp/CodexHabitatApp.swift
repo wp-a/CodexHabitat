@@ -268,16 +268,25 @@ private struct HabitatMenuBarLabel: View {
 private struct HabitatMenuBarView: View {
     @ObservedObject var model: HabitatAppModel
     @ObservedObject var desktopController: HabitatDesktopController
+    @ObservedObject private var progression = CompanionProgressionStore.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 11) {
             HStack(spacing: 10) {
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.cyan)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(L10n.text("Codex Habitat"))
-                        .font(.headline)
+                    HStack(spacing: 6) {
+                        Text(L10n.text("Codex Habitat"))
+                            .font(.headline)
+                        Text(L10n.format("Lv.%d", progression.snapshot.level))
+                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(.yellow)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1.5)
+                            .background(Color.yellow.opacity(0.16), in: Capsule())
+                    }
                     Text(L10n.text(model.selectedTheme.name))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -293,6 +302,8 @@ private struct HabitatMenuBarView: View {
 
             connectionRow
 
+            multiAgentCompactRow
+
             telemetrySummarySection
 
             usageSection
@@ -302,12 +313,38 @@ private struct HabitatMenuBarView: View {
                 .accessibilityIdentifier("menu.show-habitat")
 
             if desktopController.isVisible {
-                Button(action: desktopController.patPet) {
-                    Label(L10n.text("Pat Companion"), systemImage: "hand.wave.fill")
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    Button(action: desktopController.patPet) {
+                        Label(L10n.text("Pat Companion"), systemImage: "hand.wave.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.plain)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .accessibilityIdentifier("menu.pat-companion")
+
+                    Button(action: desktopController.feedSnack) {
+                        Label(L10n.text("Feed Energy"), systemImage: "bolt.heart.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.plain)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+                    Button {
+                        desktopController.snapToPreset(.notchIsland)
+                    } label: {
+                        Image(systemName: "menubar.dock.rectangle")
+                            .font(.system(size: 11, weight: .semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.plain)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .help(L10n.text("Notch Island"))
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("menu.pat-companion")
             }
 
             Button(action: toggleMoveMode) {
@@ -359,9 +396,10 @@ private struct HabitatMenuBarView: View {
             .accessibilityIdentifier("menu.quit")
         }
         .padding(14)
-        .frame(width: 292)
+        .frame(width: 308)
         .task {
             await model.load()
+            progression.refreshIfNeeded()
         }
     }
 
@@ -377,6 +415,31 @@ private struct HabitatMenuBarView: View {
             desktopController.endTemporaryMoveMode()
         } else {
             desktopController.beginTemporaryMoveMode()
+        }
+    }
+
+    private var multiAgentCompactRow: some View {
+        HStack(spacing: 6) {
+            ForEach(progression.snapshot.agents) { agent in
+                let tint = Color(habitatHex: agent.tintHex)
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(agent.status == .notDetected ? Color.secondary.opacity(0.35) : tint)
+                        .frame(width: 5.5, height: 5.5)
+                    Text(agent.id == "codex" ? "Codex" : (agent.id == "claude" ? "Claude" : "Gemini"))
+                        .font(.system(size: 10, weight: .semibold))
+                        .lineLimit(1)
+                    if agent.sessionCount > 0 {
+                        Text("\(agent.sessionCount)")
+                            .font(.system(size: 9.5, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, 6.5)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity)
+                .background(.quaternary.opacity(0.32), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
         }
     }
 

@@ -10,8 +10,9 @@ struct PetView: View {
     var accentColor: Color = .cyan
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             ambientAura
+                .frame(width: model.overlaySize.width, height: model.overlaySize.height)
                 .allowsHitTesting(false)
 
             PetSpriteView(
@@ -28,9 +29,26 @@ struct PetView: View {
 
             if model.reactionAnimation != nil, !model.reduceMotion {
                 PetReactionSparkleBurst(id: model.reactionBurstID, tint: accentColor)
+                    .frame(width: model.overlaySize.width, height: model.overlaySize.height)
+                    .allowsHitTesting(false)
+            }
+
+            if let speech = model.speechBubble {
+                CompanionSpeechBubble(text: speech, accentColor: accentColor)
+                    .padding(.top, 3)
+                    .padding(.horizontal, 4)
+                    .transition(
+                        model.reduceMotion
+                            ? .opacity
+                            : .scale(scale: 0.85, anchor: .bottom).combined(with: .opacity)
+                    )
                     .allowsHitTesting(false)
             }
         }
+        .animation(
+            model.reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.72),
+            value: model.speechBubble
+        )
         .frame(width: model.overlaySize.width, height: model.overlaySize.height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(L10n.text("Codex Habitat pet"))
@@ -73,6 +91,30 @@ struct PetView: View {
         case .resting: 0.12
         case .offline: 0.05
         }
+    }
+}
+
+struct CompanionSpeechBubble: View {
+    let text: String
+    let accentColor: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3.5)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(Color.black.opacity(0.82))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .stroke(accentColor.opacity(0.65), lineWidth: 1)
+                    }
+            }
+            .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
     }
 }
 

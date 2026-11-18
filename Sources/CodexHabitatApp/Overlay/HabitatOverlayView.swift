@@ -10,11 +10,13 @@ final class HabitatOverlayModel: ObservableObject {
     @Published private(set) var isAnimationActive = true
     @Published private(set) var reactionAnimation: PetAnimation?
     @Published private(set) var reactionBurstID = 0
+    @Published private(set) var speechBubble: String?
     let clock: any AnimationClock
     let availableRows: Set<Int>
     let overlaySize = CGSize(width: 136, height: 144)
     let reduceMotion: Bool
     private var reactionResetTask: Task<Void, Never>?
+    private var speechResetTask: Task<Void, Never>?
 
     init(
         clock: any AnimationClock = SystemAnimationClock(),
@@ -30,10 +32,25 @@ final class HabitatOverlayModel: ObservableObject {
 
     deinit {
         reactionResetTask?.cancel()
+        speechResetTask?.cancel()
     }
 
-    func apply(_ snapshot: HabitatSnapshot) {
-        self.snapshot = snapshot
+    func apply(_ nextSnapshot: HabitatSnapshot) {
+        let previousActivity = snapshot.activity
+        snapshot = nextSnapshot
+        guard isAnimationActive, previousActivity != nextSnapshot.activity else { return }
+        switch nextSnapshot.activity {
+        case .working where previousActivity != .working:
+            showSpeechBubble(L10n.text("Full speed coding!"))
+        case .succeeded:
+            showSpeechBubble(L10n.text("Done! +120 XP"))
+        case .attention:
+            showSpeechBubble(L10n.text("Needs your input"))
+        case .failed:
+            showSpeechBubble(L10n.text("Check error log"))
+        case .resting, .offline, .working:
+            break
+        }
     }
 
     func setAnimationActive(_ active: Bool) {
@@ -42,12 +59,32 @@ final class HabitatOverlayModel: ObservableObject {
             reactionResetTask?.cancel()
             reactionResetTask = nil
             reactionAnimation = nil
+            speechResetTask?.cancel()
+            speechResetTask = nil
+            speechBubble = nil
         }
     }
 
-    func triggerReaction(_ animation: PetAnimation = .waving, durationMilliseconds: UInt64 = 1_350) {
+    func showSpeechBubble(_ message: String, durationMilliseconds: UInt64 = 2_600) {
+        speechResetTask?.cancel()
+        speechBubble = message
+        speechResetTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(durationMilliseconds))
+            guard !Task.isCancelled else { return }
+            self?.speechBubble = nil
+        }
+    }
+
+    func triggerReaction(
+        _ animation: PetAnimation = .waving,
+        speech: String? = nil,
+        durationMilliseconds: UInt64 = 1_350
+    ) {
         reactionResetTask?.cancel()
         reactionBurstID &+= 1
+        if let speech {
+            showSpeechBubble(speech, durationMilliseconds: max(durationMilliseconds, 2_400))
+        }
         guard !reduceMotion, isAnimationActive else { return }
         reactionAnimation = animation
         reactionResetTask = Task { [weak self] in

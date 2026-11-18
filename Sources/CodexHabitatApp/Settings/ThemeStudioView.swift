@@ -166,6 +166,11 @@ struct ThemeStudioView: View {
             .toggleStyle(.button)
             .help(L10n.text("Safe regions"))
 
+            Button(action: copyCodexThemeString) {
+                Label(L10n.text("Copy Share String"), systemImage: "doc.on.doc")
+            }
+            .help(L10n.text("Copy Share String"))
+
             Spacer(minLength: HabitatDesignMetrics.spaceM)
 
             Button(action: model.undo) {
@@ -1089,6 +1094,31 @@ struct ThemeStudioView: View {
         if model.requestClose() {
             dismiss()
         }
+    }
+
+    private func copyCodexThemeString() {
+        let descriptor = HabitatThemeDescriptor(
+            id: ThemePackageBuilder.safeID(for: model.name.isEmpty ? "studio" : model.name),
+            name: model.name.isEmpty ? "Studio Theme" : model.name,
+            detail: model.author,
+            symbol: "paintpalette.fill",
+            surfaceHex: model.color(for: .surface) ?? "#101820",
+            panelHex: model.color(for: .panel) ?? "#182633",
+            panelAltHex: model.color(for: .panelAlt) ?? "#24384A",
+            textHex: model.color(for: .text) ?? "#F4FAFF",
+            mutedTextHex: model.color(for: .mutedText) ?? "#AAB8C4",
+            accentHex: model.color(for: .accent) ?? "#16C6D9",
+            secondaryHex: model.color(for: .secondary) ?? "#41D17D",
+            highlightHex: model.color(for: .highlight) ?? "#85F4FF",
+            attentionHex: model.color(for: .attention) ?? "#FFB547",
+            errorHex: model.color(for: .error) ?? "#FF5C70",
+            previewURL: nil
+        )
+        let variant = CodexThemeShareString.suggestedVariant(for: descriptor)
+        let share = CodexThemeShareString.make(theme: descriptor, variant: variant)
+        guard !share.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(share, forType: .string)
     }
 }
 

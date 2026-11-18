@@ -116,6 +116,7 @@ final class HabitatDesktopController: ObservableObject {
     @Published private(set) var activePetAsset: HabitatPetAsset?
     private var petModel: HabitatOverlayModel?
     private var patCount = 0
+    private var recentPokeTimestamps: [Date] = []
     private var cancellable: AnyCancellable?
     private weak var boundModel: HabitatAppModel?
     private var renderedPetID: String?
@@ -297,6 +298,8 @@ final class HabitatDesktopController: ObservableObject {
                 scale: scale,
                 onToggleWidgets: { [weak self] in self?.toggleWidgetRailExpansion() },
                 onPatPet: { [weak self] in self?.patPet() },
+                onFeedSnack: { [weak self] in self?.feedSnack() },
+                onSnapPreset: { [weak self] preset in self?.snapToPreset(preset) },
                 onSelectPet: { [weak self] id in self?.boundModel?.selectPet(id) },
                 onTogglePositionLock: { [weak self] in
                     guard let model = self?.boundModel else { return }
@@ -357,9 +360,56 @@ final class HabitatDesktopController: ObservableObject {
     }
 
     func patPet() {
+        let now = Date()
+        recentPokeTimestamps = recentPokeTimestamps.filter { now.timeIntervalSince($0) < 3.2 }
+        recentPokeTimestamps.append(now)
         patCount &+= 1
+        if recentPokeTimestamps.count >= 4 {
+            recentPokeTimestamps.removeAll()
+            petModel?.triggerReaction(
+                .failed,
+                speech: L10n.text("Whoa, dizzy visor!"),
+                durationMilliseconds: 1_650
+            )
+            return
+        }
+        let lines = [
+            L10n.text("Purr~ Ship great code!"),
+            L10n.text("Systems nominal · +15 XP"),
+            L10n.text("Zero bugs today!"),
+        ]
+        let speech = lines[patCount % lines.count]
         let animation: PetAnimation = patCount.isMultiple(of: 2) ? .jumping : .waving
-        petModel?.triggerReaction(animation)
+        petModel?.triggerReaction(animation, speech: speech)
+        CompanionProgressionStore.shared.recordCareInteraction(xp: 15, energyDelta: 6)
+    }
+
+    func feedSnack() {
+        petModel?.triggerReaction(
+            .jumping,
+            speech: L10n.text("Yum! Energy +18% · +50 XP"),
+            durationMilliseconds: 1_550
+        )
+        CompanionProgressionStore.shared.recordCareInteraction(xp: 50, energyDelta: 18)
+    }
+
+    func snapToPreset(_ preset: CompanionScreenSnapPreset) {
+        let displayID = overlay?.currentPlacement()?.displayID
+            ?? (NSScreen.main?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.stringValue
+            ?? "main"
+        boundModel?.setOverlayPosition(
+            displayID: displayID,
+            x: preset.relativeX,
+            y: preset.relativeY
+        )
+        let placement = SavedOverlayPlacement(
+            displayID: displayID,
+            relativePosition: RelativeOverlayPosition(x: preset.relativeX, y: preset.relativeY)
+        )
+        if isVisible {
+            overlay?.show(savedPlacement: placement)
+        }
+        petModel?.showSpeechBubble(L10n.text(preset.titleKey))
     }
 
     func handlePrimaryDragStart() {
@@ -724,6 +774,8 @@ private struct HabitatDesktopView: View {
     let scale: Double
     let onToggleWidgets: () -> Void
     let onPatPet: () -> Void
+    let onFeedSnack: () -> Void
+    let onSnapPreset: (CompanionScreenSnapPreset) -> Void
     let onSelectPet: (String) -> Void
     let onTogglePositionLock: () -> Void
     let onHide: () -> Void
@@ -784,6 +836,9 @@ private struct HabitatDesktopView: View {
                     Button(action: onPatPet) {
                         Label(L10n.text("Pat Companion"), systemImage: "hand.wave.fill")
                     }
+                    Button(action: onFeedSnack) {
+                        Label(L10n.text("Feed Energy"), systemImage: "bolt.heart.fill")
+                    }
                     Button(action: onToggleWidgets) {
                         Label(
                             L10n.text(
@@ -793,6 +848,15 @@ private struct HabitatDesktopView: View {
                                 ? "sidebar.right"
                                 : "sidebar.left"
                         )
+                    }
+                    Menu(L10n.text("Snap Position")) {
+                        ForEach(CompanionScreenSnapPreset.allCases) { preset in
+                            Button {
+                                onSnapPreset(preset)
+                            } label: {
+                                Label(L10n.text(preset.titleKey), systemImage: preset.symbol)
+                            }
+                        }
                     }
                     Divider()
                     if !petChoices.isEmpty {

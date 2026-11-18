@@ -27,8 +27,10 @@ enum ThemePaletteRole: CaseIterable, Sendable {
 enum ThemeStudioMoodPreset: String, CaseIterable, Identifiable, Sendable {
     case obsidianGold
     case cyberNeon
+    case catppuccinMocha
+    case tokyoNight
+    case claudeWarm
     case frostedGlass
-    case warmAtelier
 
     var id: String { rawValue }
 
@@ -36,8 +38,10 @@ enum ThemeStudioMoodPreset: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .obsidianGold: "Obsidian Gold"
         case .cyberNeon: "Cyber Neon"
+        case .catppuccinMocha: "Catppuccin Mocha"
+        case .tokyoNight: "Tokyo Night"
+        case .claudeWarm: "Claude Warm"
         case .frostedGlass: "Frosted Glass"
-        case .warmAtelier: "Warm Atelier"
         }
     }
 
@@ -45,8 +49,10 @@ enum ThemeStudioMoodPreset: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .obsidianGold: "#E5B454"
         case .cyberNeon: "#22E6FF"
+        case .catppuccinMocha: "#CBA6F7"
+        case .tokyoNight: "#7AA2F7"
+        case .claudeWarm: "#D97757"
         case .frostedGlass: "#7DD3FC"
-        case .warmAtelier: "#E07A5F"
         }
     }
 }
@@ -561,6 +567,8 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
 
     func applyMoodPreset(_ preset: ThemeStudioMoodPreset) {
         performEdit { draft in
+            let fallbackAttention = draft.palette?.attention ?? "#F59E0B"
+            let fallbackError = draft.palette?.error ?? "#EF4444"
             switch preset {
             case .obsidianGold:
                 draft.styleFamily = .gameCinematic
@@ -573,20 +581,18 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
                 draft.vignetteStrength = 0.46
                 draft.sidebarOpacity = 0.88
                 draft.headerOpacity = 0.84
-                if let existing = draft.palette {
-                    draft.palette = HabitatThemePalette(
-                        surface: "#0E1117",
-                        panel: "#151A24",
-                        panelAlt: "#222938",
-                        text: "#F6F4EF",
-                        mutedText: "#B2B7C4",
-                        accent: "#E5B454",
-                        secondary: "#F59E0B",
-                        highlight: "#FDE68A",
-                        attention: existing.attention,
-                        error: existing.error
-                    )
-                }
+                draft.palette = HabitatThemePalette(
+                    surface: "#0E1117",
+                    panel: "#151A24",
+                    panelAlt: "#222938",
+                    text: "#F6F4EF",
+                    mutedText: "#B2B7C4",
+                    accent: "#E5B454",
+                    secondary: "#F59E0B",
+                    highlight: "#FDE68A",
+                    attention: fallbackAttention,
+                    error: fallbackError
+                )
             case .cyberNeon:
                 draft.styleFamily = .arcade
                 draft.chromeMaterial = .glass
@@ -598,20 +604,87 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
                 draft.vignetteStrength = 0.50
                 draft.sidebarOpacity = 0.80
                 draft.headerOpacity = 0.78
-                if let existing = draft.palette {
-                    draft.palette = HabitatThemePalette(
-                        surface: "#090D18",
-                        panel: "#10182B",
-                        panelAlt: "#1B2845",
-                        text: "#F0FAFF",
-                        mutedText: "#9CB4CE",
-                        accent: "#22E6FF",
-                        secondary: "#FF4ECD",
-                        highlight: "#8AF8FF",
-                        attention: existing.attention,
-                        error: existing.error
-                    )
-                }
+                draft.palette = HabitatThemePalette(
+                    surface: "#090D18",
+                    panel: "#10182B",
+                    panelAlt: "#1B2845",
+                    text: "#F0FAFF",
+                    mutedText: "#9CB4CE",
+                    accent: "#22E6FF",
+                    secondary: "#FF4ECD",
+                    highlight: "#8AF8FF",
+                    attention: fallbackAttention,
+                    error: fallbackError
+                )
+            case .catppuccinMocha:
+                draft.styleFamily = .fantasyAdventure
+                draft.chromeMaterial = .tinted
+                draft.homeMode = .framed
+                draft.taskMode = .ambient
+                draft.blurRadius = 14
+                draft.homeStrength = 0.46
+                draft.taskStrength = 0.22
+                draft.vignetteStrength = 0.32
+                draft.sidebarOpacity = 0.88
+                draft.headerOpacity = 0.86
+                draft.palette = HabitatThemePalette(
+                    surface: "#1E1E2E",
+                    panel: "#181825",
+                    panelAlt: "#313244",
+                    text: "#CDD6F4",
+                    mutedText: "#A6ADC8",
+                    accent: "#CBA6F7",
+                    secondary: "#89B4FA",
+                    highlight: "#F5C2E7",
+                    attention: "#F9E2AF",
+                    error: "#F38BA8"
+                )
+            case .tokyoNight:
+                draft.styleFamily = .animeEnergy
+                draft.chromeMaterial = .glass
+                draft.homeMode = .immersive
+                draft.taskMode = .ambient
+                draft.blurRadius = 18
+                draft.homeStrength = 0.52
+                draft.taskStrength = 0.24
+                draft.vignetteStrength = 0.38
+                draft.sidebarOpacity = 0.82
+                draft.headerOpacity = 0.80
+                draft.palette = HabitatThemePalette(
+                    surface: "#1A1B26",
+                    panel: "#16161E",
+                    panelAlt: "#24283B",
+                    text: "#C0CAF5",
+                    mutedText: "#9AA5CE",
+                    accent: "#7AA2F7",
+                    secondary: "#BB9AF7",
+                    highlight: "#7DCFFF",
+                    attention: "#E0AF68",
+                    error: "#F7768E"
+                )
+            case .claudeWarm:
+                draft.styleFamily = .classicDesktop
+                draft.chromeMaterial = .solid
+                draft.homeMode = .quiet
+                draft.taskMode = .ambient
+                draft.blurRadius = 6
+                draft.homeStrength = 0.34
+                draft.taskStrength = 0.16
+                draft.vignetteStrength = 0.22
+                draft.sidebarOpacity = 0.94
+                draft.headerOpacity = 0.92
+                draft.palette = HabitatThemePalette(
+                    surface: "#1F1D1A",
+                    panel: "#292521",
+                    panelAlt: "#38322C",
+                    text: "#F5EFE6",
+                    mutedText: "#C4B9AC",
+                    accent: "#D97757",
+                    secondary: "#E6A87C",
+                    highlight: "#F4C095",
+                    attention: "#E5A93C",
+                    error: "#D9534F"
+                )
             case .frostedGlass:
                 draft.styleFamily = .cozyWorld
                 draft.chromeMaterial = .glass
@@ -623,45 +696,18 @@ final class ThemeStudioModel: ObservableObject, Identifiable {
                 draft.vignetteStrength = 0.22
                 draft.sidebarOpacity = 0.76
                 draft.headerOpacity = 0.72
-                if let existing = draft.palette {
-                    draft.palette = HabitatThemePalette(
-                        surface: "#111A26",
-                        panel: "#192638",
-                        panelAlt: "#253750",
-                        text: "#F4F9FF",
-                        mutedText: "#AFC2D8",
-                        accent: "#7DD3FC",
-                        secondary: "#34D399",
-                        highlight: "#BAE6FD",
-                        attention: existing.attention,
-                        error: existing.error
-                    )
-                }
-            case .warmAtelier:
-                draft.styleFamily = .classicDesktop
-                draft.chromeMaterial = .solid
-                draft.homeMode = .quiet
-                draft.taskMode = .ambient
-                draft.blurRadius = 6
-                draft.homeStrength = 0.38
-                draft.taskStrength = 0.16
-                draft.vignetteStrength = 0.28
-                draft.sidebarOpacity = 0.94
-                draft.headerOpacity = 0.92
-                if let existing = draft.palette {
-                    draft.palette = HabitatThemePalette(
-                        surface: "#1B1614",
-                        panel: "#261F1C",
-                        panelAlt: "#362C27",
-                        text: "#FAF3EB",
-                        mutedText: "#C7B8AA",
-                        accent: "#E07A5F",
-                        secondary: "#F2CC8F",
-                        highlight: "#F4A261",
-                        attention: existing.attention,
-                        error: existing.error
-                    )
-                }
+                draft.palette = HabitatThemePalette(
+                    surface: "#111A26",
+                    panel: "#192638",
+                    panelAlt: "#253750",
+                    text: "#F4F9FF",
+                    mutedText: "#AFC2D8",
+                    accent: "#7DD3FC",
+                    secondary: "#34D399",
+                    highlight: "#BAE6FD",
+                    attention: fallbackAttention,
+                    error: fallbackError
+                )
             }
         }
     }
